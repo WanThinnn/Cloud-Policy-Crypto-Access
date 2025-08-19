@@ -352,3 +352,4 @@ MigrationBackup/
 
 # Environment variables
 env/
+app/backend/used-for-reference/
