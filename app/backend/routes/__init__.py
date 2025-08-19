@@ -11,6 +11,8 @@ from .abe_routes import abe_api
 from .auth_routes import auth_api
 from .admin_routes import admin_api
 from .files_routes import files_api
+from .abac_routes import abac_api
+from .ca_routes import ca_api
 
 # Thêm routes modules mới ở đây khi có
 # from .analytics_routes import analytics_api
@@ -23,6 +25,8 @@ all_blueprints = [
     auth_api,       # User authentication
     files_api,      # File management
     admin_api,      # Admin operations (future)
+    abac_api,       # Attribute-Based Access Control
+    ca_api,         # Central Authority for CP-ABE
     # analytics_api,  # Analytics & reporting (future)
     # payment_api,    # Payment processing (future)
     # notification_api, # Push notifications (future)

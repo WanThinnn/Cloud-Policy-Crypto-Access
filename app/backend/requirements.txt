@@ -8,3 +8,4 @@ blinker==1.6.3
 gunicorn==21.2.0
 bcrypt==4.0.1
 firebase-admin==6.2.0
+requests==2.31.0

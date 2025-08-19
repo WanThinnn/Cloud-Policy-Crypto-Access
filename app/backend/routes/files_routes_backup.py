@@ -305,3 +305,26 @@ def health_check():
         'service': 'Files API',
         'message': 'Files service is running'
     })
+        
+    except Exception as e:
+        logger.error(f"Error listing files: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to list files'
+        }), 500
+
+# Future file management endpoints:
+# @files_api.route('/upload', methods=['POST'])
+# def upload_file():
+#     """Upload a file to server"""
+#     pass
+# 
+# @files_api.route('/download/<filename>', methods=['GET'])
+# def download_file(filename):
+#     """Download a file from server"""
+#     pass
+# 
+# @files_api.route('/<filename>', methods=['DELETE'])
+# def delete_file(filename):
+#     """Delete a file from server"""
+#     pass
