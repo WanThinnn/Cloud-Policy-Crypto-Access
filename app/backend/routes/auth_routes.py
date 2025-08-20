@@ -4,11 +4,6 @@ Authentication API routes
 from flask import Blueprint, request, jsonify
 import asyncio
 import logging
-import sys
-import os
-
-# Add parent directory to path to import module
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from module import user_manager
 
 logger = logging.getLogger(__name__)
