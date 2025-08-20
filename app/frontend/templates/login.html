@@ -209,14 +209,14 @@
         <!-- Login Form -->
         <form id="loginForm">
             <div class="form-group">
-                <label class="form-label" for="email">Email Address</label>
+                <label class="form-label" for="username">Username</label>
                 <input 
-                    type="email" 
+                    type="text" 
                     class="form-input" 
-                    id="email" 
-                    name="email" 
+                    id="username" 
+                    name="username" 
                     required
-                    placeholder="Enter your email"
+                    placeholder="Enter your username"
                 >
             </div>
 
@@ -247,7 +247,11 @@
         </div>
 
         <div class="login-links">
-            <a href="/register" class="login-link">Don't have an account? Sign up</a><br>
+            <a href="/forgot-password" class="login-link">Forgot your password?</a><br>
+            <p class="text-secondary" style="margin-top: 1rem; font-size: 0.875rem;">
+                📞 Need an account? Contact your administrator.
+            </p>
+        </div>
             <a href="/forgot-password" class="login-link" style="margin-top: var(--space-sm); display: inline-block;">
                 Forgot your password?
             </a>
@@ -278,14 +282,15 @@ class LoginManager {
 
     async checkExistingSession() {
         try {
-            const response = await fetch('/api/auth/check-session');
-            if (response.ok) {
-                const data = await response.json();
-                if (data.authenticated) {
-                    // User is already logged in, redirect to dashboard
-                    window.location.href = '/';
-                }
-            }
+            // TODO: Implement session check endpoint
+            // const response = await fetch('/api/check-session');
+            // if (response.ok) {
+            //     const data = await response.json();
+            //     if (data.authenticated) {
+            //         // User is already logged in, redirect to dashboard
+            //         window.location.href = '/';
+            //     }
+            // }
         } catch (error) {
             console.log('No existing session');
         }
@@ -294,7 +299,7 @@ class LoginManager {
     async handleLogin(e) {
         e.preventDefault();
         
-        const email = document.getElementById('email').value;
+        const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
         const rememberMe = document.getElementById('rememberMe').checked;
 
@@ -302,7 +307,7 @@ class LoginManager {
         this.clearMessages();
 
         // Validate form
-        if (!this.validateForm(email, password)) {
+        if (!this.validateForm(username, password)) {
             return;
         }
 
@@ -310,13 +315,13 @@ class LoginManager {
         this.setLoading(true);
 
         try {
-            const response = await fetch('/api/auth/login', {
+            const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email,
+                    username,
                     password,
                     remember_me: rememberMe
                 })
@@ -345,9 +350,9 @@ class LoginManager {
         }
     }
 
-    validateForm(email, password) {
-        if (!email || !email.includes('@')) {
-            this.showMessage('Please enter a valid email address.', 'error');
+    validateForm(username, password) {
+        if (!username || username.length < 3) {
+            this.showMessage('Please enter a valid username (at least 3 characters).', 'error');
             return false;
         }
 

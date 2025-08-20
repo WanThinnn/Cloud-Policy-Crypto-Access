@@ -46,8 +46,22 @@ def create_app():
     
     # Register backend API blueprints
     for blueprint in all_blueprints:
-        app.register_blueprint(blueprint, url_prefix='/api')
+        if blueprint.name == 'admin':
+            # Admin blueprint gets special prefix to match frontend calls
+            app.register_blueprint(blueprint, url_prefix='/api/admin')
+        elif blueprint.name == 'files':
+            # Files blueprint gets special prefix to match frontend calls
+            app.register_blueprint(blueprint, url_prefix='/api/files')
+        else:
+            app.register_blueprint(blueprint, url_prefix='/api')
         logging.info(f"Registered API blueprint: {blueprint.name}")
+    
+    # Debug: List all routes
+    with app.app_context():
+        logging.info("=== REGISTERED ROUTES ===")
+        for rule in app.url_map.iter_rules():
+            logging.info(f"Route: {rule.rule} -> {rule.endpoint}")
+        logging.info("=== END ROUTES ===")
     
     # ====== FRONTEND ROUTES ======
     
@@ -227,27 +241,9 @@ def create_app():
         """Fetch user files from backend"""
         try:
             # In production, make actual API call
-            # response = requests.get(f'/api/files?user_id={user_id}')
-            return [
-                {
-                    'id': '1',
-                    'title': 'Important Document.pdf',
-                    'description': 'Confidential business document with encryption',
-                    'owner': 'john.doe@company.com',
-                    'created_date': '2025-01-15 10:30:00',
-                    'size': '2.4 MB',
-                    'status': 'Active'
-                },
-                {
-                    'id': '2',
-                    'title': 'Financial Report Q4.xlsx',
-                    'description': 'Quarterly financial analysis and projections',
-                    'owner': 'finance@company.com',
-                    'created_date': '2025-01-10 14:20:00',
-                    'size': '1.8 MB',
-                    'status': 'Active'
-                }
-            ]
+            response = requests.get(f'/api/files?user_id={user_id}')
+            if response.ok:
+                return response.json()
         except Exception as e:
             logging.error(f"Files fetch error: {e}")
             return []
@@ -353,16 +349,16 @@ def create_app():
     
     # ====== ERROR HANDLERS ======
     
-    @app.errorhandler(404)
-    def not_found_error(error):
-        flash('Page not found', 'error')
-        return redirect(url_for('home'))
+    # @app.errorhandler(404)
+    # def not_found_error(error):
+    #     flash('Page not found', 'error')
+    #     return redirect(url_for('home'))
     
-    @app.errorhandler(500)
-    def internal_error(error):
-        logging.error(f"Internal server error: {error}")
-        flash('An internal error occurred', 'error')
-        return redirect(url_for('home'))
+    # @app.errorhandler(500)
+    # def internal_error(error):
+    #     logging.error(f"Internal server error: {error}")
+    #     flash('An internal error occurred', 'error')
+    #     return redirect(url_for('home'))
     
     # ====== CONTEXT PROCESSORS ======
     

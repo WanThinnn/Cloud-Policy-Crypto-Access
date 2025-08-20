@@ -11,6 +11,9 @@ class Config:
     PORT = 5000
     DEBUG = False
     
+    # Flask secret key for sessions
+    SECRET_KEY = 'your-secret-key-change-in-production'
+    
     # Upload folder
     UPLOAD_FOLDER = 'tmp'
     

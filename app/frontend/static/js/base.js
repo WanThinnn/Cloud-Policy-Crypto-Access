@@ -18,6 +18,7 @@ class BaseApp {
     this.setupApiHelpers();
     this.initializeTooltips();
     this.setupThemeSwitcher();
+    this.setupProfileDropdown();
   }
 
   /**
@@ -595,6 +596,259 @@ class BaseApp {
         }
       }, 300);
     }, duration);
+  }
+
+  /**
+   * Setup profile dropdown
+   */
+  setupProfileDropdown() {
+    const profileDropdown = document.getElementById('profileDropdown');
+    const profileMenu = document.getElementById('profileMenu');
+
+    if (profileDropdown && profileMenu) {
+      // Toggle dropdown on click
+      profileDropdown.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        profileMenu.classList.toggle('show');
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!profileDropdown.contains(e.target) && !profileMenu.contains(e.target)) {
+          profileMenu.classList.remove('show');
+        }
+      });
+
+      // Close dropdown on escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          profileMenu.classList.remove('show');
+        }
+      });
+    }
+
+    // Handle logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await this.handleLogout();
+      });
+    }
+
+    // Handle Get Private Key
+    const getPrivateKeyBtn = document.getElementById('getPrivateKeyBtn');
+    if (getPrivateKeyBtn) {
+      getPrivateKeyBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await this.handleGetPrivateKey();
+      });
+    }
+  }
+
+  /**
+   * Handle user logout
+   */
+  async handleLogout() {
+    try {
+      const response = await fetch('/api/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Clear local storage
+        localStorage.removeItem('user');
+        
+        // Show success message
+        this.showToast('Logged out successfully', 'success', 2000);
+        
+        // Redirect to login page
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1000);
+      } else {
+        this.showToast(data.error || 'Logout failed', 'error');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      this.showToast('Network error during logout', 'error');
+    }
+  }
+
+  /**
+   * Handle Get Private Key
+   */
+  async handleGetPrivateKey() {
+    // Close dropdown first
+    const profileMenu = document.getElementById('profileMenu');
+    if (profileMenu) {
+      profileMenu.classList.remove('show');
+    }
+
+    // Get current user info
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user.user_id;
+
+    if (!userId) {
+      this.showToast('User not found. Please login again.', 'error');
+      return;
+    }
+
+    // Show password input modal
+    const password = await this.showPasswordModal('Enter password to protect your private key:');
+    
+    if (!password) {
+      return; // User cancelled
+    }
+
+    try {
+      // First, get user attributes
+      const userResponse = await fetch(`/api/users/${userId}/attributes`);
+      const userData = await userResponse.json();
+
+      if (!userResponse.ok) {
+        throw new Error(userData.error || 'Failed to get user attributes');
+      }
+
+      const attributes = userData.attributes || [];
+
+      if (attributes.length === 0) {
+        this.showToast('No attributes found. Contact admin to set your attributes.', 'error');
+        return;
+      }
+
+      // Generate private key
+      const response = await fetch('/api/user/private-key/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          password: password,
+          attributes: attributes
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        if (result.has_existing_key) {
+          this.showToast('Private key already exists. Use authenticate to access it.', 'info');
+        } else {
+          this.showToast('Private key generated successfully!', 'success');
+          this.showPrivateKeyInfo(result);
+        }
+      } else {
+        throw new Error(result.error || 'Failed to generate private key');
+      }
+    } catch (error) {
+      console.error('Get private key error:', error);
+      this.showToast(`Error: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Show password input modal
+   */
+  async showPasswordModal(message) {
+    return new Promise((resolve) => {
+      // Create modal
+      const modal = document.createElement('div');
+      modal.className = 'password-modal';
+      modal.innerHTML = `
+        <div class="modal-backdrop">
+          <div class="modal-content">
+            <h3>🔐 Private Key Protection</h3>
+            <p>${message}</p>
+            <input type="password" id="passwordInput" placeholder="Enter password" class="form-input">
+            <div class="modal-actions">
+              <button id="cancelBtn" class="btn btn-secondary">Cancel</button>
+              <button id="confirmBtn" class="btn btn-primary">Generate</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+
+      const passwordInput = modal.querySelector('#passwordInput');
+      const cancelBtn = modal.querySelector('#cancelBtn');
+      const confirmBtn = modal.querySelector('#confirmBtn');
+
+      // Focus password input
+      passwordInput.focus();
+
+      // Handle cancel
+      cancelBtn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+        resolve(null);
+      });
+
+      // Handle confirm
+      const handleConfirm = () => {
+        const password = passwordInput.value.trim();
+        if (!password) {
+          this.showToast('Password is required', 'error');
+          return;
+        }
+        document.body.removeChild(modal);
+        resolve(password);
+      };
+
+      confirmBtn.addEventListener('click', handleConfirm);
+      passwordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleConfirm();
+        }
+      });
+
+      // Handle escape key
+      modal.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          document.body.removeChild(modal);
+          resolve(null);
+        }
+      });
+    });
+  }
+
+  /**
+   * Show private key information
+   */
+  showPrivateKeyInfo(result) {
+    const modal = document.createElement('div');
+    modal.className = 'info-modal';
+    modal.innerHTML = `
+      <div class="modal-backdrop">
+        <div class="modal-content large">
+          <h3>🔐 Private Key Generated</h3>
+          <div class="key-info">
+            <p><strong>User ID:</strong> ${result.user_id}</p>
+            <p><strong>Attributes:</strong> ${result.attributes.join(', ')}</p>
+            <p><strong>Created:</strong> ${new Date().toLocaleString()}</p>
+            <p class="success-message">✅ Your private key has been generated and encrypted with your password.</p>
+            <p class="info-message">ℹ️ Keep your password safe - you'll need it to decrypt files!</p>
+          </div>
+          <div class="modal-actions">
+            <button id="closeBtn" class="btn btn-primary">Close</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeBtn = modal.querySelector('#closeBtn');
+    closeBtn.addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
   }
 
   /**

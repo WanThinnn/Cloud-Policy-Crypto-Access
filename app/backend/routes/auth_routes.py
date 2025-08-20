@@ -1,7 +1,7 @@
 """
 Authentication API routes
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 import asyncio
 import logging
 from datetime import datetime
@@ -28,64 +28,15 @@ def run_async(async_func):
     return wrapper
 
 @auth_api.route('/register', methods=['POST'])
-def register():
+def register_disabled():
     """
-    Đăng ký tài khoản mới
-    
-    Expected JSON:
-    {
-        "username": "string",
-        "email": "string",
-        "password": "string"
-    }
+    Public registration is disabled - Admin only user creation
     """
-    try:
-        logger.info("Register endpoint called")
-        data = request.get_json()
-        logger.info(f"Received data: {data}")
-        
-        if not data:
-            logger.warning("No data provided")
-            return jsonify({
-                'success': False,
-                'error': 'No data provided'
-            }), 400
-        
-        # Validate required fields
-        required_fields = ['username', 'email', 'password']
-        missing_fields = [field for field in required_fields if field not in data or not data[field]]
-        
-        if missing_fields:
-            logger.warning(f"Missing fields: {missing_fields}")
-            return jsonify({
-                'success': False,
-                'error': f'Missing required fields: {", ".join(missing_fields)}'
-            }), 400
-        
-        logger.info(f"Creating user: {data['username']} - {data['email']}")
-        
-        # Create user
-        result = run_async(user_manager.create_user)(
-            username=data['username'],
-            email=data['email'],
-            password=data['password']
-        )
-        
-        logger.info(f"User creation result: {result}")
-        
-        if result['success']:
-            logger.info(f"New user registered: {data['username']}")
-            return jsonify(result), 201
-        else:
-            logger.warning(f"User creation failed: {result}")
-            return jsonify(result), 400
-            
-    except Exception as e:
-        logger.error(f"Registration error: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Registration failed due to server error'
-        }), 500
+    return jsonify({
+        'success': False,
+        'error': 'Public registration is disabled. Please contact administrator for account creation.',
+        'admin_only': True
+    }), 403
 
 @auth_api.route('/login', methods=['POST'])
 def login():
@@ -121,7 +72,17 @@ def login():
         )
         
         if result['success']:
+            # Set session
+            session['user_id'] = result.get('user_id', data['username'])
+            session['username'] = data['username']
+            session['authenticated'] = True
+            
             logger.info(f"User logged in: {data['username']}")
+            
+            # Add username to response for frontend
+            result['username'] = data['username']
+            result['redirect'] = '/'
+            
             return jsonify(result), 200
         else:
             return jsonify(result), 401
@@ -131,6 +92,27 @@ def login():
         return jsonify({
             'success': False,
             'error': 'Login failed due to server error'
+        }), 500
+
+@auth_api.route('/logout', methods=['POST'])
+def logout():
+    """
+    Logout user - xóa session
+    """
+    try:
+        # Clear session
+        session.clear()
+        logger.info("User logged out")
+        return jsonify({
+            'success': True,
+            'message': 'Logged out successfully'
+        }), 200
+            
+    except Exception as e:
+        logger.error(f"Logout error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Logout failed due to server error'
         }), 500
 
 @auth_api.route('/user/<user_id>', methods=['GET'])

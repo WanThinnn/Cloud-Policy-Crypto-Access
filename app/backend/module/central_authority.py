@@ -24,7 +24,7 @@ class CentralAuthority:
     
     def __init__(self):
         self.keys_collection = db.collection('abe_keys')
-        self.policies_collection = db.collection('abe_policies')
+        self.policies_collection = db.collection('access_policies')
         self.user_attributes_collection = db.collection('user_attributes')
         
         # Local key storage path

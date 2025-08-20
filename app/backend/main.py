@@ -1,9 +1,10 @@
 """
 Main application file for Hybrid CP-ABE Flask Backend
 """
-from flask import Flask
+from flask import Flask, render_template, session, redirect, url_for
 import logging
 import platform
+import os
 from config import config
 from routes import all_blueprints
 from module import abe_lib
@@ -11,7 +12,9 @@ from utils import ensure_directory_exists
 
 def create_app(config_name='default'):
     """Application factory"""
-    app = Flask(__name__)
+    app = Flask(__name__, 
+                static_folder='../fontend',
+                template_folder='../fontend/html')
     
     # Load configuration
     app.config.from_object(config[config_name])
@@ -27,8 +30,39 @@ def create_app(config_name='default'):
     
     # Register blueprints dynamically
     for blueprint in all_blueprints:
-        app.register_blueprint(blueprint)
+        app.register_blueprint(blueprint, url_prefix='/api')
         logging.info(f"Registered blueprint: {blueprint.name}")
+    
+    # Frontend routes
+    @app.route('/')
+    def index():
+        if 'user_id' not in session:
+            return redirect('/login')
+        return render_template('index.html')
+    
+    @app.route('/login')
+    def login_page():
+        if 'user_id' in session:
+            return redirect('/')
+        return render_template('login.html')
+    
+    @app.route('/admin')
+    def admin_page():
+        if 'user_id' not in session:
+            return redirect('/login')
+        
+        # Check if user is admin (basic check)
+        from module.database import db
+        try:
+            user_doc = db.collection('users').document(session['user_id']).get()
+            if user_doc.exists:
+                user_data = user_doc.to_dict()
+                if user_data.get('role') == 'admin' or user_data.get('is_admin', False):
+                    return render_template('admin.html')
+        except Exception as e:
+            logging.error(f"Error checking admin status: {e}")
+        
+        return "Access denied - Admin privileges required", 403
     
     # Error handlers
     @app.errorhandler(404)

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cloud Firestore Crypto Access{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="brand-icon">🔒</span>
+                <span class="brand-text">Crypto Access</span>
+            </div>
+            
+            <div class="nav-menu">
+                {% if session.user_id %}
+                    <a href="/" class="nav-link">Dashboard</a>
+                    <a href="/files" class="nav-link">Files</a>
+                    
+                    <!-- Profile Dropdown -->
+                    <div class="profile-dropdown">
+                        <button class="profile-btn" id="profileBtn">
+                            <span class="profile-icon">👤</span>
+                            <span class="profile-name">{{ session.username or 'User' }}</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        
+                        <div class="dropdown-menu" id="profileDropdown">
+                            <a href="#" class="dropdown-item" onclick="handleGetPrivateKey()">
+                                <span class="item-icon">🔑</span>
+                                GetPrivateKey
+                            </a>
+                            <a href="/admin" class="dropdown-item admin-only" style="display: none;">
+                                <span class="item-icon">⚙️</span>
+                                Admin Panel
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" class="dropdown-item" onclick="handleLogout()">
+                                <span class="item-icon">🚪</span>
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="/login" class="nav-link">Login</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- GetPrivateKey Modal -->
+    <div id="privateKeyModal" class="modal-backdrop" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Generate Private Key</h3>
+                <button class="modal-close" onclick="closePrivateKeyModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="privateKeyAlert"></div>
+                <div id="passwordStep" class="modal-step">
+                    <p>Enter a password to protect your private key:</p>
+                    <input type="password" id="privateKeyPassword" class="form-input" placeholder="Enter password">
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="closePrivateKeyModal()">Cancel</button>
+                        <button class="btn btn-primary" onclick="generatePrivateKey()">Generate Key</button>
+                    </div>
+                </div>
+                <div id="resultStep" class="modal-step" style="display: none;">
+                    <div id="privateKeyResult"></div>
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" onclick="closePrivateKeyModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/base.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

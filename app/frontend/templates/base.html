@@ -88,15 +88,43 @@
                             </a>
                         </li>
                         
-
-                        
-                        <!-- Login Link -->
-                        <li class="nav-item">
-                            <a href="{{ url_for('login_page') }}">
-                                <span>�</span>
-                                Login
-                            </a>
-                        </li>
+                        <!-- User Profile/Authentication Section -->
+                        {% if session.get('user_id') %}
+                            <!-- User is logged in -->
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-profile" id="profileDropdown">
+                                    <span>👤</span>
+                                    {{ session.get('username', 'User') }}
+                                </a>
+                                <div class="dropdown-menu" id="profileMenu">
+                                    <a href="{{ url_for('profile') }}" class="dropdown-item">
+                                        <span>👤</span>
+                                        Profile
+                                    </a>
+                                    <a href="{{ url_for('security') }}" class="dropdown-item">
+                                        <span>🔒</span>
+                                        Security
+                                    </a>
+                                    <a href="#" class="dropdown-item" id="getPrivateKeyBtn">
+                                        <span>🔐</span>
+                                        Get Private Key
+                                    </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a href="#" class="dropdown-item logout" id="logoutBtn">
+                                        <span>🚪</span>
+                                        Logout
+                                    </a>
+                                </div>
+                            </li>
+                        {% else %}
+                            <!-- User is not logged in -->
+                            <li class="nav-item">
+                                <a href="{{ url_for('login_page') }}">
+                                    <span>🔑</span>
+                                    Login
+                                </a>
+                            </li>
+                        {% endif %}
 
                         
                         <!-- Theme Switcher -->
