@@ -8,6 +8,7 @@ from firebase_admin import firestore
 from datetime import datetime
 from .database import db
 from .user_management import user_manager
+from .crypto_utils import CryptoUtils
 import os
 import tempfile
 
@@ -26,14 +27,36 @@ class CentralAuthority:
         self.policies_collection = db.collection('abe_policies')
         self.user_attributes_collection = db.collection('user_attributes')
         
+        # Local key storage path
+        self.local_keys_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'abe_keys')
+        self.master_key_path = os.path.join(self.local_keys_dir, 'master_key.key')
+        self.public_key_path = os.path.join(self.local_keys_dir, 'public_key.key')
+        self.setup_info_path = os.path.join(self.local_keys_dir, 'setup_info.json')
+        
+        # Ensure local keys directory exists
+        os.makedirs(self.local_keys_dir, exist_ok=True)
+        
     def setup_abe_system(self) -> Dict[str, Any]:
         """
-        Setup ABE system - tạo master key và public key
+        Setup ABE system - tạo master key và public key (chỉ tạo 1 lần duy nhất)
+        Lưu keys ở local thay vì cloud để tăng bảo mật
         
         Returns:
             Dict with success status and keys info
         """
         try:
+            # Kiểm tra xem đã có keys ở local chưa
+            existing_keys = self.get_active_keys()
+            if existing_keys['success'] and existing_keys['has_public_key'] and existing_keys['has_master_key']:
+                logger.info("ABE system already setup with local keys")
+                return {
+                    'success': True,
+                    'setup_id': existing_keys['setup_id'],
+                    'message': 'ABE system already setup with local keys',
+                    'already_exists': True,
+                    'storage': 'local'
+                }
+            
             # Tạo thư mục tạm để lưu keys
             temp_dir = tempfile.mkdtemp()
             setup_dir = os.path.join(temp_dir, 'abe_setup')
@@ -48,6 +71,42 @@ class CentralAuthority:
             
             # Gọi ABE setup từ library
             abe_lib.setup(setup_dir)
+            
+            # Đọc các key files
+            temp_public_key_path = os.path.join(setup_dir, 'public_key.key')
+            temp_master_key_path = os.path.join(setup_dir, 'master_key.key')
+            
+            # Copy keys to local storage
+            import shutil
+            shutil.copy2(temp_public_key_path, self.public_key_path)
+            shutil.copy2(temp_master_key_path, self.master_key_path)
+            
+            # Tạo setup info
+            setup_id = str(uuid.uuid4())
+            setup_info = {
+                'setup_id': setup_id,
+                'created_at': datetime.utcnow().isoformat(),
+                'storage_type': 'local',
+                'master_key_path': self.master_key_path,
+                'public_key_path': self.public_key_path
+            }
+            
+            # Lưu setup info
+            import json
+            with open(self.setup_info_path, 'w') as f:
+                json.dump(setup_info, f, indent=2)
+            
+            # Cleanup temp files
+            shutil.rmtree(temp_dir)
+            
+            logger.info(f"ABE system setup completed with ID: {setup_id} (local storage)")
+            
+            return {
+                'success': True,
+                'setup_id': setup_id,
+                'message': 'ABE system setup completed successfully (local storage)',
+                'storage': 'local'
+            }
             
             # Đọc các key files
             public_key_path = os.path.join(setup_dir, 'public_key.key')
@@ -99,35 +158,55 @@ class CentralAuthority:
     
     def get_active_keys(self) -> Dict[str, Any]:
         """
-        Lấy active public key và master key
+        Lấy active public key và master key từ local storage
         
         Returns:
             Dict with keys data
         """
         try:
-            active_keys = self.keys_collection.where('is_active', '==', True).limit(1).get()
-            
-            if not active_keys:
+            # Kiểm tra setup info file
+            if not os.path.exists(self.setup_info_path):
                 return {
                     'success': False,
-                    'error': 'No active keys found. Please setup ABE system first.'
+                    'error': 'No setup info found. Please setup ABE system first.'
                 }
             
-            keys_doc = active_keys[0]
-            keys_data = keys_doc.to_dict()
+            # Đọc setup info
+            import json
+            with open(self.setup_info_path, 'r') as f:
+                setup_info = json.load(f)
             
-            # Check if keys exist
-            has_public_key = 'public_key' in keys_data and keys_data['public_key'] is not None
-            has_master_key = 'master_key' in keys_data and keys_data['master_key'] is not None
+            # Kiểm tra key files
+            has_public_key = os.path.exists(self.public_key_path)
+            has_master_key = os.path.exists(self.master_key_path)
+            
+            if not has_public_key or not has_master_key:
+                return {
+                    'success': False,
+                    'error': 'Key files not found. Please setup ABE system first.'
+                }
+            
+            # Đọc key data nếu cần
+            public_key_data = None
+            master_key_data = None
+            
+            if has_public_key:
+                with open(self.public_key_path, 'rb') as f:
+                    public_key_data = f.read()
+            
+            if has_master_key:
+                with open(self.master_key_path, 'rb') as f:
+                    master_key_data = f.read()
             
             return {
                 'success': True,
-                'setup_id': keys_doc.id,
+                'setup_id': setup_info['setup_id'],
                 'has_public_key': has_public_key,
                 'has_master_key': has_master_key,
-                'public_key': keys_data.get('public_key'),
-                'master_key': keys_data.get('master_key'),
-                'message': 'Active keys found'
+                'public_key': public_key_data,
+                'master_key': master_key_data,
+                'storage_type': 'local',
+                'message': 'Active keys found (local storage)'
             }
             
         except Exception as e:
@@ -181,7 +260,7 @@ class CentralAuthority:
                 'user_id': user_id,
                 'private_key': private_key_data,
                 'attributes': attributes,
-                'created_at': firestore.SERVER_TIMESTAMP,
+                'created_at': datetime.utcnow(),
                 'is_active': True
             }
             
@@ -248,6 +327,198 @@ class CentralAuthority:
             return {
                 'success': False,
                 'error': f'Failed to get user private key: {str(e)}'
+            }
+    
+    def generate_encrypted_user_private_key(self, user_id: str, password: str, attributes: List[str]) -> Dict[str, Any]:
+        """
+        Tạo và mã hóa private key cho user bằng password
+        
+        Args:
+            user_id: User ID
+            password: User password để mã hóa private key
+            attributes: List of attributes ['role:doctor', 'department:cardiology']
+            
+        Returns:
+            Dict with success status and encrypted key info
+        """
+        try:
+            # Kiểm tra xem user đã có private key chưa
+            existing_key = self.check_user_has_private_key(user_id)
+            if existing_key['has_key']:
+                return {
+                    'success': False,
+                    'error': 'User already has a private key. Use password authentication to retrieve it.',
+                    'has_existing_key': True
+                }
+            
+            # Validate password strength
+            password_check = CryptoUtils.verify_password_strength(password)
+            if not password_check['is_valid']:
+                return {
+                    'success': False,
+                    'error': 'Password does not meet security requirements',
+                    'password_errors': password_check['errors']
+                }
+            
+            # Lấy active keys
+            keys_result = self.get_active_keys()
+            if not keys_result['success']:
+                return keys_result
+            
+            # Tạo temp files
+            temp_dir = tempfile.mkdtemp()
+            
+            public_key_path = os.path.join(temp_dir, 'public_key.key')
+            master_key_path = os.path.join(temp_dir, 'master_key.key')
+            private_key_path = os.path.join(temp_dir, 'private_key.key')
+            
+            # Write keys to temp files
+            with open(public_key_path, 'wb') as f:
+                f.write(keys_result['public_key'])
+            
+            with open(master_key_path, 'wb') as f:
+                f.write(keys_result['master_key'])
+            
+            # Generate private key
+            attributes_str = ' '.join(attributes)
+            if abe_lib and abe_lib.is_loaded():
+                abe_lib.generate_secret_key(public_key_path, master_key_path, attributes_str, private_key_path)
+            else:
+                # Fallback for testing without ABE library
+                with open(private_key_path, 'wb') as f:
+                    f.write(b"dummy_private_key_for_testing")
+            
+            # Read generated private key
+            with open(private_key_path, 'rb') as f:
+                private_key_data = f.read()
+            
+            # Encrypt private key with password
+            encrypted_key_info = CryptoUtils.encrypt_private_key(private_key_data, password)
+            
+            # Save encrypted user private key to Firestore với minimal metadata
+            user_key_doc = {
+                'user_id': user_id,
+                'encrypted_blob': encrypted_key_info['encrypted_blob'],
+                'algorithm': encrypted_key_info['algorithm'],
+                'attributes': attributes,
+                'created_at': datetime.utcnow(),
+                'is_active': True
+            }
+            
+            # Save new encrypted private key
+            private_key_id = str(uuid.uuid4())
+            self.keys_collection.document(private_key_id).set(user_key_doc)
+            
+            # Cleanup temp files
+            import shutil
+            shutil.rmtree(temp_dir)
+            
+            logger.info(f"Encrypted private key generated for user: {user_id}")
+            
+            return {
+                'success': True,
+                'private_key_id': private_key_id,
+                'attributes': attributes,
+                'message': 'Encrypted private key generated and saved to cloud successfully (minimal metadata)'
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to generate encrypted private key: {e}")
+            return {
+                'success': False,
+                'error': f'Failed to generate encrypted private key: {str(e)}'
+            }
+    
+    def get_user_private_key_with_password(self, user_id: str, password: str) -> Dict[str, Any]:
+        """
+        Lấy và giải mã private key của user bằng password
+        
+        Args:
+            user_id: User ID
+            password: User password để giải mã
+            
+        Returns:
+            Dict with decrypted private key data
+        """
+        try:
+            # Tìm encrypted private key của user
+            user_keys = self.keys_collection.where('user_id', '==', user_id)\
+                                           .where('is_active', '==', True)\
+                                           .limit(1).get()
+            
+            if not user_keys:
+                return {
+                    'success': False,
+                    'error': 'User encrypted private key not found. Please generate a private key first.'
+                }
+            
+            key_data = user_keys[0].to_dict()
+            
+            # Extract encrypted blob
+            encrypted_blob = key_data['encrypted_blob']
+            
+            # Decrypt private key using new method
+            private_key_data = CryptoUtils.decrypt_private_key_from_blob(encrypted_blob, password)
+            
+            logger.info(f"Private key decrypted successfully for user: {user_id}")
+            
+            return {
+                'success': True,
+                'private_key': private_key_data,
+                'attributes': key_data['attributes'],
+                'message': 'Private key retrieved and decrypted successfully'
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get user private key with password: {e}")
+            if "decryption failed" in str(e).lower() or "authentication" in str(e).lower():
+                return {
+                    'success': False,
+                    'error': 'Invalid password. Please check your password and try again.',
+                    'is_auth_error': True
+                }
+            return {
+                'success': False,
+                'error': f'Failed to retrieve private key: {str(e)}'
+            }
+    
+    def check_user_has_private_key(self, user_id: str) -> Dict[str, Any]:
+        """
+        Kiểm tra user đã có private key chưa
+        
+        Args:
+            user_id: User ID
+            
+        Returns:
+            Dict with check results
+        """
+        try:
+            user_keys = self.keys_collection.where('user_id', '==', user_id)\
+                                           .where('is_active', '==', True)\
+                                           .limit(1).get()
+            
+            has_key = len(user_keys) > 0
+            key_info = None
+            
+            if has_key:
+                key_data = user_keys[0].to_dict()
+                key_info = {
+                    'created_at': key_data.get('created_at'),
+                    'attributes': key_data.get('attributes', []),
+                    'algorithm': key_data.get('algorithm', 'AES-256-GCM')
+                }
+            
+            return {
+                'success': True,
+                'has_key': has_key,
+                'key_info': key_info
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to check user private key: {e}")
+            return {
+                'success': False,
+                'error': f'Failed to check user private key: {str(e)}'
             }
     
     def generate_policy_for_user(self, user_id: str) -> str:

@@ -320,3 +320,203 @@ def get_system_status():
             'success': False,
             'error': 'Internal server error'
         }), 500
+
+@ca_api.route('/user/private-key/generate', methods=['POST'])
+def generate_encrypted_user_private_key():
+    """
+    Tạo và mã hóa private key cho user bằng password
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Request body is required'
+            }), 400
+        
+        # Validate required fields
+        required_fields = ['user_id', 'password', 'attributes']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+        
+        user_id = data['user_id']
+        password = data['password']
+        attributes = data['attributes']
+        
+        if not isinstance(attributes, list):
+            return jsonify({
+                'success': False,
+                'error': 'Attributes must be a list'
+            }), 400
+        
+        result = central_authority.generate_encrypted_user_private_key(
+            user_id, password, attributes
+        )
+        
+        if result['success']:
+            return jsonify(result), 201
+        else:
+            if result.get('has_existing_key'):
+                return jsonify(result), 409  # Conflict
+            else:
+                return jsonify(result), 400
+                
+    except Exception as e:
+        logger.error(f"Generate encrypted private key error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
+
+@ca_api.route('/user/private-key/authenticate', methods=['POST'])
+def authenticate_user_private_key():
+    """
+    Xác thực và lấy private key của user bằng password
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Request body is required'
+            }), 400
+        
+        # Validate required fields
+        required_fields = ['user_id', 'password']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+        
+        user_id = data['user_id']
+        password = data['password']
+        
+        result = central_authority.get_user_private_key_with_password(user_id, password)
+        
+        if result['success']:
+            # Don't return the actual private key, just success status and metadata
+            response = {
+                'success': True,
+                'attributes': result['attributes'],
+                'message': 'Authentication successful. Private key retrieved.'
+            }
+            return jsonify(response)
+        else:
+            if result.get('is_auth_error'):
+                return jsonify(result), 401  # Unauthorized
+            else:
+                return jsonify(result), 400
+                
+    except Exception as e:
+        logger.error(f"Authenticate private key error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
+
+@ca_api.route('/user/private-key/check', methods=['GET'])
+def check_user_private_key():
+    """
+    Kiểm tra user đã có private key chưa
+    """
+    try:
+        user_id = request.args.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': 'user_id parameter is required'
+            }), 400
+        
+        result = central_authority.check_user_has_private_key(user_id)
+        
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+                
+    except Exception as e:
+        logger.error(f"Check user private key error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
+
+@ca_api.route('/user/decrypt-file', methods=['POST'])
+def decrypt_file_with_password():
+    """
+    Giải mã file cho user bằng password
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Request body is required'
+            }), 400
+        
+        # Validate required fields
+        required_fields = ['user_id', 'password', 'encrypted_data_base64']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+        
+        user_id = data['user_id']
+        password = data['password']
+        encrypted_data_base64 = data['encrypted_data_base64']
+        
+        # Decode base64 data
+        import base64
+        try:
+            encrypted_data = base64.b64decode(encrypted_data_base64)
+        except Exception:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid base64 encoded data'
+            }), 400
+        
+        # First authenticate user and get private key
+        auth_result = central_authority.get_user_private_key_with_password(user_id, password)
+        if not auth_result['success']:
+            if auth_result.get('is_auth_error'):
+                return jsonify(auth_result), 401
+            else:
+                return jsonify(auth_result), 400
+        
+        # Then decrypt file using the private key
+        # This is a placeholder - you would use the decrypted private key here
+        # For now, we'll use the existing decrypt method
+        result = central_authority.decrypt_file_for_user(encrypted_data, user_id)
+        
+        if result['success']:
+            # Return decrypted data as base64
+            response = {
+                'success': True,
+                'decrypted_data_base64': base64.b64encode(result['decrypted_data']).decode('utf-8'),
+                'message': 'File decrypted successfully'
+            }
+            return jsonify(response)
+        else:
+            return jsonify(result), 400
+                
+    except Exception as e:
+        logger.error(f"Decrypt file with password error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
