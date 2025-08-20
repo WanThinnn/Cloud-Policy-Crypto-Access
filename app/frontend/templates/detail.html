@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item_title }} - Detail{% endblock %}
+
+{% block description %}Detailed view and management of {{ item_type }}{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="detail-content">
+        <!-- Breadcrumb Navigation -->
+        <nav class="breadcrumb">
+            <a href="{{ url_for('home') }}" class="breadcrumb-item">🏠 Dashboard</a>
+            <span class="breadcrumb-separator">›</span>
+            <a href="{{ breadcrumb_parent_url }}" class="breadcrumb-item">{{ breadcrumb_parent_name }}</a>
+            <span class="breadcrumb-separator">›</span>
+            <span class="breadcrumb-item active">{{ item_title }}</span>
+        </nav>
+
+        <!-- Detail Header -->
+        <div class="detail-header">
+            <h1 class="detail-title">{{ item_title }}</h1>
+            <p class="detail-subtitle">{{ item_description }}</p>
+            
+            <!-- Meta Information -->
+            <div class="detail-meta">
+                <div class="meta-item">
+                    <span class="meta-icon">📅</span>
+                    <span>Created: {{ item_created_date }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">👤</span>
+                    <span>Owner: {{ item_owner }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">🔢</span>
+                    <span>ID: {{ item_id }}</span>
+                </div>
+                {% if item_size %}
+                <div class="meta-item">
+                    <span class="meta-icon">💾</span>
+                    <span>Size: {{ item_size }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Tab Navigation (if multiple sections) -->
+        {% if show_tabs %}
+        <div class="tab-navigation">
+            <button class="tab-button active" data-tab="overview">Overview</button>
+            <button class="tab-button" data-tab="details">Details</button>
+            <button class="tab-button" data-tab="permissions">Permissions</button>
+            <button class="tab-button" data-tab="history">History</button>
+        </div>
+        {% endif %}
+
+        <!-- Main Layout -->
+        <div class="detail-layout">
+            <!-- Main Content -->
+            <div class="detail-main">
+                <!-- Overview Tab -->
+                <div id="overview" class="tab-content active">
+                    <!-- Primary Information Section -->
+                    <section class="content-section">
+                        <div class="section-header">
+                            <h2 class="section-title">
+                                <div class="section-icon">📋</div>
+                                General Information
+                            </h2>
+                            <p class="section-description">
+                                Basic information and properties of this {{ item_type }}.
+                            </p>
+                        </div>
+                        <div class="section-content">
+                            <!-- Dynamic content based on item type -->
+                            {% block main_content %}
+                            <div class="info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-lg);">
+                                <div class="info-card">
+                                    <h4>Status</h4>
+                                    <p class="info-value status-active">{{ item_status | default('Active') }}</p>
+                                </div>
+                                <div class="info-card">
+                                    <h4>Type</h4>
+                                    <p class="info-value">{{ item_type | title }}</p>
+                                </div>
+                                <div class="info-card">
+                                    <h4>Last Modified</h4>
+                                    <p class="info-value">{{ item_modified_date | default('Recently') }}</p>
+                                </div>
+                                <div class="info-card">
+                                    <h4>Access Level</h4>
+                                    <p class="info-value">{{ item_access_level | default('Private') }}</p>
+                                </div>
+                            </div>
+                            {% endblock %}
+                        </div>
+                    </section>
+
+                    <!-- Statistics Section (if applicable) -->
+                    {% if show_statistics %}
+                    <section class="content-section">
+                        <div class="section-header">
+                            <h2 class="section-title">
+                                <div class="section-icon">📊</div>
+                                Statistics & Metrics
+                            </h2>
+                            <p class="section-description">
+                                Usage statistics and performance metrics.
+                            </p>
+                        </div>
+                        <div class="section-content">
+                            <div class="progress-section">
+                                <div class="progress-item">
+                                    <div class="progress-header">
+                                        <span class="progress-label">Usage</span>
+                                        <span class="progress-value">75%</span>
+                                    </div>
+                                    <div class="progress-bar-detailed">
+                                        <div class="progress-fill-detailed" data-progress="75%"></div>
+                                    </div>
+                                </div>
+                                <div class="progress-item">
+                                    <div class="progress-header">
+                                        <span class="progress-label">Performance</span>
+                                        <span class="progress-value">92%</span>
+                                    </div>
+                                    <div class="progress-bar-detailed">
+                                        <div class="progress-fill-detailed" data-progress="92%"></div>
+                                    </div>
+                                </div>
+                                <div class="progress-item">
+                                    <div class="progress-header">
+                                        <span class="progress-label">Security Score</span>
+                                        <span class="progress-value">98%</span>
+                                    </div>
+                                    <div class="progress-bar-detailed">
+                                        <div class="progress-fill-detailed" data-progress="98%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    {% endif %}
+                </div>
+
+                <!-- Details Tab -->
+                <div id="details" class="tab-content">
+                    <section class="content-section">
+                        <div class="section-header">
+                            <h2 class="section-title">
+                                <div class="section-icon">🔍</div>
+                                Detailed Information
+                            </h2>
+                            <p class="section-description">
+                                Comprehensive details and technical specifications.
+                            </p>
+                        </div>
+                        <div class="section-content">
+                            {% block detailed_content %}
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Property</th>
+                                        <th>Value</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Encryption</td>
+                                        <td><span class="status-active">AES-256</span></td>
+                                        <td>Advanced Encryption Standard</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Access Control</td>
+                                        <td><span class="status-active">ABE</span></td>
+                                        <td>Attribute-Based Encryption</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Backup Status</td>
+                                        <td><span class="status-active">Enabled</span></td>
+                                        <td>Automatic daily backups</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Compression</td>
+                                        <td><span class="status-active">gzip</span></td>
+                                        <td>Data compression algorithm</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            {% endblock %}
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Permissions Tab -->
+                <div id="permissions" class="tab-content">
+                    <section class="content-section">
+                        <div class="section-header">
+                            <h2 class="section-title">
+                                <div class="section-icon">🔐</div>
+                                Access Permissions
+                            </h2>
+                            <p class="section-description">
+                                Manage user access rights and permissions.
+                            </p>
+                        </div>
+                        <div class="section-content">
+                            {% block permissions_content %}
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>User/Group</th>
+                                        <th>Permission Level</th>
+                                        <th>Granted Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>john.doe@example.com</td>
+                                        <td><span class="status-active">Read/Write</span></td>
+                                        <td>2025-01-15</td>
+                                        <td>
+                                            <button class="btn btn-ghost btn-sm">Edit</button>
+                                            <button class="btn btn-ghost btn-sm">Revoke</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>HR Department</td>
+                                        <td><span class="status-pending">Read Only</span></td>
+                                        <td>2025-01-10</td>
+                                        <td>
+                                            <button class="btn btn-ghost btn-sm">Edit</button>
+                                            <button class="btn btn-ghost btn-sm">Revoke</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            {% endblock %}
+                        </div>
+                    </section>
+                </div>
+
+                <!-- History Tab -->
+                <div id="history" class="tab-content">
+                    <section class="content-section">
+                        <div class="section-header">
+                            <h2 class="section-title">
+                                <div class="section-icon">📜</div>
+                                Activity History
+                            </h2>
+                            <p class="section-description">
+                                Complete audit trail and activity log.
+                            </p>
+                        </div>
+                        <div class="section-content">
+                            {% block history_content %}
+                            <div class="activity-timeline">
+                                <div class="activity-item">
+                                    <div class="activity-icon">📤</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">Item created</div>
+                                        <div class="activity-description">{{ item_type | title }} was created by {{ item_owner }}</div>
+                                        <div class="activity-time">{{ item_created_date }}</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon">🔒</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">Encryption applied</div>
+                                        <div class="activity-description">AES-256 encryption was applied</div>
+                                        <div class="activity-time">{{ item_created_date }}</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon">👥</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">Permissions set</div>
+                                        <div class="activity-description">Initial access permissions configured</div>
+                                        <div class="activity-time">{{ item_created_date }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endblock %}
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="detail-sidebar">
+                <!-- Quick Actions -->
+                <div class="sidebar-card">
+                    <div class="sidebar-card-header">
+                        <h3 class="sidebar-card-title">
+                            <span class="sidebar-card-icon">⚡</span>
+                            Quick Actions
+                        </h3>
+                        <p class="sidebar-card-subtitle">Common operations</p>
+                    </div>
+                    <div class="action-buttons">
+                        {% block action_buttons %}
+                        <button class="btn-action btn-primary-action btn-edit" data-entity="{{ item_type }}" data-id="{{ item_id }}">
+                            ✏️ Edit
+                        </button>
+                        {% if item_type == 'file' %}
+                        <button class="btn-action btn-secondary-action btn-download" data-file-id="{{ item_id }}">
+                            ⬇️ Download
+                        </button>
+                        {% endif %}
+                        <button class="btn-action btn-secondary-action refresh-detail-data">
+                            🔄 Refresh
+                        </button>
+                        <button class="btn-action btn-danger-action btn-delete" data-entity="{{ item_type }}" data-id="{{ item_id }}">
+                            🗑️ Delete
+                        </button>
+                        {% endblock %}
+                    </div>
+                </div>
+
+                <!-- Item Properties -->
+                <div class="sidebar-card">
+                    <div class="sidebar-card-header">
+                        <h3 class="sidebar-card-title">
+                            <span class="sidebar-card-icon">📋</span>
+                            Properties
+                        </h3>
+                        <p class="sidebar-card-subtitle">Item attributes</p>
+                    </div>
+                    <ul class="info-list">
+                        <li class="info-item">
+                            <span class="info-label">Status</span>
+                            <span class="info-value status-active">{{ item_status | default('Active') }}</span>
+                        </li>
+                        <li class="info-item">
+                            <span class="info-label">Owner</span>
+                            <span class="info-value">{{ item_owner }}</span>
+                        </li>
+                        <li class="info-item">
+                            <span class="info-label">Created</span>
+                            <span class="info-value">{{ item_created_date }}</span>
+                        </li>
+                        {% if item_size %}
+                        <li class="info-item">
+                            <span class="info-label">Size</span>
+                            <span class="info-value">{{ item_size }}</span>
+                        </li>
+                        {% endif %}
+                        <li class="info-item">
+                            <span class="info-label">Encrypted</span>
+                            <span class="info-value status-active">Yes</span>
+                        </li>
+                        {% block additional_properties %}{% endblock %}
+                    </ul>
+                </div>
+
+                <!-- Security Information -->
+                <div class="sidebar-card">
+                    <div class="sidebar-card-header">
+                        <h3 class="sidebar-card-title">
+                            <span class="sidebar-card-icon">🔒</span>
+                            Security
+                        </h3>
+                        <p class="sidebar-card-subtitle">Protection details</p>
+                    </div>
+                    <ul class="info-list">
+                        <li class="info-item">
+                            <span class="info-label">Encryption</span>
+                            <span class="info-value status-active">AES-256</span>
+                        </li>
+                        <li class="info-item">
+                            <span class="info-label">Access Control</span>
+                            <span class="info-value status-active">ABE</span>
+                        </li>
+                        <li class="info-item">
+                            <span class="info-label">Backup</span>
+                            <span class="info-value status-active">Enabled</span>
+                        </li>
+                        <li class="info-item">
+                            <span class="info-label">Last Scan</span>
+                            <span class="info-value">Today</span>
+                        </li>
+                        {% block additional_security %}{% endblock %}
+                    </ul>
+                </div>
+
+                {% block additional_sidebar %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional styles for activity timeline -->
+<style>
+.activity-timeline {
+    position: relative;
+    padding-left: var(--space-xl);
+}
+
+.activity-timeline::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--gradient-primary);
+    border-radius: 1px;
+}
+
+.activity-item {
+    position: relative;
+    margin-bottom: var(--space-xl);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+}
+
+.activity-icon {
+    position: absolute;
+    left: -28px;
+    width: 32px;
+    height: 32px;
+    background: var(--card-bg);
+    border: 2px solid var(--card-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    backdrop-filter: blur(20px);
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.activity-description {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-xs);
+}
+
+.activity-time {
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    opacity: 0.8;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-lg);
+}
+
+.info-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--card-border);
+    border-radius: var(--border-radius-small);
+    padding: var(--space-lg);
+    text-align: center;
+}
+
+.info-card h4 {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    margin-bottom: var(--space-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-card .info-value {
+    color: var(--text-primary);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/detail.js') }}"></script>
+{% endblock %}

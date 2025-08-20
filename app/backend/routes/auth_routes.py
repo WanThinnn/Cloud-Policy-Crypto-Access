@@ -4,12 +4,22 @@ Authentication API routes
 from flask import Blueprint, request, jsonify
 import asyncio
 import logging
+from datetime import datetime
 from module import user_manager
 
 logger = logging.getLogger(__name__)
 
 # Create auth Blueprint
 auth_api = Blueprint('auth', __name__, url_prefix='/auth')
+
+@auth_api.route('/test', methods=['GET'])
+def test_auth():
+    """Test route để kiểm tra auth API hoạt động"""
+    return jsonify({
+        'success': True,
+        'message': 'Auth API is working!',
+        'timestamp': str(datetime.now())
+    })
 
 def run_async(async_func):
     """Helper to run async functions in sync context"""
@@ -30,9 +40,12 @@ def register():
     }
     """
     try:
+        logger.info("Register endpoint called")
         data = request.get_json()
+        logger.info(f"Received data: {data}")
         
         if not data:
+            logger.warning("No data provided")
             return jsonify({
                 'success': False,
                 'error': 'No data provided'
@@ -43,10 +56,13 @@ def register():
         missing_fields = [field for field in required_fields if field not in data or not data[field]]
         
         if missing_fields:
+            logger.warning(f"Missing fields: {missing_fields}")
             return jsonify({
                 'success': False,
                 'error': f'Missing required fields: {", ".join(missing_fields)}'
             }), 400
+        
+        logger.info(f"Creating user: {data['username']} - {data['email']}")
         
         # Create user
         result = run_async(user_manager.create_user)(
@@ -55,10 +71,13 @@ def register():
             password=data['password']
         )
         
+        logger.info(f"User creation result: {result}")
+        
         if result['success']:
             logger.info(f"New user registered: {data['username']}")
             return jsonify(result), 201
         else:
+            logger.warning(f"User creation failed: {result}")
             return jsonify(result), 400
             
     except Exception as e:
