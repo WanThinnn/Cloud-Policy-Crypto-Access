@@ -1,0 +1,471 @@
+"""
+SuperAdmin routes for user management and attribute assignment
+"""
+from flask import Blueprint, request, jsonify
+from datetime import datetime
+
+# Import modules with fallback for direct execution
+try:
+    from ..module.super_admin import super_admin
+    from ..module.central_authority import central_authority
+except ImportError:
+    # Fallback for direct execution
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from module.super_admin import super_admin
+    from module.central_authority import central_authority
+
+super_admin_api = Blueprint('super_admin', __name__, url_prefix='/super-admin')
+
+@super_admin_api.route('/setup', methods=['POST'])
+def create_super_admin():
+    """Create the first SuperAdmin account"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['username', 'email', 'password']
+        if not all(field in data for field in required_fields):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required fields: username, email, password'
+            }), 400
+        
+        result = super_admin.create_super_admin(
+            username=data['username'],
+            email=data['email'],
+            password=data['password']
+        )
+        
+        status_code = 201 if result['success'] else 400
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to create super admin: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/login', methods=['POST'])
+def login_super_admin():
+    """SuperAdmin login"""
+    try:
+        data = request.get_json()
+        
+        if 'username' not in data or 'password' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Missing username or password'
+            }), 400
+        
+        result = super_admin.authenticate_super_admin(
+            username=data['username'],
+            password=data['password']
+        )
+        
+        status_code = 200 if result['success'] else 401
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Login failed: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/users', methods=['POST'])
+def create_user():
+    """Create new user account with attributes"""
+    try:
+        data = request.get_json()
+        
+        # Get admin ID from headers or request
+        admin_id = request.headers.get('X-Admin-ID')
+        if not admin_id:
+            return jsonify({
+                'success': False,
+                'error': 'Admin ID required in X-Admin-ID header'
+            }), 401
+        
+        # Validate request data
+        if 'user_data' not in data or 'user_attributes' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Missing user_data or user_attributes'
+            }), 400
+        
+        result = super_admin.create_user_account(
+            admin_id=admin_id,
+            user_data=data['user_data'],
+            user_attributes=data['user_attributes']
+        )
+        
+        # If user created successfully, generate ABE private key
+        if result['success']:
+            user_id = result['user']['id']
+            
+            # Convert attributes to ABE format (key:value pairs)
+            abe_attributes = []
+            for key, value in data['user_attributes'].items():
+                if isinstance(value, list):
+                    # For multiple values, create separate attributes
+                    for val in value:
+                        abe_attributes.append(f"{key}:{val}")
+                else:
+                    abe_attributes.append(f"{key}:{value}")
+            
+            # Generate encrypted private key
+            temp_password = data['user_data']['password']  # Use initial password
+            abe_result = central_authority.generate_encrypted_user_private_key(
+                user_id=user_id,
+                password=temp_password,
+                attributes=abe_attributes
+            )
+            
+            if not abe_result['success']:
+                # Log warning but don't fail user creation
+                result['warning'] = f'User created but ABE key generation failed: {abe_result["error"]}'
+        
+        status_code = 201 if result['success'] else 400
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to create user: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/users', methods=['GET'])
+def list_users():
+    """List all users in the system"""
+    try:
+        # Get admin ID from headers
+        admin_id = request.headers.get('X-Admin-ID')
+        if not admin_id:
+            return jsonify({
+                'success': False,
+                'error': 'Admin ID required in X-Admin-ID header'
+            }), 401
+        
+        # Get pagination parameters
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 20))
+        
+        result = super_admin.list_all_users(
+            admin_id=admin_id,
+            page=page,
+            limit=limit
+        )
+        
+        status_code = 200 if result['success'] else 403
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to list users: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/users/<string:user_id>', methods=['GET'])
+def get_user_details(user_id: str):
+    """Get detailed user information"""
+    try:
+        admin_id = request.headers.get('X-Admin-ID')
+        if not admin_id:
+            return jsonify({
+                'success': False,
+                'error': 'Admin ID required in X-Admin-ID header'
+            }), 401
+        
+        # Verify admin permissions
+        if not super_admin._verify_super_admin(admin_id):
+            return jsonify({
+                'success': False,
+                'error': 'Unauthorized: Super admin access required'
+            }), 403
+        
+        # Get user data
+        user_doc = super_admin.users_collection.document(user_id).get()
+        if not user_doc.exists:
+            return jsonify({
+                'success': False,
+                'error': 'User not found'
+            }), 404
+        
+        user_data = user_doc.to_dict()
+        if 'password' in user_data:
+            del user_data['password']
+        
+        # Get user attributes
+        attrs_result = super_admin.get_user_attributes(user_id)
+        if attrs_result['success']:
+            user_data['attributes'] = attrs_result['attributes']
+        else:
+            user_data['attributes'] = {}
+        
+        # Get ABE key status
+        abe_key_status = central_authority.check_user_has_private_key(user_id)
+        user_data['abe_key_status'] = abe_key_status
+        
+        return jsonify({
+            'success': True,
+            'user': user_data
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get user details: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/users/<string:user_id>/attributes', methods=['PUT'])
+def update_user_attributes(user_id: str):
+    """Update user attributes"""
+    try:
+        admin_id = request.headers.get('X-Admin-ID')
+        if not admin_id:
+            return jsonify({
+                'success': False,
+                'error': 'Admin ID required in X-Admin-ID header'
+            }), 401
+        
+        data = request.get_json()
+        
+        if 'attributes' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Missing attributes field'
+            }), 400
+        
+        result = super_admin.update_user_attributes(
+            admin_id=admin_id,
+            user_id=user_id,
+            new_attributes=data['attributes']
+        )
+        
+        # If attributes updated successfully, regenerate ABE private key
+        if result['success'] and data.get('regenerate_abe_key', True):
+            # Get user's current password (would need to be provided or use a temporary one)
+            if 'password' in data:
+                # Convert attributes to ABE format
+                abe_attributes = []
+                for key, value in data['attributes'].items():
+                    if isinstance(value, list):
+                        for val in value:
+                            abe_attributes.append(f"{key}:{val}")
+                    else:
+                        abe_attributes.append(f"{key}:{value}")
+                
+                # Regenerate ABE key
+                abe_result = central_authority.generate_encrypted_user_private_key(
+                    user_id=user_id,
+                    password=data['password'],
+                    attributes=abe_attributes
+                )
+                
+                if not abe_result['success']:
+                    result['warning'] = f'Attributes updated but ABE key regeneration failed: {abe_result["error"]}'
+        
+        status_code = 200 if result['success'] else 400
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to update user attributes: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/users/<string:user_id>/deactivate', methods=['POST'])
+def deactivate_user(user_id: str):
+    """Deactivate user account"""
+    try:
+        admin_id = request.headers.get('X-Admin-ID')
+        if not admin_id:
+            return jsonify({
+                'success': False,
+                'error': 'Admin ID required in X-Admin-ID header'
+            }), 401
+        
+        result = super_admin.deactivate_user(
+            admin_id=admin_id,
+            user_id=user_id
+        )
+        
+        status_code = 200 if result['success'] else 400
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to deactivate user: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/users/<string:user_id>/activate', methods=['POST'])
+def activate_user(user_id: str):
+    """Activate user account"""
+    try:
+        admin_id = request.headers.get('X-Admin-ID')
+        if not admin_id:
+            return jsonify({
+                'success': False,
+                'error': 'Admin ID required in X-Admin-ID header'
+            }), 401
+        
+        # Verify admin permissions
+        if not super_admin._verify_super_admin(admin_id):
+            return jsonify({
+                'success': False,
+                'error': 'Unauthorized: Super admin access required'
+            }), 403
+        
+        # Update user status
+        super_admin.users_collection.document(user_id).update({
+            'is_active': True,
+            'activated_by': admin_id,
+            'activated_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        })
+        
+        return jsonify({
+            'success': True,
+            'message': 'User account activated successfully'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to activate user: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/schema/attributes', methods=['GET'])
+def get_attribute_schema():
+    """Get the current attribute schema"""
+    try:
+        result = super_admin.get_attribute_schema()
+        
+        status_code = 200 if result['success'] else 404
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get attribute schema: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/users/<string:user_id>/abe-key/regenerate', methods=['POST'])
+def regenerate_abe_key(user_id: str):
+    """Regenerate ABE private key for user"""
+    try:
+        admin_id = request.headers.get('X-Admin-ID')
+        if not admin_id:
+            return jsonify({
+                'success': False,
+                'error': 'Admin ID required in X-Admin-ID header'
+            }), 401
+        
+        # Verify admin permissions
+        if not super_admin._verify_super_admin(admin_id):
+            return jsonify({
+                'success': False,
+                'error': 'Unauthorized: Super admin access required'
+            }), 403
+        
+        data = request.get_json()
+        
+        if 'password' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'User password required for ABE key generation'
+            }), 400
+        
+        # Get user attributes
+        attrs_result = super_admin.get_user_attributes(user_id)
+        if not attrs_result['success']:
+            return jsonify({
+                'success': False,
+                'error': 'Could not get user attributes'
+            }), 400
+        
+        # Convert attributes to ABE format
+        abe_attributes = []
+        for key, value in attrs_result['attributes'].items():
+            if isinstance(value, list):
+                for val in value:
+                    abe_attributes.append(f"{key}:{val}")
+            else:
+                abe_attributes.append(f"{key}:{value}")
+        
+        # Generate ABE key
+        result = central_authority.generate_encrypted_user_private_key(
+            user_id=user_id,
+            password=data['password'],
+            attributes=abe_attributes
+        )
+        
+        status_code = 200 if result['success'] else 400
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to regenerate ABE key: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/stats', methods=['GET'])
+def get_system_stats():
+    """Get system statistics"""
+    try:
+        admin_id = request.headers.get('X-Admin-ID')
+        if not admin_id:
+            return jsonify({
+                'success': False,
+                'error': 'Admin ID required in X-Admin-ID header'
+            }), 401
+        
+        # Verify admin permissions
+        if not super_admin._verify_super_admin(admin_id):
+            return jsonify({
+                'success': False,
+                'error': 'Unauthorized: Super admin access required'
+            }), 403
+        
+        # Get user statistics
+        total_users = len(list(super_admin.users_collection.where('user_type', '==', 'regular').get()))
+        active_users = len(list(super_admin.users_collection.where('user_type', '==', 'regular').where('is_active', '==', True).get()))
+        inactive_users = total_users - active_users
+        
+        # Get attribute statistics
+        all_attrs = list(super_admin.attributes_collection.get())
+        role_stats = {}
+        dept_stats = {}
+        
+        for attr_doc in all_attrs:
+            attrs = attr_doc.to_dict().get('attributes', {})
+            
+            role = attrs.get('role')
+            if role:
+                role_stats[role] = role_stats.get(role, 0) + 1
+            
+            dept = attrs.get('department')
+            if dept:
+                dept_stats[dept] = dept_stats.get(dept, 0) + 1
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'users': {
+                    'total': total_users,
+                    'active': active_users,
+                    'inactive': inactive_users
+                },
+                'attributes': {
+                    'by_role': role_stats,
+                    'by_department': dept_stats
+                }
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get system stats: {str(e)}'
+        }), 500

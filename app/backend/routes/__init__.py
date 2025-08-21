@@ -13,6 +13,7 @@ from .admin_routes import admin_api
 from .files_routes import files_api
 from .abac_routes import abac_api
 from .ca_routes import ca_api
+from .super_admin_routes import super_admin_api
 
 # Thêm routes modules mới ở đây khi có
 # from .analytics_routes import analytics_api
@@ -27,6 +28,7 @@ all_blueprints = [
     admin_api,      # Admin operations (future)
     abac_api,       # Attribute-Based Access Control
     ca_api,         # Central Authority for CP-ABE
+    super_admin_api, # Super Admin management
     # analytics_api,  # Analytics & reporting (future)
     # payment_api,    # Payment processing (future)
     # notification_api, # Push notifications (future)
@@ -34,7 +36,7 @@ all_blueprints = [
 
 # Blueprints by category for selective loading
 core_blueprints = [abe_api, auth_api]
-management_blueprints = [files_api, admin_api]
+management_blueprints = [files_api, admin_api, super_admin_api]
 # business_blueprints = [analytics_api, payment_api]
 
 __all__ = [
@@ -44,5 +46,6 @@ __all__ = [
     'abe_api', 
     'auth_api', 
     'files_api',
-    'admin_api'
+    'admin_api',
+    'super_admin_api'
 ]

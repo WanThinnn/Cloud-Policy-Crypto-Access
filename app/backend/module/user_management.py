@@ -19,7 +19,7 @@ class UserManager:
     @staticmethod
     def hash_password(password: str) -> str:
         """
-        Mã hóa password với bcrypt(sha512(password))
+        Mã hóa password với bcrypt(sha3-512(password))
         
         Args:
             password: Plain text password
@@ -27,12 +27,12 @@ class UserManager:
         Returns:
             Hashed password string
         """
-        # Step 1: SHA-512 hash
-        sha512_hash = hashlib.sha512(password.encode('utf-8')).hexdigest()
-        
+        # Step 1: SHA-3-512 hash
+        sha3_512_hash = hashlib.sha3_512(password.encode('utf-8')).hexdigest()
+
         # Step 2: bcrypt hash
-        bcrypt_hash = bcrypt.hashpw(sha512_hash.encode('utf-8'), bcrypt.gensalt())
-        
+        bcrypt_hash = bcrypt.hashpw(sha3_512_hash.encode('utf-8'), bcrypt.gensalt())
+
         return bcrypt_hash.decode('utf-8')
     
     @staticmethod
@@ -48,11 +48,11 @@ class UserManager:
             True if password matches, False otherwise
         """
         try:
-            # Step 1: SHA-512 hash
-            sha512_hash = hashlib.sha512(password.encode('utf-8')).hexdigest()
-            
+            # Step 1: SHA-3-512 hash
+            sha3_512_hash = hashlib.sha3_512(password.encode('utf-8')).hexdigest()
+
             # Step 2: Verify with bcrypt
-            return bcrypt.checkpw(sha512_hash.encode('utf-8'), hashed_password.encode('utf-8'))
+            return bcrypt.checkpw(sha3_512_hash.encode('utf-8'), hashed_password.encode('utf-8'))
         except Exception:
             return False
     

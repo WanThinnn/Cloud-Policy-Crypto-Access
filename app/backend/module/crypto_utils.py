@@ -20,7 +20,7 @@ class CryptoUtils:
     """
     
     # Argon2id parameters
-    ARGON2_TIME_COST = 3      # Number of iterations
+    ARGON2_TIME_COST = 10      # Number of iterations
     ARGON2_MEMORY_COST = 65536 # 64 MB
     ARGON2_PARALLELISM = 1     # Threads
     ARGON2_HASH_LEN = 32       # 256 bits
