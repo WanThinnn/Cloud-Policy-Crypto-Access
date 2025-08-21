@@ -289,36 +289,73 @@ def health_check():
         'message': 'CA service is running'
     })
 
-@ca_api.route('/status', methods=['GET'])
-def get_system_status():
-    """Lấy trạng thái hệ thống ABE"""
+@ca_api.route('/public-key', methods=['GET'])
+def get_public_key():
+    """
+    Lấy public key của hệ thống ABE
+    
+    Returns:
+        JSON response với public key data
+    """
     try:
-        # Check if ABE system is setup
+        # Lấy active keys từ CA
         keys_result = central_authority.get_active_keys()
         
-        # Check ABE library status
-        from module.hybrid_cp_abe import abe_lib
-        
-        status = {
-            'abe_system_setup': keys_result['success'],
-            'abe_library_loaded': abe_lib.is_loaded(),
-            'library_path': abe_lib.get_lib_path() if abe_lib.is_loaded() else None
-        }
-        
         if not keys_result['success']:
-            status['setup_required'] = True
-            status['setup_message'] = 'ABE system needs to be setup first'
+            return jsonify({
+                'success': False,
+                'error': keys_result['error']
+            }), 404
+        
+        # Kiểm tra có public key không
+        if not keys_result.get('has_public_key') or not keys_result.get('public_key'):
+            return jsonify({
+                'success': False,
+                'error': 'Public key not found. Please setup ABE system first.'
+            }), 404
+        
+        # Encode public key as base64 để return qua JSON
+        import base64
+        public_key_b64 = base64.b64encode(keys_result['public_key']).decode('utf-8')
         
         return jsonify({
             'success': True,
-            'status': status
+            'setup_id': keys_result['setup_id'],
+            'public_key': public_key_b64,
+            'storage_type': keys_result.get('storage_type', 'local'),
+            'message': 'Public key retrieved successfully'
         })
         
     except Exception as e:
-        logger.error(f"Get system status error: {e}")
+        logger.error(f"Failed to get public key: {e}")
         return jsonify({
             'success': False,
-            'error': 'Internal server error'
+            'error': f'Failed to get public key: {str(e)}'
+        }), 500
+
+@ca_api.route('/status', methods=['GET'])
+def get_ca_status():
+    """
+    Lấy status của CA system
+    """
+    try:
+        keys_result = central_authority.get_active_keys()
+        
+        return jsonify({
+            'success': True,
+            'abe_system_setup': keys_result['success'],
+            'has_public_key': keys_result.get('has_public_key', False),
+            'has_master_key': keys_result.get('has_master_key', False),
+            'storage_type': keys_result.get('storage_type', 'unknown'),
+            'setup_id': keys_result.get('setup_id', None),
+            'message': 'CA status retrieved successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to get CA status: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get CA status: {str(e)}'
         }), 500
 
 @ca_api.route('/user/private-key/generate', methods=['POST'])

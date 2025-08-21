@@ -37,6 +37,7 @@ def home():
             'POST /generate-key': 'Generate secret key',
             'POST /encrypt': 'Encrypt data',
             'POST /decrypt': 'Decrypt data',
+            'GET /public-key': 'Get public key',
             'GET /files': 'List temp files'
         }
     })
@@ -145,33 +146,46 @@ def generate_key():
 
 @abe_api.route('/encrypt', methods=['POST'])
 def encrypt():
-    """Endpoint để mã hóa"""
+    """Endpoint để mã hóa - tự động sử dụng public key có sẵn"""
     if not abe_lib.is_loaded():
         return jsonify({'error': 'ABE library not loaded'}), 500
     
     try:
+        # Import CA system để lấy public key
+        from module.central_authority import central_authority
+        
         data = request.get_json()
         if not data:
             return jsonify({'error': 'No data provided'}), 400
         
-        required_fields = ['public_key_path', 'policy']
+        required_fields = ['data', 'policy']
         for field in required_fields:
             if field not in data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
         
-        public_key_path = data['public_key_path']
         policy = data['policy']
+        plaintext_data = data['data']
         
-        # Validate public key exists
-        error = validate_file_exists(public_key_path, "Public key file")
-        if error:
-            return jsonify({'error': error}), 400
+        # Lấy public key từ CA system
+        keys_result = central_authority.get_active_keys()
+        if not keys_result['success']:
+            return jsonify({
+                'error': 'ABE system not setup. Please run /api/ca/setup first.'
+            }), 400
         
-        # Tạo file plaintext từ text
+        if not keys_result.get('public_key'):
+            return jsonify({
+                'error': 'Public key not found. Please run /api/ca/setup first.'
+            }), 400
+        
+        # Tạo file tạm cho public key (binary mode)
+        public_key_path = generate_temp_filename(current_app.config['UPLOAD_FOLDER'], "public_key_", ".key")
+        with open(public_key_path, 'wb') as f:
+            f.write(keys_result['public_key'])
+        
+        # Tạo file plaintext từ data
         plaintext_path = generate_temp_filename(current_app.config['UPLOAD_FOLDER'], "plaintext_", ".txt")
-        plaintext_content = data.get('plaintext', '')
-        
-        write_file_content(plaintext_path, plaintext_content)
+        write_file_content(plaintext_path, plaintext_data)
         
         # Tạo đường dẫn cho ciphertext
         ciphertext_path = generate_temp_filename(current_app.config['UPLOAD_FOLDER'], "ciphertext_", ".enc")
@@ -181,11 +195,21 @@ def encrypt():
         # Gọi ABE encrypt
         abe_lib.encrypt(public_key_path, plaintext_path, policy, ciphertext_path)
         
+        # Đọc encrypted data để trả về
+        encrypted_data = read_file_content(ciphertext_path)
+        
+        # Cleanup temp files
+        try:
+            os.remove(public_key_path)
+            os.remove(plaintext_path) 
+            os.remove(ciphertext_path)
+        except:
+            pass
+        
         return jsonify({
-            'status': 'success',
+            'success': True,
             'message': 'Encryption completed successfully',
-            'ciphertext_path': ciphertext_path,
-            'plaintext_path': plaintext_path,
+            'encrypted_data': encrypted_data,
             'policy': policy
         })
         
@@ -196,57 +220,78 @@ def encrypt():
 
 @abe_api.route('/decrypt', methods=['POST'])
 def decrypt():
-    """Endpoint để giải mã"""
+    """Endpoint để giải mã - tự động sử dụng public key có sẵn"""
     if not abe_lib.is_loaded():
         return jsonify({'error': 'ABE library not loaded'}), 500
     
     try:
+        from module.central_authority import central_authority
+        
         data = request.get_json()
         
         if not data:
             return jsonify({'error': 'No JSON data provided'}), 400
-        
-        required_fields = ['public_key_path', 'private_key_path', 'ciphertext_path']
+
+        # Chỉ cần private_key_path và ciphertext_path
+        required_fields = ['private_key_path', 'ciphertext_path']
         for field in required_fields:
             if field not in data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
-        
-        public_key_path = data['public_key_path']
-        private_key_path = data['private_key_path']
+
+        private_key_path = data['private_key_path'] 
         ciphertext_path = data['ciphertext_path']
-        
-        # Validate all files exist
+
+        # Lấy public key từ CA
+        keys_result = central_authority.get_active_keys()
+        if not keys_result['success']:
+            return jsonify({'error': f'Cannot get public key: {keys_result["error"]}'}), 500
+
+        # Tạo file public key tạm
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.key') as temp_pub:
+            temp_pub.write(keys_result['public_key'])
+            public_key_path = temp_pub.name
+
+        # Validate files exist
         for file_path, file_type in [
-            (public_key_path, "Public key file"),
             (private_key_path, "Private key file"),
             (ciphertext_path, "Ciphertext file")
         ]:
             error = validate_file_exists(file_path, file_type)
             if error:
+                # Cleanup temp file
+                if os.path.exists(public_key_path):
+                    os.unlink(public_key_path)
                 return jsonify({'error': error}), 400
-        
+
         # Tạo đường dẫn cho recovered text
         recovertext_path = generate_temp_filename(current_app.config['UPLOAD_FOLDER'], "recovered_", ".txt")
-        
+
         logger.info(f"Decrypting ciphertext: {ciphertext_path}")
         
-        # Gọi ABE decrypt
-        abe_lib.decrypt(public_key_path, private_key_path, ciphertext_path, recovertext_path)
-        
+        try:
+            # Gọi ABE decrypt
+            abe_lib.decrypt(public_key_path, private_key_path, ciphertext_path, recovertext_path)
+        finally:
+            # Cleanup temp public key file
+            if os.path.exists(public_key_path):
+                os.unlink(public_key_path)
+
         # Đọc nội dung file đã giải mã
         recovered_content = ""
         if os.path.exists(recovertext_path):
             recovered_content = read_file_content(recovertext_path)
         else:
             logger.warning(f"Recovered text file not found: {recovertext_path}")
-        
+
         return jsonify({
             'status': 'success',
             'message': 'Decryption completed successfully',
             'recovered_content': recovered_content,
             'recovertext_path': recovertext_path
         })
-        
+
     except Exception as e:
         logger.error(f"Decryption error: {e}")
         logger.error(traceback.format_exc())
@@ -267,3 +312,49 @@ def list_files():
     except Exception as e:
         logger.error(f"List files error: {e}")
         return jsonify({'error': str(e)}), 500
+
+@abe_api.route('/public-key', methods=['GET'])
+def get_public_key():
+    """
+    Lấy public key của hệ thống ABE
+    
+    Returns:
+        JSON response với public key data
+    """
+    try:
+        from module.central_authority import central_authority
+        
+        # Lấy active keys từ CA
+        keys_result = central_authority.get_active_keys()
+        
+        if not keys_result['success']:
+            return jsonify({
+                'success': False,
+                'error': keys_result['error']
+            }), 404
+        
+        # Kiểm tra có public key không
+        if not keys_result.get('public_key'):
+            return jsonify({
+                'success': False,
+                'error': 'Public key not found. Please setup ABE system first.'
+            }), 404
+        
+        # Encode public key as base64 để return qua JSON
+        import base64
+        public_key_b64 = base64.b64encode(keys_result['public_key']).decode('utf-8')
+        
+        return jsonify({
+            'success': True,
+            'setup_id': keys_result['setup_id'],
+            'public_key': public_key_b64,
+            'storage_type': keys_result.get('storage_type', 'local'),
+            'message': 'Public key retrieved successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to get public key: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get public key: {str(e)}'
+        }), 500
