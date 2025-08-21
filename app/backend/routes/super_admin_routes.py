@@ -3,6 +3,7 @@ SuperAdmin routes for user management and attribute assignment
 """
 from flask import Blueprint, request, jsonify
 from datetime import datetime
+import logging
 
 # Import modules with fallback for direct execution
 try:
@@ -15,6 +16,8 @@ except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from module.super_admin import super_admin
     from module.central_authority import central_authority
+
+logger = logging.getLogger(__name__)
 
 super_admin_api = Blueprint('super_admin', __name__, url_prefix='/super-admin')
 
@@ -132,6 +135,88 @@ def create_user():
         return jsonify({
             'success': False,
             'error': f'Failed to create user: {str(e)}'
+        }), 500
+
+# SYSTEM SERVICE ENDPOINTS - For internal service communication
+@super_admin_api.route('/system/users', methods=['GET'])
+def system_list_users():
+    """
+    List all users - SYSTEM SERVICE ENDPOINT
+    Authentication: Service Token instead of Admin ID
+    This endpoint is for internal service communication (CA, File Manager, etc.)
+    """
+    try:
+        # Check service authentication
+        auth_header = request.headers.get('Authorization', '')
+        service_name = request.headers.get('X-Service-Name', '')
+        service_token = None
+        
+        if auth_header.startswith('Bearer '):
+            service_token = auth_header[7:]  # Remove 'Bearer ' prefix
+        
+        # Verify service token
+        import os
+        expected_token = os.getenv('SYSTEM_SERVICE_TOKEN', 'ca-service-token-change-in-production')
+        
+        if not service_token or service_token != expected_token:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid service authentication'
+            }), 401
+        
+        # Valid service names
+        valid_services = ['ca-service', 'file-manager', 'abac-service']
+        if service_name not in valid_services:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid service name. Valid services: {valid_services}'
+            }), 401
+        
+        # Get all users (no pagination for system services)
+        try:
+            users_ref = super_admin.users_collection
+            users_docs = users_ref.stream()
+            
+            users_list = []
+            for doc in users_docs:
+                user_data = doc.to_dict()
+                user_data['id'] = doc.id
+                
+                # Remove sensitive data
+                if 'password' in user_data:
+                    del user_data['password']
+                
+                # IMPORTANT: Fetch user attributes from separate collection
+                try:
+                    attrs_result = super_admin.get_user_attributes(doc.id)
+                    if attrs_result.get('success'):
+                        user_data['attributes'] = attrs_result.get('attributes', {})
+                    else:
+                        user_data['attributes'] = {}
+                except Exception as attr_error:
+                    logger.warning(f"Failed to fetch attributes for user {doc.id}: {attr_error}")
+                    user_data['attributes'] = {}
+                
+                users_list.append(user_data)
+            
+            return jsonify({
+                'success': True,
+                'users': users_list,
+                'total_count': len(users_list),
+                'service_name': service_name,
+                'message': f'Users retrieved for {service_name}'
+            }), 200
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Database error: {str(e)}'
+            }), 500
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'System service error: {str(e)}'
         }), 500
 
 @super_admin_api.route('/users', methods=['GET'])

@@ -5,6 +5,10 @@ from flask import Blueprint, request, jsonify
 import logging
 import sys
 import os
+import time
+from datetime import datetime
+import requests
+from config import Config
 
 # Add parent directory to path to import module
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -62,7 +66,7 @@ def get_active_keys():
         }), 500
 
 @ca_api.route('/users/<user_id>/private-key', methods=['POST'])
-def generate_user_private_key(user_id):
+def generate_user_private_key_with_id(user_id):
     """
     Tạo private key cho user
     
@@ -557,3 +561,203 @@ def decrypt_file_with_password():
             'success': False,
             'error': 'Internal server error'
         }), 500
+
+@ca_api.route('/user/generate-private-key', methods=['POST'])
+def generate_user_private_key():
+    """
+    User request private key - Hệ thống tự động lấy attributes từ SuperAdmin DB
+    CP-ABE system đã được setup sẵn bởi CA
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No data provided'
+            }), 400
+
+        # Lấy user credentials
+        username = data.get('username')
+        password = data.get('password')
+        user_id = data.get('user_id')
+
+        if not ((username and password) or user_id):
+            return jsonify({
+                'success': False,
+                'error': 'Either (username and password) or user_id is required'
+            }), 400
+
+        # TỰ ĐỘNG LẤY USER ATTRIBUTES TỪ SUPERADMIN DATABASE
+        try:
+            server_host = Config.HOST          # ← FIX: HOST thay vì SERVER_HOST
+            server_port = Config.PORT          # ← FIX: PORT thay vì SERVER_PORT
+            service_token = Config.SYSTEM_SERVICE_TOKEN  # ← FIX: SYSTEM_SERVICE_TOKEN
+            
+            response = requests.get(
+                f'http://{server_host}:{server_port}/api/super-admin/system/users',
+                headers={
+                    'Authorization': f'Bearer {service_token}',
+                    'X-Service-Name': 'ca-service'
+                },
+                timeout=30  # ← FIX: Tăng timeout từ 10s lên 30s
+            )
+            
+            if response.status_code != 200:
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to fetch users from API: HTTP {response.status_code}'
+                }), 500
+
+            api_data = response.json()
+            users_result = {
+                'success': True,
+                'users': api_data.get('users', [])
+            }
+            
+            if not users_result.get('success'):
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to access user database: {users_result.get("error")}'
+                }), 500
+
+            # Find user by username or user_id
+            target_user = None
+            for user in users_result.get('users', []):
+                if (username and user.get('username') == username) or \
+                   (user_id and user.get('id') == user_id):
+                    target_user = user
+                    break
+            
+            if not target_user:
+                return jsonify({
+                    'success': False,
+                    'error': f'User not found in database. Username: {username}, User ID: {user_id}'
+                }), 404
+
+            # EXTRACT USER ATTRIBUTES FROM DATABASE
+            user_attributes = target_user.get('attributes', {})
+            logger.info(f"DEBUG: Raw user_attributes from API: {user_attributes}")
+            
+            user_info = {
+                'user_id': target_user.get('id'),
+                'username': target_user.get('username'),
+                'full_name': target_user.get('full_name'),
+                'email': target_user.get('email'),
+                'position': target_user.get('position', ''),
+                'department': user_attributes.get('department'),
+                'role': user_attributes.get('role'),
+                'clearance_level': user_attributes.get('clearance_level')
+            }
+
+            # Convert attributes to CP-ABE format
+            cpabe_attributes = []
+            for key, value in user_attributes.items():
+                if value:  # Only add non-empty values
+                    cpabe_attributes.append(f"{key}:{value}")
+                    logger.info(f"DEBUG: Added attribute {key}:{value}")
+
+            logger.info(f"DEBUG: Final cpabe_attributes: {cpabe_attributes}")
+
+            logger.info(f"Auto-fetched attributes for {username or user_id}: {cpabe_attributes}")
+
+        except Exception as e:
+            logger.error(f"Error fetching user attributes: {e}")
+            return jsonify({
+                'success': False,
+                'error': f'Failed to fetch user attributes: {str(e)}'
+            }), 500
+
+        # GENERATE PRIVATE KEY - SIMPLE & DIRECT
+        try:
+            if not cpabe_attributes:
+                return jsonify({
+                    'success': False,
+                    'error': 'No valid attributes found for user. Cannot generate private key.'
+                }), 400
+
+            # TRỰC TIẾP GỌI CA METHOD - KHÔNG CẦN SETUP CHECK
+            result = central_authority.generate_user_private_key(
+                user_info['user_id'], 
+                cpabe_attributes
+            )
+
+            if result.get('success'):
+                return jsonify({
+                    'success': True,
+                    'message': 'Private key generated successfully with auto-fetched attributes',
+                    'user_info': user_info,
+                    'attributes_used': cpabe_attributes,
+                    'private_key_info': {
+                        'has_private_key': True,
+                        'attributes': cpabe_attributes,
+                        'user_id': user_info['user_id']
+                    },
+                    'generated_at': datetime.utcnow().isoformat(),
+                    'valid_for_policies': generate_policy_examples(user_attributes)
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to generate private key: {result.get("error", "Unknown error")}'
+                }), 500
+
+        except Exception as e:
+            logger.error(f"Private key generation error: {e}")
+            return jsonify({
+                'success': False,
+                'error': f'Private key generation failed: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Generate user private key error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Request processing failed: {str(e)}'
+        }), 500
+
+
+def generate_cpabe_private_key(user_id, attributes, public_key_path, master_key_path):
+    """Generate CP-ABE private key with user attributes"""
+    try:
+        # Use existing CA method instead of calling external CP-ABE
+        result = central_authority.generate_user_private_key(user_id, attributes)
+        
+        if result.get('success'):
+            return {
+                'success': True,
+                'private_key_path': f"/tmp/cpabe_keys/{user_id}_private.key",
+                'key_id': f"cpabe_key_{user_id}_{int(time.time())}"
+            }
+        else:
+            return {'success': False, 'error': result.get('error')}
+            
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+def generate_policy_examples(user_attributes):
+    """Generate example policies that user can access"""
+    examples = []
+    
+    role = user_attributes.get('role')
+    department = user_attributes.get('department')
+    clearance = user_attributes.get('clearance_level')
+    
+    # Basic department policy
+    if department:
+        examples.append(f"department:{department}")
+    
+    # Role-based policy
+    if role:
+        examples.append(f"role:{role}")
+        
+    # Department + Role combination
+    if department and role:
+        examples.append(f"(department:{department} AND role:{role})")
+    
+    # Clearance-based policies
+    if clearance:
+        examples.append(f"clearance_level:{clearance}")
+        if clearance in ['high', 'top_secret']:
+            examples.append(f"(clearance_level:{clearance} OR role:manager)")
+    
+    return examples

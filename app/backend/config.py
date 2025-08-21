@@ -17,6 +17,10 @@ class Config:
     # Upload folder
     UPLOAD_FOLDER = 'tmp'
     
+    # System Service Authentication (SECURE WAY)
+    # Thay vì hard-code admin ID, dùng service token để authenticate as system service
+    SYSTEM_SERVICE_TOKEN = os.getenv('SYSTEM_SERVICE_TOKEN', 'ca-service-token-change-in-production')
+    
     # Library settings
     @staticmethod
     def get_library_path():
