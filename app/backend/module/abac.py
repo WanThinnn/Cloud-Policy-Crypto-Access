@@ -2,10 +2,12 @@
 ABAC (Attribute-Based Access Control) module for Flask backend
 """
 import logging
+import requests
 from typing import Dict, Any, List
 from firebase_admin import firestore
 from .database import db
 from .user_management import user_manager
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +113,7 @@ class AttributeBasedAccessControl:
     
     def get_user_attributes(self, user_id: str) -> Dict[str, Any]:
         """
-        Lấy attributes của user
+        Lấy attributes của user từ SuperAdmin system
         
         Args:
             user_id: User ID
@@ -120,21 +122,31 @@ class AttributeBasedAccessControl:
             Dict with user attributes
         """
         try:
-            attr_doc = self.user_attributes_collection.document(user_id).get()
+            # Import here to avoid circular dependency
+            from .super_admin import super_admin
             
-            if not attr_doc.exists:
+            logger.info(f"ABAC fetching attributes for user {user_id} from SuperAdmin module")
+            
+            # Use SuperAdmin module directly instead of HTTP API to avoid circular dependency
+            result = super_admin.get_user_attributes(user_id)
+            
+            if not result['success']:
+                logger.warning(f"ABAC user {user_id} not found in SuperAdmin")
                 return {
                     'success': False,
                     'error': 'User attributes not found'
                 }
             
+            attributes = result['attributes']
+            
+            logger.info(f"ABAC found user {user_id} with attributes: {attributes}")
             return {
                 'success': True,
-                'attributes': attr_doc.to_dict()['attributes']
+                'attributes': attributes
             }
             
         except Exception as e:
-            logger.error(f"Failed to get user attributes: {e}")
+            logger.error(f"ABAC failed to get user attributes: {e}")
             return {
                 'success': False,
                 'error': f'Failed to get user attributes: {str(e)}'

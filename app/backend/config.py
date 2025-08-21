@@ -20,6 +20,7 @@ class Config:
     # System Service Authentication (SECURE WAY)
     # Thay vì hard-code admin ID, dùng service token để authenticate as system service
     SYSTEM_SERVICE_TOKEN = os.getenv('SYSTEM_SERVICE_TOKEN', 'ca-service-token-change-in-production')
+    SERVICE_TOKEN = 'ca-service-token-change-in-production'  # Same token
     
     # Library settings
     @staticmethod

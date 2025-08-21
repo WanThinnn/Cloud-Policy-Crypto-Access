@@ -12,6 +12,8 @@ from .database import db
 from .central_authority import central_authority
 from .abac import abac
 import tempfile
+import requests
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -558,6 +560,42 @@ class FileManager:
                 'success': False,
                 'error': f'Failed to get access logs: {str(e)}'
             }
+    
+    def fetch_user_attributes(self, user_id: str) -> Dict[str, Any]:
+        """Fetch user attributes from SuperAdmin system"""
+        try:
+            server_host = Config.HOST
+            server_port = Config.PORT  
+            service_token = Config.SYSTEM_SERVICE_TOKEN
+            
+            response = requests.get(
+                f'http://{server_host}:{server_port}/api/super-admin/system/users',
+                headers={
+                    'Authorization': f'Bearer {service_token}',
+                    'X-Service-Name': 'file-manager'
+                },
+                timeout=10
+            )
+            
+            if response.status_code != 200:
+                return {'success': False, 'error': f'HTTP {response.status_code}'}
+                
+            api_data = response.json()
+            users = api_data.get('users', [])
+            
+            # Find target user
+            for user in users:
+                if user.get('id') == user_id:
+                    return {
+                        'success': True,
+                        'user': user,
+                        'attributes': user.get('attributes', {})
+                    }
+            
+            return {'success': False, 'error': 'User not found'}
+            
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
 
 # Global file manager instance
 file_manager = FileManager()
