@@ -272,6 +272,7 @@ class SuperAdmin:
     def create_user_account(self, admin_id: str, user_data: Dict[str, Any], user_attributes: Dict[str, Any]) -> Dict[str, Any]:
         """
         Create new user account (only by SuperAdmin)
+        UserID will be automatically used as Username (format: 2252xxxx)
         """
         try:
             # Verify admin permissions
@@ -281,21 +282,14 @@ class SuperAdmin:
                     'error': 'Unauthorized: Super admin access required'
                 }
             
-            # Validate required fields
-            required_fields = ['username', 'email', 'password', 'full_name']
+            # Validate required fields (username không cần nữa vì tự động generate)
+            required_fields = ['email', 'password', 'full_name']
             for field in required_fields:
                 if field not in user_data:
                     return {
                         'success': False,
                         'error': f'Missing required field: {field}'
                     }
-            
-            # Validate inputs
-            if not UserManager.validate_username(user_data['username']):
-                return {
-                    'success': False,
-                    'error': 'Invalid username format'
-                }
             
             if not UserManager.validate_email(user_data['email']):
                 return {
@@ -311,14 +305,7 @@ class SuperAdmin:
                     'details': password_validation['errors']
                 }
             
-            # Check for existing username/email
-            existing_username = list(self.users_collection.where('username', '==', user_data['username']).limit(1).get())
-            if existing_username:
-                return {
-                    'success': False,
-                    'error': 'Username already exists'
-                }
-            
+            # Check for existing email only (username sẽ tự động unique vì là user_id)
             existing_email = list(self.users_collection.where('email', '==', user_data['email']).limit(1).get())
             if existing_email:
                 return {
@@ -335,13 +322,14 @@ class SuperAdmin:
                     'details': schema_validation['errors']
                 }
             
-            # Create user with custom ID format
+            # Generate user_id and use it as username
             user_id = self._generate_user_id()
+            username = user_id  # UserID chính là Username
             hashed_password = UserManager.hash_password(user_data['password'])
             
             final_user_data = {
                 'id': user_id,
-                'username': user_data['username'],
+                'username': username,  # Username = UserID (2252xxxx)
                 'email': user_data['email'],
                 'password': hashed_password,
                 'full_name': user_data['full_name'],

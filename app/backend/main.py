@@ -8,7 +8,7 @@ import os
 from config import config
 from routes import (
     all_blueprints, abe_api, auth_api, files_api, 
-    admin_api, abac_api, ca_api, super_admin_api
+    abac_api, ca_api, super_admin_api
 )
 from module import abe_lib
 from utils import ensure_directory_exists
@@ -35,7 +35,6 @@ def create_app(config_name='default'):
         (abe_api, '/api/abe'),
         (auth_api, '/api/auth'), 
         (files_api, '/api/files'),
-        (admin_api, '/api/admin'),
         (abac_api, '/api/abac'),
         (ca_api, '/api/ca'),
         (super_admin_api, '/api/super-admin')
