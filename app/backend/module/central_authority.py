@@ -218,7 +218,10 @@ class CentralAuthority:
     
     def generate_user_private_key(self, user_id: str, attributes: List[str]) -> Dict[str, Any]:
         """
-        Tạo private key cho user dựa trên attributes
+        Tạo/Update private key cho user dựa trên attributes
+        - Chỉ có 1 private key duy nhất per user
+        - Regenerate khi có attributes mới
+        - Keep existing key nếu attributes không đổi
         
         Args:
             user_id: User ID
@@ -228,12 +231,33 @@ class CentralAuthority:
             Dict with private key data
         """
         try:
-            # Lấy active keys
+            # 1. Check existing private key
+            existing_key_result = self.get_user_private_key(user_id)
+            
+            if existing_key_result['success']:
+                existing_attributes = set(existing_key_result['key_data']['attributes'])
+                new_attributes = set(attributes)
+                
+                # Compare attributes
+                if existing_attributes == new_attributes:
+                    logger.info(f"Private key for user {user_id} already exists with same attributes")
+                    return {
+                        'success': True,
+                        'message': 'Private key already exists with same attributes',
+                        'private_key_id': existing_key_result['key_data']['private_key_id'],
+                        'attributes': attributes,
+                        'action': 'kept_existing'
+                    }
+                else:
+                    logger.info(f"User {user_id} attributes changed, regenerating private key")
+                    # Continue to regenerate with new attributes
+            
+            # 2. Lấy active keys
             keys_result = self.get_active_keys()
             if not keys_result['success']:
                 return keys_result
             
-            # Tạo temp files
+            # 3. Tạo temp files
             temp_dir = tempfile.mkdtemp()
             
             public_key_path = os.path.join(temp_dir, 'public_key.key')
@@ -247,7 +271,7 @@ class CentralAuthority:
             with open(master_key_path, 'wb') as f:
                 f.write(keys_result['master_key'])
             
-            # Generate private key
+            # 4. Generate private key với ABE library
             attributes_str = ' '.join(attributes)
             abe_lib.generate_secret_key(public_key_path, master_key_path, attributes_str, private_key_path)
             
@@ -255,35 +279,43 @@ class CentralAuthority:
             with open(private_key_path, 'rb') as f:
                 private_key_data = f.read()
             
-            # Save user private key to Firestore
+            # 5. Save user private key to Firestore (REPLACE existing)
             user_key_doc = {
                 'user_id': user_id,
                 'private_key': private_key_data,
                 'attributes': attributes,
                 'created_at': datetime.utcnow(),
-                'is_active': True
+                'updated_at': datetime.utcnow(),
+                'is_active': True,
+                'key_version': 1  # For future versioning if needed
             }
             
-            # Deactivate old private keys for this user
-            old_keys = self.keys_collection.where('user_id', '==', user_id).where('is_active', '==', True).get()
+            # 6. CRITICAL: Remove ALL old private keys for this user (ensure uniqueness)
+            old_keys = self.keys_collection.where('user_id', '==', user_id).get()
+            deleted_count = 0
             for old_key in old_keys:
-                self.keys_collection.document(old_key.id).update({'is_active': False})
+                self.keys_collection.document(old_key.id).delete()
+                deleted_count += 1
+                
+            logger.info(f"Deleted {deleted_count} old private keys for user {user_id}")
             
-            # Save new private key
-            private_key_id = str(uuid.uuid4())
+            # 7. Save the ONE AND ONLY private key for this user
+            private_key_id = f"privkey_{user_id}_{int(datetime.utcnow().timestamp())}"
             self.keys_collection.document(private_key_id).set(user_key_doc)
             
-            # Cleanup temp files
+            # 8. Cleanup temp files
             import shutil
             shutil.rmtree(temp_dir)
             
-            logger.info(f"Private key generated for user: {user_id}")
+            logger.info(f"Private key generated/updated for user: {user_id} with {len(attributes)} attributes")
             
             return {
                 'success': True,
                 'private_key_id': private_key_id,
                 'attributes': attributes,
-                'message': 'Private key generated successfully'
+                'message': 'Private key generated/updated successfully',
+                'action': 'generated_new',
+                'old_keys_removed': deleted_count
             }
             
         except Exception as e:
@@ -295,7 +327,7 @@ class CentralAuthority:
     
     def get_user_private_key(self, user_id: str) -> Dict[str, Any]:
         """
-        Lấy private key của user
+        Lấy private key của user (chỉ có 1 key duy nhất per user)
         
         Args:
             user_id: User ID
@@ -304,29 +336,103 @@ class CentralAuthority:
             Dict with private key data
         """
         try:
+            # Query for user's active private key (should only be 1)
             user_keys = self.keys_collection.where('user_id', '==', user_id)\
                                            .where('is_active', '==', True)\
-                                           .limit(1).get()
+                                           .get()
             
             if not user_keys:
                 return {
                     'success': False,
-                    'error': 'User private key not found'
+                    'error': 'User private key not found',
+                    'has_key': False
                 }
+                
+            if len(user_keys) > 1:
+                logger.warning(f"User {user_id} has {len(user_keys)} active private keys, should only have 1")
             
-            key_data = user_keys[0].to_dict()
+            # Get the first (should be only) key
+            key_doc = user_keys[0]
+            key_data = key_doc.to_dict()
+            key_data['private_key_id'] = key_doc.id
             
             return {
                 'success': True,
+                'has_key': True,
                 'private_key': key_data['private_key'],
-                'attributes': key_data['attributes']
+                'attributes': key_data['attributes'],
+                'created_at': key_data.get('created_at'),
+                'updated_at': key_data.get('updated_at'),
+                'key_data': key_data
             }
             
         except Exception as e:
             logger.error(f"Failed to get user private key: {e}")
             return {
                 'success': False,
-                'error': f'Failed to get user private key: {str(e)}'
+                'error': f'Failed to get user private key: {str(e)}',
+                'has_key': False
+            }
+    
+    def check_user_private_key_status(self, user_id: str, current_attributes: List[str]) -> Dict[str, Any]:
+        """
+        Kiểm tra trạng thái private key của user và xem có cần update không
+        
+        Args:
+            user_id: User ID
+            current_attributes: Current attributes of user
+            
+        Returns:
+            Dict with key status and recommendations
+        """
+        try:
+            existing_key_result = self.get_user_private_key(user_id)
+            
+            if not existing_key_result['success']:
+                return {
+                    'success': True,
+                    'has_key': False,
+                    'needs_generation': True,
+                    'needs_update': False,
+                    'recommendation': 'GENERATE_NEW',
+                    'reason': 'No private key exists'
+                }
+            
+            existing_attributes = set(existing_key_result['attributes'])
+            new_attributes = set(current_attributes)
+            
+            if existing_attributes == new_attributes:
+                return {
+                    'success': True,
+                    'has_key': True,
+                    'needs_generation': False,
+                    'needs_update': False,
+                    'recommendation': 'KEEP_EXISTING',
+                    'reason': 'Attributes unchanged',
+                    'existing_attributes': list(existing_attributes)
+                }
+            else:
+                added_attrs = new_attributes - existing_attributes
+                removed_attrs = existing_attributes - new_attributes
+                
+                return {
+                    'success': True,
+                    'has_key': True,
+                    'needs_generation': False,
+                    'needs_update': True,
+                    'recommendation': 'UPDATE_REQUIRED',
+                    'reason': 'Attributes changed',
+                    'existing_attributes': list(existing_attributes),
+                    'new_attributes': list(new_attributes),
+                    'added_attributes': list(added_attrs),
+                    'removed_attributes': list(removed_attrs)
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to check private key status: {e}")
+            return {
+                'success': False,
+                'error': f'Failed to check private key status: {str(e)}'
             }
     
     def generate_encrypted_user_private_key(self, user_id: str, password: str, attributes: List[str]) -> Dict[str, Any]:

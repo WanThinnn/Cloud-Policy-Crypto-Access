@@ -254,15 +254,23 @@ def system_list_users():
         }), 500
 
 @super_admin_api.route('/users', methods=['GET'])
+@super_admin_required
 def list_users():
-    """List all users in the system"""
+    """List all users in the system with JWT authentication"""
     try:
-        # Get admin ID from headers
-        admin_id = request.headers.get('X-Admin-ID')
+        # Get admin info from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+            
+        admin_id = current_user.get('admin_id') or current_user.get('user_id')
         if not admin_id:
             return jsonify({
                 'success': False,
-                'error': 'Admin ID required in X-Admin-ID header'
+                'error': 'Admin ID not found in token'
             }), 401
         
         # Get pagination parameters
@@ -285,14 +293,23 @@ def list_users():
         }), 500
 
 @super_admin_api.route('/users/<string:user_id>', methods=['GET'])
+@super_admin_required
 def get_user_details(user_id: str):
-    """Get detailed user information"""
+    """Get detailed user information with JWT authentication"""
     try:
-        admin_id = request.headers.get('X-Admin-ID')
+        # Get admin info from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+            
+        admin_id = current_user.get('admin_id') or current_user.get('user_id')
         if not admin_id:
             return jsonify({
                 'success': False,
-                'error': 'Admin ID required in X-Admin-ID header'
+                'error': 'Admin ID not found in token'
             }), 401
         
         # Verify admin permissions
@@ -337,14 +354,23 @@ def get_user_details(user_id: str):
         }), 500
 
 @super_admin_api.route('/users/<string:user_id>/attributes', methods=['PUT'])
+@super_admin_required
 def update_user_attributes(user_id: str):
-    """Update user attributes"""
+    """Update user attributes with JWT authentication"""
     try:
-        admin_id = request.headers.get('X-Admin-ID')
+        # Get admin info from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+            
+        admin_id = current_user.get('admin_id') or current_user.get('user_id')
         if not admin_id:
             return jsonify({
                 'success': False,
-                'error': 'Admin ID required in X-Admin-ID header'
+                'error': 'Admin ID not found in token'
             }), 401
         
         data = request.get_json()
@@ -394,14 +420,23 @@ def update_user_attributes(user_id: str):
         }), 500
 
 @super_admin_api.route('/users/<string:user_id>/deactivate', methods=['POST'])
+@super_admin_required
 def deactivate_user(user_id: str):
-    """Deactivate user account"""
+    """Deactivate user account with JWT authentication"""
     try:
-        admin_id = request.headers.get('X-Admin-ID')
+        # Get admin info from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+            
+        admin_id = current_user.get('admin_id') or current_user.get('user_id')
         if not admin_id:
             return jsonify({
                 'success': False,
-                'error': 'Admin ID required in X-Admin-ID header'
+                'error': 'Admin ID not found in token'
             }), 401
         
         result = super_admin.deactivate_user(
@@ -419,14 +454,23 @@ def deactivate_user(user_id: str):
         }), 500
 
 @super_admin_api.route('/users/<string:user_id>/activate', methods=['POST'])
+@super_admin_required
 def activate_user(user_id: str):
-    """Activate user account"""
+    """Activate user account with JWT authentication"""
     try:
-        admin_id = request.headers.get('X-Admin-ID')
+        # Get admin info from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+            
+        admin_id = current_user.get('admin_id') or current_user.get('user_id')
         if not admin_id:
             return jsonify({
                 'success': False,
-                'error': 'Admin ID required in X-Admin-ID header'
+                'error': 'Admin ID not found in token'
             }), 401
         
         # Verify admin permissions
@@ -471,22 +515,24 @@ def get_attribute_schema():
         }), 500
 
 @super_admin_api.route('/users/<string:user_id>/abe-key/regenerate', methods=['POST'])
+@super_admin_required
 def regenerate_abe_key(user_id: str):
-    """Regenerate ABE private key for user"""
+    """Regenerate ABE private key for user with JWT authentication"""
     try:
-        admin_id = request.headers.get('X-Admin-ID')
+        # Get admin info from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+            
+        admin_id = current_user.get('admin_id') or current_user.get('user_id')
         if not admin_id:
             return jsonify({
                 'success': False,
-                'error': 'Admin ID required in X-Admin-ID header'
+                'error': 'Admin ID not found in token'
             }), 401
-        
-        # Verify admin permissions
-        if not super_admin._verify_super_admin(admin_id):
-            return jsonify({
-                'success': False,
-                'error': 'Unauthorized: Super admin access required'
-            }), 403
         
         data = request.get_json()
         

@@ -469,31 +469,54 @@ def authenticate_user_private_key():
         }), 500
 
 @ca_api.route('/user/private-key/check', methods=['GET'])
+@jwt_required
 def check_user_private_key():
     """
-    Kiểm tra user đã có private key chưa
+    Kiểm tra trạng thái private key của user với JWT authentication
     """
     try:
-        user_id = request.args.get('user_id')
+        # Get authenticated user from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+
+        user_id = current_user.get('user_id')
+        user_attributes = current_user.get('attributes', {})
         
         if not user_id:
             return jsonify({
                 'success': False,
-                'error': 'user_id parameter is required'
-            }), 400
+                'error': 'User ID not found in token'
+            }), 401
         
-        result = central_authority.check_user_has_private_key(user_id)
+        # Convert attributes to CP-ABE format
+        cpabe_attributes = []
+        for key, value in user_attributes.items():
+            if value:
+                cpabe_attributes.append(f"{key}:{value}")
         
-        if result['success']:
-            return jsonify(result)
+        # Check private key status
+        status_result = central_authority.check_user_private_key_status(user_id, cpabe_attributes)
+        
+        if status_result['success']:
+            return jsonify({
+                'success': True,
+                'user_id': user_id,
+                'private_key_status': status_result,
+                'current_attributes': cpabe_attributes,
+                'checked_at': datetime.utcnow().isoformat()
+            })
         else:
-            return jsonify(result), 400
-                
+            return jsonify(status_result), 500
+            
     except Exception as e:
-        logger.error(f"Check user private key error: {e}")
+        logger.error(f"Check private key status error: {e}")
         return jsonify({
             'success': False,
-            'error': 'Internal server error'
+            'error': f'Private key status check failed: {str(e)}'
         }), 500
 
 @ca_api.route('/user/decrypt-file', methods=['POST'])
