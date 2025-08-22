@@ -25,7 +25,7 @@ super_admin_api = Blueprint('super_admin', __name__, url_prefix='/super-admin')
 
 @super_admin_api.route('/setup', methods=['POST'])
 def create_super_admin():
-    """Create the first SuperAdmin account"""
+    """Create SuperAdmin account (Multiple SuperAdmins supported)"""
     try:
         data = request.get_json()
         

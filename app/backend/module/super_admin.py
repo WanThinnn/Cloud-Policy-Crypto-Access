@@ -26,28 +26,70 @@ class SuperAdmin:
         self._initialize_attribute_schema()
     
     def _generate_super_admin_id(self) -> str:
-        """Generate SuperAdmin ID with format 2152xxxx"""
-        while True:
-            # Generate random 4-digit number
-            random_suffix = random.randint(1000, 9999)
-            admin_id = f"2152{random_suffix}"
+        """Generate SuperAdmin ID with format 21520001, 21520002, ..."""
+        try:
+            # Get all existing super admin documents
+            admins = self.super_admin_collection.stream()
+            admin_ids = []
             
-            # Check if ID already exists
-            existing = self.super_admin_collection.document(admin_id).get()
-            if not existing.exists:
-                return admin_id
+            for admin in admins:
+                admin_id = admin.id
+                # Extract numeric part if it follows the pattern 2152xxxx
+                if admin_id.startswith('2152') and len(admin_id) == 8:
+                    try:
+                        numeric_part = int(admin_id[4:])  # Extract last 4 digits
+                        admin_ids.append(numeric_part)
+                    except ValueError:
+                        continue
+            
+            if admin_ids:
+                # Get max ID and increment
+                max_id = max(admin_ids)
+                new_id = max_id + 1
+            else:
+                # Start from 1 if no existing IDs
+                new_id = 1
+            
+            return f"2152{new_id:04d}"  # Format as 21520001, 21520002, etc.
+            
+        except Exception as e:
+            # Fallback to random generation if query fails
+            import random
+            random_suffix = random.randint(1000, 9999)
+            return f"2152{random_suffix}"
     
     def _generate_user_id(self) -> str:
-        """Generate User ID with format 2252xxxx"""
-        while True:
-            # Generate random 4-digit number
-            random_suffix = random.randint(1000, 9999)
-            user_id = f"2252{random_suffix}"
+        """Generate User ID with format 22520001, 22520002, ..."""
+        try:
+            # Get all existing user documents
+            users = self.users_collection.stream()
+            user_ids = []
             
-            # Check if ID already exists
-            existing = self.users_collection.document(user_id).get()
-            if not existing.exists:
-                return user_id
+            for user in users:
+                user_id = user.id
+                # Extract numeric part if it follows the pattern 2252xxxx
+                if user_id.startswith('2252') and len(user_id) == 8:
+                    try:
+                        numeric_part = int(user_id[4:])  # Extract last 4 digits
+                        user_ids.append(numeric_part)
+                    except ValueError:
+                        continue
+            
+            if user_ids:
+                # Get max ID and increment
+                max_id = max(user_ids)
+                new_id = max_id + 1
+            else:
+                # Start from 1 if no existing IDs
+                new_id = 1
+            
+            return f"2252{new_id:04d}"  # Format as 22520001, 22520002, etc.
+            
+        except Exception as e:
+            # Fallback to random generation if query fails
+            import random
+            random_suffix = random.randint(1000, 9999)
+            return f"2252{random_suffix}"
     
     def _initialize_attribute_schema(self):
         """Initialize default attribute schema"""
@@ -137,15 +179,23 @@ class SuperAdmin:
     
     def create_super_admin(self, username: str, email: str, password: str) -> Dict[str, Any]:
         """
-        Create the first SuperAdmin account
+        Create SuperAdmin account (Multiple SuperAdmins allowed)
         """
         try:
-            # Check if any super admin exists
-            existing_admins = list(self.super_admin_collection.limit(1).get())
-            if existing_admins:
+            # Check if username already exists among SuperAdmins
+            existing_by_username = self.super_admin_collection.where('username', '==', username).limit(1).get()
+            if list(existing_by_username):
                 return {
                     'success': False,
-                    'error': 'Super admin already exists. Only one super admin is allowed.'
+                    'error': f'SuperAdmin with username "{username}" already exists'
+                }
+                
+            # Check if email already exists among SuperAdmins
+            existing_by_email = self.super_admin_collection.where('email', '==', email).limit(1).get()
+            if list(existing_by_email):
+                return {
+                    'success': False,
+                    'error': f'SuperAdmin with email "{email}" already exists'
                 }
             
             # Validate inputs
