@@ -1,34 +1,60 @@
 """
 Main application file for Hybrid CP-ABE Flask Backend
 """
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, g
 import logging
 import platform
 import os
-from config import config
+import time
+import uuid
+import config
+from utils.logger import app_logger, api_logger
 from routes import (
     all_blueprints, abe_api, auth_api, files_api, 
     abac_api, ca_api, super_admin_api
 )
 from module import abe_lib
-from utils import ensure_directory_exists
 
 def create_app(config_name='default'):
-    """Application factory"""
+    """Application factory with comprehensive logging"""
     # Chỉ backend API, không cần frontend paths
     app = Flask(__name__)
     
     # Load configuration
-    app.config.from_object(config[config_name])
+    from config import config as config_dict
+    app.config.from_object(config_dict[config_name])
     
-    # Setup logging
-    logging.basicConfig(
-        level=getattr(logging, app.config['LOG_LEVEL']),
-        format=app.config['LOG_FORMAT']
-    )
+    # Setup request logging middleware
+    @app.before_request
+    def before_request():
+        """Log incoming requests and set request ID"""
+        g.request_id = str(uuid.uuid4())
+        g.start_time = time.time()
+        
+        # Skip logging for health checks
+        if request.endpoint not in ['health_check']:
+            api_logger.info(f"Incoming request: {request.method} {request.path} from {request.remote_addr}")
+    
+    @app.after_request
+    def after_request(response):
+        """Log outgoing responses with performance metrics"""
+        if hasattr(g, 'start_time') and request.endpoint not in ['health_check']:
+            duration = round((time.time() - g.start_time) * 1000, 2)
+            api_logger.info(f"Response: {response.status_code} for {request.method} {request.path} ({duration}ms)")
+        return response
+    
+    @app.teardown_appcontext
+    def teardown_appcontext(error):
+        """Log any unhandled errors during request processing"""
+        if error:
+            app_logger.error(f"Unhandled error in request {request.method} {request.path}: {str(error)}")
+    
+    # Log application startup
+    app_logger.info(f"Starting Cloud Firestore Crypto Access Backend (Python {platform.python_version()}, {platform.system()})")
     
     # Ensure upload directory exists
-    ensure_directory_exists(app.config['UPLOAD_FOLDER'])
+    upload_folder = app.config.get('UPLOAD_FOLDER', 'uploads')
+    os.makedirs(upload_folder, exist_ok=True)
     
     # Register blueprints with specific prefixes
     blueprint_configs = [

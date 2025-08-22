@@ -8,12 +8,27 @@ from typing import Dict, Any, Optional
 import os
 import uuid
 
+# Import logging
+try:
+    from ..config.logging_config import setup_logger
+    from ..config.logging_middleware import log_authentication, log_security_event
+    auth_logger = setup_logger('auth')
+except ImportError:
+    # Fallback logging
+    import logging
+    auth_logger = logging.getLogger('auth')
+
 class JWTManager:
     def __init__(self, secret_key: Optional[str] = None):
         """Initialize JWT Manager with secret key"""
         self.secret_key = secret_key or os.environ.get('JWT_SECRET_KEY', 'corporate-cp-abe-jwt-secret-2025')
         self.algorithm = 'HS256'
         self.token_expiry_hours = 24  # 24 hours default
+        
+        auth_logger.info("JWT Manager initialized", extra={
+            'algorithm': self.algorithm,
+            'expiry_hours': self.token_expiry_hours
+        })
         
     def generate_token(self, user_data: Dict[str, Any], token_type: str = 'access') -> str:
         """
