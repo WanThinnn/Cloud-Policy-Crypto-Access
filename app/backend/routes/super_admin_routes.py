@@ -1,5 +1,5 @@
 """
-SuperAdmin routes for user management and attribute assignment
+SuperAdmin routes for user management and attribute assignment with JWT authentication
 """
 from flask import Blueprint, request, jsonify
 from datetime import datetime
@@ -9,6 +9,7 @@ import logging
 try:
     from ..module.super_admin import super_admin
     from ..module.central_authority import central_authority
+    from ..module.auth_decorators import super_admin_required, get_current_user
 except ImportError:
     # Fallback for direct execution
     import sys
@@ -16,6 +17,7 @@ except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from module.super_admin import super_admin
     from module.central_authority import central_authority
+    from module.auth_decorators import super_admin_required, get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,7 @@ def create_super_admin():
 
 @super_admin_api.route('/login', methods=['POST'])
 def login_super_admin():
-    """SuperAdmin login"""
+    """SuperAdmin login with JWT token generation"""
     try:
         data = request.get_json()
         
@@ -66,8 +68,32 @@ def login_super_admin():
             password=data['password']
         )
         
-        status_code = 200 if result['success'] else 401
-        return jsonify(result), status_code
+        if result['success']:
+            # Generate JWT token for SuperAdmin
+            from module.jwt_auth import jwt_manager
+            
+            admin_data = result['admin']
+            token_payload = {
+                'id': admin_data['id'],
+                'user_id': admin_data['id'],
+                'username': admin_data['username'],
+                'user_type': 'super_admin',
+                'email': admin_data['email'],
+                'permissions': admin_data.get('permissions', ['all'])
+            }
+            
+            access_token = jwt_manager.generate_token(token_payload)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Super admin authenticated successfully',
+                'admin': admin_data,
+                'access_token': access_token,
+                'token_type': 'Bearer',
+                'expires_in': jwt_manager.token_expiry_hours * 3600
+            }), 200
+        else:
+            return jsonify(result), 401
         
     except Exception as e:
         return jsonify({
@@ -76,17 +102,25 @@ def login_super_admin():
         }), 500
 
 @super_admin_api.route('/users', methods=['POST'])
+@super_admin_required
 def create_user():
     """Create new user account with attributes"""
     try:
         data = request.get_json()
         
-        # Get admin ID from headers or request
-        admin_id = request.headers.get('X-Admin-ID')
+        # Get admin info from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+            
+        admin_id = current_user.get('admin_id') or current_user.get('user_id')
         if not admin_id:
             return jsonify({
                 'success': False,
-                'error': 'Admin ID required in X-Admin-ID header'
+                'error': 'Admin ID not found in token'
             }), 401
         
         # Validate request data
@@ -496,22 +530,17 @@ def regenerate_abe_key(user_id: str):
         }), 500
 
 @super_admin_api.route('/stats', methods=['GET'])
+@super_admin_required
 def get_system_stats():
-    """Get system statistics"""
+    """Get system statistics with JWT authentication"""
     try:
-        admin_id = request.headers.get('X-Admin-ID')
-        if not admin_id:
+        # Get admin info from JWT token
+        current_user = get_current_user()
+        if not current_user:
             return jsonify({
                 'success': False,
-                'error': 'Admin ID required in X-Admin-ID header'
+                'error': 'Authentication required'
             }), 401
-        
-        # Verify admin permissions
-        if not super_admin._verify_super_admin(admin_id):
-            return jsonify({
-                'success': False,
-                'error': 'Unauthorized: Super admin access required'
-            }), 403
         
         # Get user statistics
         total_users = len(list(super_admin.users_collection.where('user_type', '==', 'regular').get()))

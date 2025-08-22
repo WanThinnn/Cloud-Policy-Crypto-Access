@@ -1,9 +1,8 @@
 """
-Authentication API routes - Admin-controlled user system
-Only login and password reset functionality available
-Public registration is disabled
+Authentication API routes - JWT Bearer Token based authentication
+Admin-controlled user system with JWT tokens
 """
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify
 import asyncio
 import logging
 import uuid
@@ -13,6 +12,8 @@ from datetime import datetime, timedelta
 try:
     from ..module.user_management import user_manager
     from ..module.super_admin import super_admin
+    from ..module.jwt_auth import jwt_manager
+    from ..module.auth_decorators import jwt_required, get_current_user
 except ImportError:
     # Fallback for direct execution
     import sys
@@ -20,6 +21,8 @@ except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from module.user_management import user_manager
     from module.super_admin import super_admin
+    from module.jwt_auth import jwt_manager
+    from module.auth_decorators import jwt_required, get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +67,7 @@ def register_disabled():
 
 @auth_api.route('/login', methods=['POST'])
 def login():
-    """User login - supports both super admin and regular users"""
+    """User login - returns JWT Bearer token for authentication"""
     try:
         data = request.get_json()
         
@@ -88,20 +91,22 @@ def login():
             )
             
             if super_admin_result['success']:
-                # Super admin login successful
-                session['user_id'] = super_admin_result['admin']['id']
-                session['username'] = super_admin_result['admin']['username']
-                session['user_type'] = 'super_admin'
-                session['authenticated'] = True
+                # Super admin login successful - generate JWT token
+                admin_data = super_admin_result['admin']
+                admin_data['user_type'] = 'super_admin'
+                
+                token = jwt_manager.generate_token(admin_data)
                 
                 logger.info(f"Super admin logged in: {data['username']}")
                 
                 return jsonify({
                     'success': True,
                     'user_type': 'super_admin',
-                    'user': super_admin_result['admin'],
-                    'message': 'Super admin login successful',
-                    'redirect': '/admin-dashboard'
+                    'user': admin_data,
+                    'access_token': token,
+                    'token_type': 'Bearer',
+                    'expires_in': jwt_manager.token_expiry_hours * 3600,  # seconds
+                    'message': 'Super admin login successful'
                 }), 200
         except Exception as e:
             logger.warning(f"Super admin login attempt failed: {e}")
@@ -114,30 +119,40 @@ def login():
             )
             
             if result['success']:
-                # Regular user login successful
-                session['user_id'] = result.get('user_id', data['username'])
-                session['username'] = data['username'] 
-                session['user_type'] = 'regular'
-                session['authenticated'] = True
-                
-                logger.info(f"User logged in: {data['username']}")
+                # Regular user login successful - get user attributes and generate JWT
+                user_id = result.get('user_id', data['username'])
                 
                 # Get user attributes
                 try:
-                    attrs_result = super_admin.get_user_attributes(result['user_id'])
+                    attrs_result = super_admin.get_user_attributes(user_id)
                     user_attributes = attrs_result['attributes'] if attrs_result['success'] else {}
                 except Exception as e:
                     logger.warning(f"Could not get user attributes: {e}")
                     user_attributes = {}
                 
+                # Prepare user data for JWT token
+                user_data = {
+                    'id': user_id,
+                    'user_id': user_id,
+                    'username': data['username'],
+                    'user_type': 'regular',
+                    'attributes': user_attributes
+                }
+                
+                token = jwt_manager.generate_token(user_data)
+                
+                logger.info(f"User logged in: {data['username']}")
+                
                 return jsonify({
                     'success': True,
                     'user_type': 'regular',
-                    'user_id': result['user_id'],
+                    'user_id': user_id,
                     'username': data['username'],
                     'attributes': user_attributes,
-                    'message': 'Login successful',
-                    'redirect': '/dashboard'
+                    'access_token': token,
+                    'token_type': 'Bearer',
+                    'expires_in': jwt_manager.token_expiry_hours * 3600,  # seconds
+                    'message': 'Login successful'
                 }), 200
         except Exception as e:
             logger.warning(f"Regular user login attempt failed: {e}")
@@ -156,20 +171,20 @@ def login():
         }), 500
 
 @auth_api.route('/logout', methods=['POST'])
+@jwt_required
 def logout():
-    """Logout user - clear session"""
+    """Logout user - with JWT tokens, logout is handled client-side by discarding token"""
     try:
-        username = session.get('username', 'unknown')
-        user_type = session.get('user_type', 'unknown')
-        
-        # Clear session
-        session.clear()
+        current_user = get_current_user()
+        username = current_user.get('username', 'unknown') if current_user else 'unknown'
+        user_type = current_user.get('user_type', 'unknown') if current_user else 'unknown'
         
         logger.info(f"User logged out: {username} (type: {user_type})")
         
         return jsonify({
             'success': True,
-            'message': 'Logged out successfully'
+            'message': 'Logged out successfully',
+            'note': 'Please discard your JWT token on the client side'
         }), 200
             
     except Exception as e:
@@ -180,22 +195,27 @@ def logout():
         }), 500
 
 @auth_api.route('/session', methods=['GET'])
+@jwt_required
 def check_session():
-    """Check current session status"""
+    """Check authentication status using JWT token"""
     try:
-        if session.get('authenticated'):
+        current_user = get_current_user()
+        
+        if current_user:
             return jsonify({
                 'success': True,
                 'authenticated': True,
-                'user_id': session.get('user_id'),
-                'username': session.get('username'),
-                'user_type': session.get('user_type', 'regular')
+                'user_id': current_user.get('user_id'),
+                'username': current_user.get('username'),
+                'user_type': current_user.get('user_type', 'regular'),
+                'attributes': current_user.get('attributes', {}),
+                'token_exp': current_user.get('exp')
             }), 200
         else:
             return jsonify({
                 'success': False,
                 'authenticated': False,
-                'message': 'No active session'
+                'message': 'No user data found'
             }), 401
             
     except Exception as e:

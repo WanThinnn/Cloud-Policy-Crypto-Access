@@ -104,88 +104,13 @@ class UserManager:
         result['valid'] = len(result['errors']) == 0
         return result
     
-    async def create_user(self, username: str, email: str, password: str) -> Dict[str, Any]:
-        """
-        Tạo user mới
-        
-        Args:
-            username: Username
-            email: Email address
-            password: Plain text password
-            
-        Returns:
-            Dict with success status and user data or error message
-        """
-        try:
-            # Validate inputs
-            if not self.validate_username(username):
-                return {
-                    'success': False,
-                    'error': 'Invalid username format. Username must be 3-30 characters, alphanumeric and underscore only.'
-                }
-            
-            if not self.validate_email(email):
-                return {
-                    'success': False,
-                    'error': 'Invalid email format.'
-                }
-            
-            password_validation = self.validate_password(password)
-            if not password_validation['valid']:
-                return {
-                    'success': False,
-                    'error': 'Password requirements not met.',
-                    'details': password_validation['errors']
-                }
-            
-            # Check if username exists
-            username_query = self.collection.where('username', '==', username).limit(1).get()
-            if len(username_query) > 0:
-                return {
-                    'success': False,
-                    'error': 'Username already exists.'
-                }
-            
-            # Check if email exists
-            email_query = self.collection.where('email', '==', email).limit(1).get()
-            if len(email_query) > 0:
-                return {
-                    'success': False,
-                    'error': 'Email already exists.'
-                }
-            
-            # Create user
-            user_id = str(uuid.uuid4())
-            hashed_password = self.hash_password(password)
-            
-            user_data = {
-                'id': user_id,
-                'username': username,
-                'email': email,
-                'password': hashed_password,
-                'created_at': datetime.utcnow(),
-                'updated_at': datetime.utcnow(),
-                'is_active': True
-            }
-            
-            # Save to Firestore
-            self.collection.document(user_id).set(user_data)
-            
-            # Return user data without password
-            user_response = user_data.copy()
-            del user_response['password']
-            
-            return {
-                'success': True,
-                'user': user_response,
-                'message': 'User created successfully.'
-            }
-            
-        except Exception as e:
-            return {
-                'success': False,
-                'error': f'Failed to create user: {str(e)}'
-            }
+    # Disable user_management.create_user()
+    async def create_user(self, username: str, email: str, password: str):
+        return {
+            'success': False,
+            'error': 'Self-registration is disabled. Contact system administrator.',
+            'redirect': '/admin/contact'
+        }
     
     async def authenticate_user(self, username: str, password: str) -> Dict[str, Any]:
         """

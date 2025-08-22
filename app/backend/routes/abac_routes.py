@@ -1,16 +1,17 @@
 """
-ABAC (Attribute-Based Access Control) API routes
+ABAC (Attribute-Based Access Control) API routes with JWT authentication
 """
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify
 import logging
 import asyncio
 import sys
 import os
-from datetime import datetime  # <-- THÊM DÒNG NÀY
+from datetime import datetime
 
 # Add parent directory to path to import module
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from module.abac import abac
+from module.auth_decorators import jwt_required, get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -175,9 +176,10 @@ def get_user_attributes(user_id):
         }), 500
 
 @abac_api.route('/check-access', methods=['POST'])
+@jwt_required
 def check_access():
     """
-    Check access với session-based authentication
+    Check access với JWT authentication
     """
     try:
         data = request.get_json()
@@ -187,85 +189,24 @@ def check_access():
                 'error': 'No data provided'
             }), 400
 
-        # Lấy user từ session
-        user_id = session.get('user_id')
-        username = session.get('username')
+        # Lấy user từ JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+            
+        user_id = current_user.get('user_id')
+        username = current_user.get('username')
+        user_attributes = current_user.get('attributes', {})
         
-        # Debug session info
-        logger.info(f"Session user_id: {user_id}, username: {username}")
-        
-        # Allow manual user_id/username in request for testing
-        if not user_id and not username:
-            user_id = data.get('user_id')
-            username = data.get('username')
-        
-        # Allow fallback to user_attributes directly
-        if data.get('user_attributes'):
-            user_attributes = data['user_attributes']
-            logger.info(f"Using manual user_attributes: {user_attributes}")
-        else:
-            if not user_id and not username:
-                return jsonify({
-                    'success': False,
-                    'error': 'User not authenticated and no user_attributes provided',
-                    'session_info': {
-                        'user_id': session.get('user_id'),
-                        'username': session.get('username'),
-                        'all_session_keys': list(session.keys())
-                    }
-                }), 401
+        logger.info(f"JWT user_id: {user_id}, username: {username}")
 
-            # Get user attributes from SuperAdmin system
-            from module.super_admin import super_admin
-            
-            user_attributes = {}
-            user_info = None
-            
-            # Try different approaches to get user info
-            try:
-                # Method 1: Direct API call style
-                if hasattr(super_admin, 'get_all_users'):
-                    users_result = super_admin.get_all_users()
-                elif hasattr(super_admin, 'list_all_users'):
-                    users_result = super_admin.list_all_users()
-                elif hasattr(super_admin, 'get_users'):
-                    users_result = super_admin.get_users()
-                else:
-                    # Check what methods are available
-                    available_methods = [method for method in dir(super_admin) 
-                                       if not method.startswith('_') and 'user' in method.lower()]
-                    logger.info(f"Available SuperAdmin methods: {available_methods}")
-                    
-                    return jsonify({
-                        'success': False,
-                        'error': 'SuperAdmin user lookup methods not found',
-                        'available_methods': available_methods
-                    }), 500
-                
-                # Find user in results
-                if users_result and users_result.get('success'):
-                    for user in users_result.get('users', []):
-                        if (user_id and user.get('id') == user_id) or \
-                           (username and user.get('username') == username):
-                            user_attributes = user.get('attributes', {})
-                            user_info = user
-                            break
-                
-                if not user_attributes:
-                    return jsonify({
-                        'success': False,
-                        'error': 'User not found in SuperAdmin database',
-                        'user_id': user_id,
-                        'username': username,
-                        'users_result': users_result
-                    }), 404
-                    
-            except Exception as e:
-                logger.error(f"Error getting user from SuperAdmin: {e}")
-                return jsonify({
-                    'success': False,
-                    'error': f'Failed to get user info: {str(e)}'
-                }), 500
+        # Allow manual user_attributes override in request for testing
+        if data.get('user_attributes'):
+            user_attributes.update(data['user_attributes'])
+            logger.info(f"Using combined user_attributes: {user_attributes}")
 
         # Lấy resource và action từ request
         resource = data.get('resource')
@@ -277,13 +218,18 @@ def check_access():
                 'error': 'Missing resource or action'
             }), 400
 
-        # Check access với ABAC engine
+        # Check access với ABAC engine - sử dụng đúng format
         try:
-            access_result = abac.check_access(
-                user_attributes=user_attributes,
-                resource=resource,
-                action=action
-            )
+            # Prepare request data for ABAC engine
+            request_data = {
+                'user_attributes': user_attributes,
+                'resource': resource,
+                'action': action,
+                'environment': data.get('environment', {})
+            }
+            
+            access_result = abac.check_access(request_data)
+            
         except Exception as e:
             logger.error(f"ABAC engine error: {e}")
             # Fallback: simple attribute-based check
@@ -315,8 +261,8 @@ def check_access():
             'action': action,
             'reason': access_result.get('reason', 'Policy evaluation completed'),
             'debug_info': {
-                'session_keys': list(session.keys()),
-                'has_user_info': user_info is not None
+                'token_user_type': current_user.get('user_type'),
+                'has_attributes': bool(user_attributes)
             }
         })
 
@@ -327,8 +273,7 @@ def check_access():
             'error': f'ABAC access check failed: {str(e)}',
             'debug_info': {
                 'user_id': locals().get('user_id'),
-                'username': locals().get('username'),
-                'session_keys': list(session.keys())
+                'username': locals().get('username')
             }
         }), 500
 

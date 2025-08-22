@@ -1,5 +1,5 @@
 """
-File management API routes with CP-ABE encryption
+File management API routes with CP-ABE encryption and JWT authentication
 """
 from flask import Blueprint, request, jsonify, send_file
 import logging
@@ -10,6 +10,7 @@ import os
 # Add parent directory to path to import module
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from module.file_manager import file_manager
+from module.auth_decorators import jwt_required, get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -17,23 +18,31 @@ logger = logging.getLogger(__name__)
 files_api = Blueprint('files', __name__, url_prefix='/files')
 
 @files_api.route('/', methods=['GET'])
+@jwt_required
 def list_files():
     """
-    Liệt kê files của user
+    Liệt kê files của user với JWT authentication
     
     Query parameters:
-    - user_id: User ID (required)
     - include_shared: Include shared files (default: true)
     """
     try:
-        user_id = request.args.get('user_id')
-        include_shared = request.args.get('include_shared', 'true').lower() == 'true'
-        
+        # Get user from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+            
+        user_id = current_user.get('user_id')
         if not user_id:
             return jsonify({
                 'success': False,
-                'error': 'user_id parameter is required'
-            }), 400
+                'error': 'User ID not found in token'
+            }), 401
+            
+        include_shared = request.args.get('include_shared', 'true').lower() == 'true'
         
         result = file_manager.list_user_files(user_id, include_shared)
         
@@ -50,17 +59,34 @@ def list_files():
         }), 500
 
 @files_api.route('/upload', methods=['POST'])
+@jwt_required
 def upload_file():
     """
-    Upload và mã hóa file
+    Upload và mã hóa file với JWT authentication
     
     Form data:
     - file: File to upload (required)
-    - owner_id: Owner user ID (required)
     - access_policy: Custom access policy (optional)
     - metadata: JSON metadata (optional)
+    
+    User ID is extracted from JWT token for security
     """
     try:
+        # Get authenticated user from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+        
+        owner_id = current_user.get('user_id')
+        if not owner_id:
+            return jsonify({
+                'success': False,
+                'error': 'User ID not found in token'
+            }), 401
+        
         if 'file' not in request.files:
             return jsonify({
                 'success': False,
@@ -68,13 +94,12 @@ def upload_file():
             }), 400
         
         file = request.files['file']
-        owner_id = request.form.get('owner_id')
         access_policy = request.form.get('access_policy')
         
-        if not owner_id:
+        if not file or file.filename == '':
             return jsonify({
                 'success': False,
-                'error': 'owner_id is required'
+                'error': 'No file selected'
             }), 400
         
         if file.filename == '':
@@ -102,10 +127,10 @@ def upload_file():
         # Upload file
         result = file_manager.upload_file(
             file_data=file_data,
-            filename=file.filename,
+            filename=file.filename or 'untitled',
             owner_id=owner_id,
-            access_policy=access_policy,
-            metadata=metadata
+            access_policy=access_policy or 'owner_only',
+            metadata=metadata or {}
         )
         
         if result['success']:
@@ -121,21 +146,30 @@ def upload_file():
         }), 500
 
 @files_api.route('/<file_id>', methods=['GET'])
+@jwt_required
 def get_file_info(file_id):
     """
-    Lấy thông tin file
+    Lấy thông tin file với JWT authentication
     
-    Query parameters:
-    - user_id: User ID (required)
+    User ID is extracted from JWT token for security
     """
     try:
-        user_id = request.args.get('user_id')
+        # Get authenticated user from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
         
+        user_id = current_user.get('user_id')
         if not user_id:
             return jsonify({
                 'success': False,
-                'error': 'user_id parameter is required'
-            }), 400
+                'error': 'User ID not found in token'
+            }), 401
+        
+        logger.info(f"User {user_id} requesting info for file {file_id}")
         
         result = file_manager.get_file_info(file_id, user_id)
         
@@ -152,21 +186,32 @@ def get_file_info(file_id):
         }), 500
 
 @files_api.route('/<file_id>/download', methods=['GET'])
+@jwt_required
 def download_file(file_id):
     """
-    Download và giải mã file
+    Download và giải mã file với JWT authentication
     
-    Query parameters:
-    - user_id: User ID (required)
+    User ID is extracted from JWT token for security
+    No need for user_id parameter - prevents identity spoofing
     """
     try:
-        user_id = request.args.get('user_id')
+        # Get authenticated user from JWT token
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
         
+        user_id = current_user.get('user_id')
         if not user_id:
             return jsonify({
                 'success': False,
-                'error': 'user_id parameter is required'
-            }), 400
+                'error': 'User ID not found in token'
+            }), 401
+        
+        # Use user_id from JWT token - no need for query parameter
+        logger.info(f"User {user_id} attempting to download file {file_id}")
         
         result = file_manager.download_file(file_id, user_id)
         
@@ -193,6 +238,7 @@ def download_file(file_id):
         }), 500
 
 @files_api.route('/<file_id>', methods=['DELETE'])
+@jwt_required
 def delete_file(file_id):
     """
     Xóa file

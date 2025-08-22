@@ -81,9 +81,7 @@ class AttributeBasedAccessControl:
             attributes: {
                 'role': 'doctor',
                 'department': 'cardiology', 
-                'clearance_level': 'high',
-                'specialty': 'heart_surgery',
-                'organization': 'hospital_a'
+                ...
             }
             
         Returns:
