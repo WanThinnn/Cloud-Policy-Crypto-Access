@@ -2,7 +2,7 @@
 # This configuration is designed for ELK Stack integration
 
 # Global settings
-name: "cloud-crypto-access-backend"
+name: "cloud-cloud-firestore-crypto-access-backend"
 tags: ["crypto-access", "flask", "cp-abe", "backend"]
 
 # Filebeat inputs
@@ -14,7 +14,7 @@ filebeat.inputs:
       - "D:/Documents/UIT/Nam_4/Cloud-Firestore-Crypto-Access/app/backend/log/app.log"
     fields:
       log_type: "application"
-      service: "crypto-access-backend"
+      service: "cloud-firestore-crypto-access-backend"
       component: "main"
     fields_under_root: true
     multiline.pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},'
@@ -28,7 +28,7 @@ filebeat.inputs:
       - "D:/Documents/UIT/Nam_4/Cloud-Firestore-Crypto-Access/app/backend/log/auth.log"
     fields:
       log_type: "authentication"
-      service: "crypto-access-backend"
+      service: "cloud-firestore-crypto-access-backend"
       component: "auth"
       security_category: "access_control"
     fields_under_root: true

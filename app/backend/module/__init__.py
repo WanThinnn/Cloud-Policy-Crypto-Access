@@ -40,31 +40,26 @@ from .user_management import UserManager, user_manager
 # Import ABAC
 from .abac import AttributeBasedAccessControl, abac
 
-# Import Central Authority - dùng stub nếu ABE không có
+# Import Central Authority
 try:
-    if abe_lib and abe_lib.is_loaded():
-        from . import central_authority
+    from . import central_authority
+    if abe_lib:
         central_authority.abe_lib = abe_lib
-        from .central_authority import CentralAuthority, central_authority
-        print("✅ Using full Central Authority with ABE")
-    else:
-        from .central_authority_stub import CentralAuthority, central_authority
-        print("⚠️ Using stub Central Authority (ABE not available)")
+    from .central_authority import CentralAuthority, central_authority
+    print("✅ Using Central Authority")
 except Exception as e:
-    print(f"⚠️ Using stub Central Authority due to error: {e}")
-    from .central_authority_stub import CentralAuthority, central_authority
+    print(f"⚠️ Central Authority import failed: {e}")
+    CentralAuthority = None
+    central_authority = None
 
-# Import File Manager - dùng stub nếu central_authority không có
+# Import File Manager
 try:
-    if abe_lib and abe_lib.is_loaded():
-        from .file_manager import FileManager, file_manager
-        print("✅ Using full File Manager with ABE")
-    else:
-        from .file_manager_stub import FileManager, file_manager
-        print("⚠️ Using stub File Manager (ABE not available)")
+    from .file_manager import FileManager, file_manager
+    print("✅ Using File Manager")
 except Exception as e:
-    print(f"⚠️ Using stub File Manager due to error: {e}")
-    from .file_manager_stub import FileManager, file_manager
+    print(f"⚠️ File Manager import failed: {e}")
+    FileManager = None
+    file_manager = None
 
 __all__ = [
     'ABELibrary', 'abe_lib', 'db', 

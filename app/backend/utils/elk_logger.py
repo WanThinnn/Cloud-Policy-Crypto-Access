@@ -24,7 +24,7 @@ class JSONFormatter(logging.Formatter):
             "line": record.lineno,
             "process_id": os.getpid(),
             "thread_id": record.thread,
-            "service": "crypto-access-backend",
+            "service": "cloud-firestore-crypto-access-backend",
             "version": "1.0.0"
         }
         

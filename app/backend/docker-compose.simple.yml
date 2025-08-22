@@ -1,11 +1,12 @@
 version: '3.8'
 
 services:
-  # Main Backend Service
-  cloud-firestore-crypto-access-backend:
+  # Main Backend Service (Simple Version - Faster Build)
+  crypto-access-backend:
     build:
       context: .
-    container_name: cloud-firestore-crypto-access-backend
+      dockerfile: Dockerfile.simple
+    container_name: crypto-access-backend
     restart: unless-stopped
     ports:
       - "5000:5000"

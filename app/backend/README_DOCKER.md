@@ -47,13 +47,13 @@ docker-compose down
 
 ### Build Image
 ```bash
-docker build -t crypto-access-backend .
+docker build -t cloud-firestore-crypto-access-backend .
 ```
 
 ### Run Container
 ```bash
 docker run -d \
-  --name crypto-access-backend \
+  --name cloud-firestore-crypto-access-backend \
   --restart unless-stopped \
   -p 5000:5000 \
   -v $(pwd)/log:/app/log \
@@ -65,7 +65,7 @@ docker run -d \
   -e LOG_LEVEL=INFO \
   -e HOST=0.0.0.0 \
   -e PORT=5000 \
-  crypto-access-backend
+  cloud-firestore-crypto-access-backend
 ```
 
 ## Management Script
@@ -137,13 +137,13 @@ ls -la log/
 ### Container won't start
 ```bash
 # Check container logs
-docker logs crypto-access-backend
+docker logs cloud-firestore-crypto-access-backend
 
 # Check if ports are in use
 netstat -tulpn | grep 5000
 
 # Verify image was built correctly
-docker images | grep crypto-access-backend
+docker images | grep cloud-firestore-crypto-access-backend
 ```
 
 ### Permission issues
@@ -152,19 +152,19 @@ docker images | grep crypto-access-backend
 sudo chown -R $USER:$USER log/
 
 # Check container user
-docker exec crypto-access-backend whoami
+docker exec cloud-firestore-crypto-access-backend whoami
 ```
 
 ### Application errors
 ```bash
 # Access container shell
-docker exec -it crypto-access-backend /bin/bash
+docker exec -it cloud-firestore-crypto-access-backend /bin/bash
 
 # Check Python dependencies
-docker exec crypto-access-backend python3 -c "import flask; print('Flask OK')"
+docker exec cloud-firestore-crypto-access-backend python3 -c "import flask; print('Flask OK')"
 
 # View application files
-docker exec crypto-access-backend ls -la /app/
+docker exec cloud-firestore-crypto-access-backend ls -la /app/
 ```
 
 ## Production Deployment
@@ -180,7 +180,7 @@ docker exec crypto-access-backend ls -la /app/
 docker run -d \
   --memory="1g" \
   --cpus="0.5" \
-  --name crypto-access-backend \
+  --name cloud-firestore-crypto-access-backend \
   # ... other options
 ```
 
@@ -209,11 +209,11 @@ server {
 For development with auto-reload:
 ```bash
 docker run -d \
-  --name crypto-access-backend-dev \
+  --name cloud-firestore-crypto-access-backend-dev \
   -p 5000:5000 \
   -v $(pwd):/app \
   -e FLASK_ENV=development \
   -e FLASK_DEBUG=1 \
-  crypto-access-backend \
+  cloud-firestore-crypto-access-backend \
   python3 -u main.py
 ```

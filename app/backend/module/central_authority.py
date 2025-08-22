@@ -216,7 +216,7 @@ class CentralAuthority:
                 'error': f'Failed to get active keys: {str(e)}'
             }
     
-    def generate_user_private_key(self, user_id: str, attributes: List[str]) -> Dict[str, Any]:
+    def generate_user_private_key(self, user_id: str, password: str, user_attributes: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Tạo/Update private key cho user dựa trên attributes
         - Chỉ có 1 private key duy nhất per user
@@ -225,18 +225,35 @@ class CentralAuthority:
         
         Args:
             user_id: User ID
-            attributes: List of attributes ['role:doctor', 'department:cardiology']
+            password: User password để mã hóa private key
+            user_attributes: Dict with user attributes (optional, for direct input)
             
         Returns:
             Dict with private key data
         """
         try:
+            # Convert user_attributes to consistent format
+            if isinstance(user_attributes, dict):
+                # If dict, convert values to list format
+                attr_list = []
+                for key, value in user_attributes.items():
+                    if isinstance(value, list):
+                        for v in value:
+                            attr_list.append(f"{key}:{v}")
+                    else:
+                        attr_list.append(f"{key}:{value}")
+                user_attributes_list = attr_list
+            elif isinstance(user_attributes, list):
+                user_attributes_list = user_attributes
+            else:
+                user_attributes_list = []
+            
             # 1. Check existing private key
             existing_key_result = self.get_user_private_key(user_id)
             
             if existing_key_result['success']:
-                existing_attributes = set(existing_key_result['key_data']['attributes'])
-                new_attributes = set(attributes)
+                existing_attributes = set(existing_key_result['key_data'].get('attributes', []))
+                new_attributes = set(user_attributes_list)
                 
                 # Compare attributes
                 if existing_attributes == new_attributes:
@@ -245,7 +262,7 @@ class CentralAuthority:
                         'success': True,
                         'message': 'Private key already exists with same attributes',
                         'private_key_id': existing_key_result['key_data']['private_key_id'],
-                        'attributes': attributes,
+                        'attributes': user_attributes_list,
                         'action': 'kept_existing'
                     }
                 else:
@@ -272,7 +289,7 @@ class CentralAuthority:
                 f.write(keys_result['master_key'])
             
             # 4. Generate private key với ABE library
-            attributes_str = ' '.join(attributes)
+            attributes_str = ' '.join(user_attributes_list)
             abe_lib.generate_secret_key(public_key_path, master_key_path, attributes_str, private_key_path)
             
             # Read generated private key
@@ -283,7 +300,7 @@ class CentralAuthority:
             user_key_doc = {
                 'user_id': user_id,
                 'private_key': private_key_data,
-                'attributes': attributes,
+                'attributes': user_attributes_list,
                 'created_at': datetime.utcnow(),
                 'updated_at': datetime.utcnow(),
                 'is_active': True,
@@ -307,12 +324,12 @@ class CentralAuthority:
             import shutil
             shutil.rmtree(temp_dir)
             
-            logger.info(f"Private key generated/updated for user: {user_id} with {len(attributes)} attributes")
+            logger.info(f"Private key generated/updated for user: {user_id} with {len(user_attributes_list)} attributes")
             
             return {
                 'success': True,
                 'private_key_id': private_key_id,
-                'attributes': attributes,
+                'attributes': user_attributes_list,
                 'message': 'Private key generated/updated successfully',
                 'action': 'generated_new',
                 'old_keys_removed': deleted_count
@@ -684,6 +701,13 @@ class CentralAuthority:
             Dict with encrypted file info
         """
         try:
+            # Check ABE library availability
+            if not abe_lib or not abe_lib.is_loaded():
+                return {
+                    'success': False,
+                    'error': 'ABE library not loaded. Please check library installation.'
+                }
+            
             # Lấy active public key
             keys_result = self.get_active_keys()
             if not keys_result['success']:
@@ -706,8 +730,17 @@ class CentralAuthority:
             with open(public_key_path, 'wb') as f:
                 f.write(keys_result['public_key'])
             
-            # Encrypt file
-            abe_lib.encrypt(public_key_path, file_path, policy, encrypted_file_path)
+            # Encrypt file with error checking
+            try:
+                abe_lib.encrypt(public_key_path, file_path, policy, encrypted_file_path)
+                
+                # Check if encrypted file was created
+                if not os.path.exists(encrypted_file_path):
+                    raise FileNotFoundError("ABE encryption did not produce output file")
+                    
+            except Exception as encrypt_error:
+                logger.error(f"ABE encryption failed: {encrypt_error}")
+                raise encrypt_error
             
             # Read encrypted data
             with open(encrypted_file_path, 'rb') as f:

@@ -12,8 +12,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-IMAGE_NAME="crypto-access-backend"
-CONTAINER_NAME="crypto-access-backend"
+IMAGE_NAME="cloud-firestore-crypto-access-backend"
+CONTAINER_NAME="cloud-firestore-crypto-access-backend"
 PORT="5000"
 
 print_help() {
