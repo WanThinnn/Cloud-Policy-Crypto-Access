@@ -10,9 +10,9 @@ dotenv_path = Path('env') / '.env'
 load_dotenv(dotenv_path=dotenv_path)
 class Config:
     """Base configuration"""
-    # Server settings
-    HOST = '192.168.1.2'
-    PORT = 5000
+    # Server settings - support Docker environment
+    HOST = os.environ.get('HOST', '192.168.1.2')
+    PORT = int(os.environ.get('PORT', 5000))
     DEBUG = False
     
     # Flask secret key for sessions
