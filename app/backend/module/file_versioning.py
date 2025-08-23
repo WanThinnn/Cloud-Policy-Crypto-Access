@@ -1,0 +1,593 @@
+"""
+File Version Manager for handling file versioning and approval workflow
+"""
+import logging
+from typing import Dict, Any, List, Optional
+from datetime import datetime
+from google.cloud.firestore_v1 import FieldFilter, Query
+from google.cloud import firestore
+from .database import db  # Import the db client directly
+from .file_integrity import FileIntegrityManager
+import uuid
+
+logger = logging.getLogger(__name__)
+
+class FileVersionManager:
+    """
+    Manages file versioning, approval workflow, and version history
+    """
+    
+    @staticmethod
+    def create_version(file_id: str, 
+                      file_data: bytes, 
+                      uploader_id: str,
+                      version_type: str = 'MINOR',
+                      change_description: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Create a new version of a file
+        
+        Args:
+            file_id: Original file ID
+            file_data: New file data
+            uploader_id: User creating the version
+            version_type: MAJOR, MINOR, PATCH
+            change_description: Description of changes
+            
+        Returns:
+            Version creation result
+        """
+        try:
+            # Get original file info
+            file_ref = db.collection('files').document(file_id)
+            file_doc = file_ref.get()
+            
+            if not file_doc.exists:
+                return {
+                    'success': False,
+                    'error': 'Original file not found'
+                }
+            
+            file_data_dict = file_doc.to_dict()
+            
+            # Check if user has permission to create versions
+            user_permissions = FileVersionManager._get_user_file_permissions(uploader_id, file_id)
+            if not user_permissions.get('can_create_version', False):
+                return {
+                    'success': False,
+                    'error': 'Insufficient permissions to create file version'
+                }
+            
+            # Get current version info
+            current_version = file_data_dict.get('current_version', '1.0.0')
+            new_version = FileVersionManager._increment_version(current_version, version_type)
+            
+            # Generate version ID
+            version_id = str(uuid.uuid4())
+            
+            # Generate integrity hashes for new version
+            new_hashes = FileIntegrityManager.generate_integrity_hashes(file_data)
+            
+            # Get previous version for comparison if exists
+            integrity_report = None
+            if file_data_dict.get('encrypted_content'):
+                try:
+                    # For integrity comparison, we would need the previous decrypted content
+                    # This is a placeholder - in real implementation, you'd decrypt the previous version
+                    old_file_data = b"placeholder"  # This should be the decrypted previous version
+                    integrity_analysis = FileIntegrityManager.create_integrity_report(
+                        old_file_data,
+                        file_data,
+                        {
+                            'version': current_version,
+                            'created_at': file_data_dict.get('created_at'),
+                            'owner_id': file_data_dict.get('owner_id')
+                        }
+                    )
+                    if integrity_analysis['success']:
+                        integrity_report = integrity_analysis['report']
+                except Exception as e:
+                    logger.error(f"Integrity analysis failed: {e}")
+            
+            # Determine if approval is required
+            approval_required = FileVersionManager._requires_approval(
+                version_type,
+                integrity_report,
+                user_permissions
+            )
+            
+            # Create version document
+            version_data = {
+                'version_id': version_id,
+                'file_id': file_id,
+                'version_number': new_version,
+                'version_type': version_type,
+                'uploader_id': uploader_id,
+                'created_at': firestore.SERVER_TIMESTAMP,
+                'status': 'PENDING_APPROVAL' if approval_required else 'APPROVED',
+                'change_description': change_description or '',
+                'integrity_hashes': new_hashes,
+                'integrity_report': integrity_report,
+                'approval_required': approval_required,
+                'approved_by': None,
+                'approved_at': None,
+                'file_size': len(file_data),
+                'metadata': {
+                    'original_filename': file_data_dict.get('filename'),
+                    'content_type': file_data_dict.get('content_type')
+                }
+            }
+            
+            # Store version in database
+            version_ref = db.collection('file_versions').document(version_id)
+            version_ref.set(version_data)
+            
+            # If no approval required, activate immediately
+            if not approval_required:
+                activation_result = FileVersionManager._activate_version(file_id, version_id, uploader_id)
+                if not activation_result['success']:
+                    return activation_result
+            
+            logger.info(f"Version {new_version} created for file {file_id} by user {uploader_id}")
+            
+            return {
+                'success': True,
+                'version_id': version_id,
+                'version_number': new_version,
+                'status': version_data['status'],
+                'approval_required': approval_required,
+                'integrity_report': integrity_report
+            }
+            
+        except Exception as e:
+            logger.error(f"Version creation failed: {e}")
+            return {
+                'success': False,
+                'error': f'Failed to create version: {str(e)}'
+            }
+    
+    @staticmethod
+    def approve_version(version_id: str, approver_id: str, approval_notes: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Approve a pending file version
+        
+        Args:
+            version_id: Version to approve
+            approver_id: User approving the version
+            approval_notes: Optional approval notes
+            
+        Returns:
+            Approval result
+        """
+        try:
+            
+            
+            # Get version document
+            version_ref = db.collection('file_versions').document(version_id)
+            version_doc = version_ref.get()
+            
+            if not version_doc.exists:
+                return {
+                    'success': False,
+                    'error': 'Version not found'
+                }
+            
+            version_data = version_doc.to_dict()
+            
+            # Check if approval is required
+            if not version_data.get('approval_required', False):
+                return {
+                    'success': False,
+                    'error': 'Version does not require approval'
+                }
+            
+            # Check if already approved
+            if version_data.get('status') == 'APPROVED':
+                return {
+                    'success': False,
+                    'error': 'Version already approved'
+                }
+            
+            # Check approver permissions
+            file_id = version_data['file_id']
+            approver_permissions = FileVersionManager._get_user_file_permissions(approver_id, file_id)
+            if not approver_permissions.get('can_approve_versions', False):
+                return {
+                    'success': False,
+                    'error': 'Insufficient permissions to approve versions'
+                }
+            
+            # Update version status
+            version_ref.update({
+                'status': 'APPROVED',
+                'approved_by': approver_id,
+                'approved_at': firestore.SERVER_TIMESTAMP,
+                'approval_notes': approval_notes or ''
+            })
+            
+            # Activate the approved version
+            activation_result = FileVersionManager._activate_version(file_id, version_id, approver_id)
+            if not activation_result['success']:
+                return activation_result
+            
+            logger.info(f"Version {version_id} approved by {approver_id}")
+            
+            return {
+                'success': True,
+                'version_id': version_id,
+                'approved_by': approver_id,
+                'activated': True
+            }
+            
+        except Exception as e:
+            logger.error(f"Version approval failed: {e}")
+            return {
+                'success': False,
+                'error': f'Failed to approve version: {str(e)}'
+            }
+    
+    @staticmethod
+    def reject_version(version_id: str, rejector_id: str, rejection_reason: str) -> Dict[str, Any]:
+        """
+        Reject a pending file version
+        
+        Args:
+            version_id: Version to reject
+            rejector_id: User rejecting the version
+            rejection_reason: Reason for rejection
+            
+        Returns:
+            Rejection result
+        """
+        try:
+            
+            
+            # Get version document
+            version_ref = db.collection('file_versions').document(version_id)
+            version_doc = version_ref.get()
+            
+            if not version_doc.exists:
+                return {
+                    'success': False,
+                    'error': 'Version not found'
+                }
+            
+            version_data = version_doc.to_dict()
+            
+            # Check rejector permissions
+            file_id = version_data['file_id']
+            rejector_permissions = FileVersionManager._get_user_file_permissions(rejector_id, file_id)
+            if not rejector_permissions.get('can_approve_versions', False):
+                return {
+                    'success': False,
+                    'error': 'Insufficient permissions to reject versions'
+                }
+            
+            # Update version status
+            version_ref.update({
+                'status': 'REJECTED',
+                'rejected_by': rejector_id,
+                'rejected_at': firestore.SERVER_TIMESTAMP,
+                'rejection_reason': rejection_reason
+            })
+            
+            logger.info(f"Version {version_id} rejected by {rejector_id}")
+            
+            return {
+                'success': True,
+                'version_id': version_id,
+                'rejected_by': rejector_id,
+                'rejection_reason': rejection_reason
+            }
+            
+        except Exception as e:
+            logger.error(f"Version rejection failed: {e}")
+            return {
+                'success': False,
+                'error': f'Failed to reject version: {str(e)}'
+            }
+    
+    @staticmethod
+    def get_version_history(file_id: str, limit: int = 10) -> Dict[str, Any]:
+        """
+        Get version history for a file
+        
+        Args:
+            file_id: File to get history for
+            limit: Maximum number of versions to return
+            
+        Returns:
+            Version history
+        """
+        try:
+            
+            
+            # Query versions for this file
+            versions_ref = db.collection('file_versions')
+            query = versions_ref.where(filter=FieldFilter('file_id', '==', file_id))
+            query = query.order_by('created_at', direction=Query.DESCENDING)
+            query = query.limit(limit)
+            
+            versions = []
+            for doc in query.stream():
+                version_data = doc.to_dict()
+                versions.append({
+                    'version_id': version_data['version_id'],
+                    'version_number': version_data['version_number'],
+                    'version_type': version_data['version_type'],
+                    'uploader_id': version_data['uploader_id'],
+                    'created_at': version_data['created_at'],
+                    'status': version_data['status'],
+                    'change_description': version_data.get('change_description', ''),
+                    'approved_by': version_data.get('approved_by'),
+                    'approved_at': version_data.get('approved_at'),
+                    'file_size': version_data.get('file_size', 0),
+                    'integrity_report': version_data.get('integrity_report')
+                })
+            
+            return {
+                'success': True,
+                'file_id': file_id,
+                'versions': versions,
+                'total_versions': len(versions)
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get version history: {e}")
+            return {
+                'success': False,
+                'error': f'Failed to get version history: {str(e)}'
+            }
+    
+    @staticmethod
+    def get_pending_approvals(approver_id: str) -> Dict[str, Any]:
+        """
+        Get versions pending approval for a specific approver
+        
+        Args:
+            approver_id: User ID of the approver
+            
+        Returns:
+            List of pending versions
+        """
+        try:
+            
+            
+            # Get versions pending approval
+            versions_ref = db.collection('file_versions')
+            query = versions_ref.where(filter=FieldFilter('status', '==', 'PENDING_APPROVAL'))
+            query = query.order_by('created_at', direction=Query.DESCENDING)
+            
+            pending_versions = []
+            for doc in query.stream():
+                version_data = doc.to_dict()
+                file_id = version_data['file_id']
+                
+                # Check if user can approve this version
+                permissions = FileVersionManager._get_user_file_permissions(approver_id, file_id)
+                if permissions.get('can_approve_versions', False):
+                    pending_versions.append({
+                        'version_id': version_data['version_id'],
+                        'file_id': file_id,
+                        'version_number': version_data['version_number'],
+                        'version_type': version_data['version_type'],
+                        'uploader_id': version_data['uploader_id'],
+                        'created_at': version_data['created_at'],
+                        'change_description': version_data.get('change_description', ''),
+                        'integrity_report': version_data.get('integrity_report'),
+                        'file_metadata': version_data.get('metadata', {})
+                    })
+            
+            return {
+                'success': True,
+                'pending_versions': pending_versions,
+                'total_pending': len(pending_versions)
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get pending approvals: {e}")
+            return {
+                'success': False,
+                'error': f'Failed to get pending approvals: {str(e)}'
+            }
+    
+    @staticmethod
+    def _increment_version(current_version: str, version_type: str) -> str:
+        """
+        Increment version number based on type
+        
+        Args:
+            current_version: Current version (e.g., "1.2.3")
+            version_type: MAJOR, MINOR, or PATCH
+            
+        Returns:
+            New version number
+        """
+        try:
+            parts = current_version.split('.')
+            major = int(parts[0]) if len(parts) > 0 else 1
+            minor = int(parts[1]) if len(parts) > 1 else 0
+            patch = int(parts[2]) if len(parts) > 2 else 0
+            
+            if version_type == 'MAJOR':
+                major += 1
+                minor = 0
+                patch = 0
+            elif version_type == 'MINOR':
+                minor += 1
+                patch = 0
+            else:  # PATCH
+                patch += 1
+            
+            return f"{major}.{minor}.{patch}"
+            
+        except Exception:
+            return "1.0.1"
+    
+    @staticmethod
+    def _requires_approval(version_type: str, 
+                          integrity_report: Optional[Dict],
+                          user_permissions: Dict[str, Any]) -> bool:
+        """
+        Determine if version requires approval
+        
+        Args:
+            version_type: Type of version change
+            integrity_report: File integrity analysis
+            user_permissions: User's permissions
+            
+        Returns:
+            True if approval required
+        """
+        # Always require approval for major versions
+        if version_type == 'MAJOR':
+            return True
+        
+        # Check if user has auto-approval permissions
+        if user_permissions.get('auto_approve_minor', False) and version_type == 'MINOR':
+            return False
+        
+        if user_permissions.get('auto_approve_patch', False) and version_type == 'PATCH':
+            return False
+        
+        # Check integrity report for suspicious changes
+        if integrity_report:
+            security_analysis = integrity_report.get('security_analysis', {})
+            risk_level = security_analysis.get('risk_level', 'LOW')
+            
+            if risk_level in ['HIGH', 'CRITICAL']:
+                return True
+        
+        # Default: require approval for non-patch versions
+        return version_type != 'PATCH'
+    
+    @staticmethod
+    def _activate_version(file_id: str, version_id: str, activator_id: str) -> Dict[str, Any]:
+        """
+        Activate an approved version as the current version
+        
+        Args:
+            file_id: File to update
+            version_id: Version to activate
+            activator_id: User activating the version
+            
+        Returns:
+            Activation result
+        """
+        try:
+            
+            
+            # Get version data
+            version_ref = db.collection('file_versions').document(version_id)
+            version_doc = version_ref.get()
+            
+            if not version_doc.exists:
+                return {
+                    'success': False,
+                    'error': 'Version not found'
+                }
+            
+            version_data = version_doc.to_dict()
+            
+            # Update main file document with new version info
+            file_ref = db.collection('files').document(file_id)
+            file_ref.update({
+                'current_version': version_data['version_number'],
+                'current_version_id': version_id,
+                'last_modified_at': firestore.SERVER_TIMESTAMP,
+                'last_modified_by': activator_id,
+                'integrity_hashes': version_data['integrity_hashes']
+            })
+            
+            # Mark version as active
+            version_ref.update({
+                'status': 'ACTIVE',
+                'activated_at': firestore.SERVER_TIMESTAMP,
+                'activated_by': activator_id
+            })
+            
+            return {
+                'success': True,
+                'activated_version': version_data['version_number']
+            }
+            
+        except Exception as e:
+            logger.error(f"Version activation failed: {e}")
+            return {
+                'success': False,
+                'error': f'Failed to activate version: {str(e)}'
+            }
+    
+    @staticmethod
+    def _get_user_file_permissions(user_id: str, file_id: str) -> Dict[str, Any]:
+        """
+        Get user's permissions for a specific file
+        
+        Args:
+            user_id: User ID
+            file_id: File ID
+            
+        Returns:
+            Permission dictionary
+        """
+        try:
+            
+            
+            # Get user info
+            user_ref = db.collection('users').document(user_id)
+            user_doc = user_ref.get()
+            
+            if not user_doc.exists:
+                return {}
+            
+            user_data = user_doc.to_dict()
+            role = user_data.get('role', 'EMPLOYEE')
+            department = user_data.get('department', '')
+            
+            # Get file info
+            file_ref = db.collection('files').document(file_id)
+            file_doc = file_ref.get()
+            
+            if not file_doc.exists:
+                return {}
+            
+            file_data = file_doc.to_dict()
+            file_owner = file_data.get('owner_id', '')
+            
+            # Determine permissions based on role and ownership
+            permissions = {
+                'can_create_version': False,
+                'can_approve_versions': False,
+                'auto_approve_minor': False,
+                'auto_approve_patch': False
+            }
+            
+            # File owner permissions
+            if user_id == file_owner:
+                permissions.update({
+                    'can_create_version': True,
+                    'auto_approve_patch': True
+                })
+            
+            # Role-based permissions
+            if role == 'MANAGER':
+                permissions.update({
+                    'can_create_version': True,
+                    'can_approve_versions': True,
+                    'auto_approve_minor': True,
+                    'auto_approve_patch': True
+                })
+            elif role == 'SENIOR_EMPLOYEE':
+                permissions.update({
+                    'can_create_version': True,
+                    'auto_approve_patch': True
+                })
+            elif role == 'EMPLOYEE':
+                permissions.update({
+                    'can_create_version': True
+                })
+            
+            return permissions
+            
+        except Exception as e:
+            logger.error(f"Failed to get user permissions: {e}")
+            return {}

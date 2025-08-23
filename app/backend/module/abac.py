@@ -5,6 +5,7 @@ import logging
 import requests
 from typing import Dict, Any, List
 from firebase_admin import firestore
+from datetime import datetime
 from .database import db
 from .user_management import user_manager
 from config import Config
@@ -42,7 +43,7 @@ class AttributeBasedAccessControl:
             Dict with success status and policy data
         """
         try:
-            policy_id = policy_data.get('name', f"policy_{len(list(self.policies_collection.get()))}")
+            policy_id = policy_data.get('policy_id', policy_data.get('name', f"policy_{hash(str(policy_data))}"))
             
             policy_doc = {
                 'id': policy_id,
@@ -52,7 +53,8 @@ class AttributeBasedAccessControl:
                 'action': policy_data['action'],
                 'conditions': policy_data['conditions'],
                 'effect': policy_data['effect'],
-                'created_at': firestore.SERVER_TIMESTAMP,
+                'priority': policy_data.get('priority', 100),
+                'created_at': datetime.utcnow(),
                 'is_active': True
             }
             
@@ -91,7 +93,7 @@ class AttributeBasedAccessControl:
             attribute_doc = {
                 'user_id': user_id,
                 'attributes': attributes,
-                'updated_at': firestore.SERVER_TIMESTAMP
+                'updated_at': datetime.utcnow()
             }
             
             self.user_attributes_collection.document(user_id).set(attribute_doc)

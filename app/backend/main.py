@@ -14,6 +14,7 @@ from routes import (
     abac_api, ca_api, super_admin_api
 )
 from routes.health_routes import health_bp
+from routes.file_versioning_routes import file_versioning_bp
 from module import abe_lib
 
 def create_app(config_name='default'):
@@ -65,6 +66,7 @@ def create_app(config_name='default'):
         (abac_api, '/api/abac'),
         (ca_api, '/api/ca'),
         (super_admin_api, '/api/super-admin'),
+        (file_versioning_bp, '/api/file-versioning'),
         (health_bp, '/api')
     ]
     
