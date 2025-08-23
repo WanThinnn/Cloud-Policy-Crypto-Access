@@ -1,1 +1,0 @@
-Version 1.0.0: Initial content with proper versioning

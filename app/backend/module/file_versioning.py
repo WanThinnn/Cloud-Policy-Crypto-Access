@@ -501,29 +501,39 @@ class FileVersionManager:
             # Save the current file state as a historical version before overwriting
             current_version_id = current_file_data.get('current_version_id')
             if current_version_id and current_version_id != version_id:
-                # Create historical version record
-                historical_version_data = {
-                    'version_id': current_version_id or f"historical_{file_id}_{datetime.utcnow().timestamp()}",
-                    'file_id': file_id,
-                    'version_number': current_file_data.get('current_version', '1.0.0'),
-                    'version_type': 'HISTORICAL',
-                    'uploader_id': current_file_data.get('owner_id'),
-                    'created_at': current_file_data.get('upload_time') or firestore.SERVER_TIMESTAMP,
-                    'status': 'HISTORICAL',
-                    'change_description': 'Historical version saved before activation',
-                    'integrity_hashes': current_file_data.get('integrity_hashes', {}),
-                    'encrypted_data': current_file_data.get('encrypted_data'),
-                    'file_size': current_file_data.get('original_size', 0),
-                    'metadata': {
-                        'original_filename': current_file_data.get('filename'),
-                        'content_type': current_file_data.get('file_type')
-                    }
-                }
+                # Get current active version data (not main file data)
+                current_version_ref = db.collection('file_versions').document(current_version_id)
+                current_version_doc = current_version_ref.get()
                 
-                # Save historical version
-                historical_doc_id = current_version_id or f"historical_{file_id}_{int(datetime.utcnow().timestamp())}"
-                db.collection('file_versions').document(historical_doc_id).set(historical_version_data)
-                logger.info(f"Saved historical version {current_file_data.get('current_version')} before activating {version_data['version_number']}")
+                if current_version_doc.exists:
+                    current_version_data = current_version_doc.to_dict()
+                    # Create historical version record with data from current active version
+                    historical_version_data = {
+                        'version_id': current_version_id or f"historical_{file_id}_{datetime.utcnow().timestamp()}",
+                        'file_id': file_id,
+                        'version_number': current_file_data.get('current_version', '1.0.0'),
+                        'version_type': 'HISTORICAL',
+                        'uploader_id': current_version_data.get('uploader_id') or current_file_data.get('owner_id'),
+                        'created_at': current_version_data.get('created_at') or current_file_data.get('upload_time') or firestore.SERVER_TIMESTAMP,
+                        'status': 'HISTORICAL',
+                        'change_description': 'Historical version saved before activation',
+                        'integrity_hashes': current_version_data.get('integrity_hashes', {}),
+                        'encrypted_data': current_version_data.get('encrypted_data'), # Copy from current active version
+                        'file_size': current_version_data.get('file_size', current_file_data.get('original_size', 0)),
+                        'metadata': {
+                            'original_filename': current_file_data.get('filename'),
+                            'content_type': current_file_data.get('file_type')
+                        }
+                    }
+                    
+                    # Save historical version (update existing document to mark as historical)
+                    db.collection('file_versions').document(current_version_id).update({
+                        'status': 'HISTORICAL',
+                        'change_description': 'Historical version saved before activation'
+                    })
+                    logger.info(f"Marked version {current_file_data.get('current_version')} as HISTORICAL before activating {version_data['version_number']}")
+                else:
+                    logger.warning(f"Current version document {current_version_id} not found, skipping historical backup")
             
             # Update main file document with ONLY version metadata (DO NOT overwrite content)
             # Main file should be metadata-only container, actual content stays in file_versions
@@ -593,11 +603,16 @@ class FileVersionManager:
             
             # Determine permissions based on role and ownership
             permissions = {
+                'can_read': False,
                 'can_create_version': False,
                 'can_approve_versions': False,
                 'auto_approve_minor': False,
                 'auto_approve_patch': False
             }
+            
+            # Basic read permissions - all authenticated users can read if they have access to the file
+            # This will be further validated by ABAC policies
+            permissions['can_read'] = True
             
             # File owner permissions
             if user_id == file_owner:
@@ -629,3 +644,70 @@ class FileVersionManager:
         except Exception as e:
             logger.error(f"Failed to get user permissions: {e}")
             return {}
+
+    @staticmethod
+    def get_version_data(version_id: str, user_id: str) -> Dict[str, Any]:
+        """
+        Get encrypted data for a specific version
+        
+        Args:
+            version_id: Version ID to download
+            user_id: User requesting the download
+            
+        Returns:
+            Version data including encrypted content and metadata
+        """
+        try:
+            # Get version document
+            version_ref = db.collection('file_versions').document(version_id)
+            version_doc = version_ref.get()
+            
+            if not version_doc.exists:
+                return {
+                    'success': False,
+                    'error': 'Version not found'
+                }
+            
+            version_data = version_doc.to_dict()
+            file_id = version_data.get('file_id')
+            
+            if not file_id:
+                return {
+                    'success': False,
+                    'error': 'Invalid version data'
+                }
+            
+            # Check user permissions for the main file
+            permissions = FileVersionManager._get_user_file_permissions(user_id, file_id)
+            if not permissions.get('can_read', False):
+                return {
+                    'success': False,
+                    'error': 'Access denied: Insufficient permissions to download this version'
+                }
+            
+            # Return version data
+            return {
+                'success': True,
+                'version_data': {
+                    'version_id': version_data['version_id'],
+                    'file_id': file_id,
+                    'version_number': version_data['version_number'],
+                    'version_type': version_data['version_type'],
+                    'status': version_data['status'],
+                    'encrypted_data': version_data.get('encrypted_data'),
+                    'original_size': version_data.get('original_size'),
+                    'file_type': version_data.get('file_type'),
+                    'filename': version_data.get('filename'),
+                    'created_at': version_data['created_at'],
+                    'uploader_id': version_data['uploader_id'],
+                    'change_description': version_data.get('change_description', ''),
+                    'metadata': version_data.get('metadata', {})
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get version data: {e}")
+            return {
+                'success': False,
+                'error': f'Failed to get version data: {str(e)}'
+            }

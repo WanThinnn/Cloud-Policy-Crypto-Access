@@ -2,12 +2,14 @@
 File Versioning Routes with JWT authentication
 For now, using basic JWT authentication without ABAC until ABAC policies are fully implemented
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 import logging
 import base64
+import io
 from module.auth_decorators import jwt_required, get_current_user
 from module.file_versioning import FileVersionManager
 from module.file_integrity import FileIntegrityManager
+from module.central_authority import central_authority
 
 logger = logging.getLogger(__name__)
 
@@ -452,4 +454,76 @@ def versioning_health():
             'status': 'unhealthy',
             'service': 'file_versioning',
             'error': str(e)
+        }), 500
+
+# Download specific version endpoint
+@file_versioning_bp.route('/version/<version_id>/download', methods=['GET'])
+@jwt_required
+def download_version(version_id):
+    """
+    Download a specific version of a file
+    
+    Args:
+        version_id: The version ID to download
+        
+    Returns:
+        File download or error response
+    """
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'User not authenticated'
+            }), 401
+            
+        current_user_id = current_user.get('user_id')
+        
+        # Get version data
+        result = FileVersionManager.get_version_data(version_id, current_user_id)
+        
+        if not result['success']:
+            return jsonify(result), 404 if 'not found' in result['error'].lower() else 403
+        
+        version_data = result['version_data']
+        encrypted_data = version_data.get('encrypted_data')
+        
+        if not encrypted_data:
+            return jsonify({
+                'success': False,
+                'error': 'No encrypted data found for this version'
+            }), 404
+        
+        # Decrypt the file data
+        decrypt_result = central_authority.decrypt_file_for_user(
+            encrypted_data=encrypted_data,
+            user_id=current_user_id
+        )
+        
+        if not decrypt_result['success']:
+            logger.error(f"Decryption failed for version {version_id}: {decrypt_result.get('error')}")
+            return jsonify({
+                'success': False,
+                'error': 'Failed to decrypt file'
+            }), 500
+        
+        # Return file as download
+        decrypted_data = decrypt_result['decrypted_data']
+        filename = f"{version_data.get('filename', 'file')}_v{version_data.get('version_number', '1.0.0')}"
+        file_type = version_data.get('file_type', 'application/octet-stream')
+        
+        logger.info(f"User {current_user_id} downloaded version {version_id} ({version_data.get('version_number')})")
+        
+        return send_file(
+            io.BytesIO(decrypted_data),
+            as_attachment=True,
+            download_name=filename,
+            mimetype=file_type
+        )
+        
+    except Exception as e:
+        logger.error(f"Download version error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}'
         }), 500
