@@ -312,7 +312,12 @@ class AttributeBasedAccessControl:
             attr_name, attr_value = condition.split(':', 1)
             user_attr_value = attributes.get(attr_name)
             
-            if user_attr_value != attr_value:
+            # Handle wildcard matching
+            if attr_value == '*':
+                # Wildcard means any value is acceptable, but the attribute must exist
+                if user_attr_value is None:
+                    return False
+            elif user_attr_value != attr_value:
                 return False
                 
         return True

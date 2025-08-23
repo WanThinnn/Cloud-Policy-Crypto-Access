@@ -415,7 +415,7 @@ class CentralAuthority:
             return {
                 'success': True,
                 'has_key': True,
-                'private_key': key_data['private_key'],
+                'private_key': key_data['encrypted_blob'],
                 'attributes': key_data['attributes'],
                 'created_at': key_data.get('created_at'),
                 'updated_at': key_data.get('updated_at'),
@@ -567,8 +567,8 @@ class CentralAuthority:
                 'is_active': True
             }
             
-            # Save new encrypted private key
-            private_key_id = str(uuid.uuid4())
+            # Save new encrypted private key with consistent format
+            private_key_id = f"privkey_{user_id}_{int(datetime.utcnow().timestamp())}"
             self.keys_collection.document(private_key_id).set(user_key_doc)
             
             # Cleanup temp files

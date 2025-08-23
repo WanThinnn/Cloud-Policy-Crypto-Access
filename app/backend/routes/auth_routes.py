@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 # Import modules
 try:
-    from ..module.user_management import user_manager
+    from ..module.user_management import user_manager, UserManager
     from ..module.super_admin import super_admin
     from ..module.jwt_auth import jwt_manager
     from ..module.auth_decorators import jwt_required, get_current_user
@@ -19,7 +19,7 @@ except ImportError:
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from module.user_management import user_manager
+    from module.user_management import user_manager, UserManager
     from module.super_admin import super_admin
     from module.jwt_auth import jwt_manager
     from module.auth_decorators import jwt_required, get_current_user
@@ -107,6 +107,17 @@ def login():
             if result['success']:
                 # Regular user login successful - get user attributes and generate JWT
                 user_id = result.get('user_id', data['username'])
+                must_change_password = result.get('must_change_password', False)
+                
+                # If user must change password, return special response
+                if must_change_password:
+                    return jsonify({
+                        'success': True,
+                        'must_change_password': True,
+                        'user_id': user_id,
+                        'message': 'Password must be changed before accessing the system',
+                        'action_required': 'change_password'
+                    }), 200
                 
                 # Get user attributes
                 try:
@@ -395,4 +406,108 @@ def get_profile():
         return jsonify({
             'success': False,
             'error': 'Failed to get user profile'
+        }), 500
+
+@auth_api.route('/change-password', methods=['POST'])
+def change_password():
+    """Change user password - handles both forced and voluntary password changes"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No data provided'
+            }), 400
+        
+        # Validate required fields
+        required_fields = ['username', 'old_password', 'new_password']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'error': f'Missing required field: {field}'
+                }), 400
+        
+        username = data['username']
+        old_password = data['old_password']
+        new_password = data['new_password']
+        
+        # Authenticate user with old password first
+        auth_result = run_async(user_manager.authenticate_user)(username, old_password)
+        if not auth_result['success']:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid current password'
+            }), 401
+        
+        user_id = auth_result['user_id']
+        
+        # Validate new password
+        password_validation = UserManager.validate_password(new_password)
+        if not password_validation['valid']:
+            return jsonify({
+                'success': False,
+                'error': 'New password does not meet requirements',
+                'details': password_validation['errors']
+            }), 400
+        
+        # Update password in database
+        hashed_new_password = UserManager.hash_password(new_password)
+        
+        # Get user document
+        from module.super_admin import super_admin
+        users_collection = super_admin.users_collection
+        
+        users_collection.document(user_id).update({
+            'password': hashed_new_password,
+            'must_change_password': False,  # Clear the flag
+            'password_changed_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        })
+        
+        # Re-encrypt private key with new password if user has one
+        from module.central_authority import central_authority
+        
+        # Check if user has private key
+        key_status = central_authority.check_user_has_private_key(user_id)
+        if key_status['has_key']:
+            logger.info(f"Re-encrypting private key for user {user_id} with new password")
+            
+            # Get user attributes for key regeneration
+            attrs_result = super_admin.get_user_attributes(user_id)
+            if attrs_result['success']:
+                user_attributes = attrs_result['attributes']
+                
+                # Convert to ABE format
+                abe_attributes = []
+                for key, value in user_attributes.items():
+                    abe_attributes.append(f"{key}:{value}")
+                
+                # Re-generate encrypted private key with new password
+                rekey_result = central_authority.generate_encrypted_user_private_key(
+                    user_id=user_id,
+                    password=new_password,
+                    attributes=abe_attributes
+                )
+                
+                if not rekey_result['success']:
+                    logger.error(f"Failed to re-encrypt private key for user {user_id}: {rekey_result.get('error')}")
+                    # Don't fail the password change, but log the error
+                else:
+                    logger.info(f"Successfully re-encrypted private key for user {user_id}")
+        
+        logger.info(f"Password changed successfully for user: {username}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Password changed successfully',
+            'private_key_updated': key_status['has_key']
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Change password error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to change password due to server error'
         }), 500

@@ -389,7 +389,9 @@ class SuperAdmin:
                 'created_by': admin_id,
                 'created_at': datetime.utcnow(),
                 'updated_at': datetime.utcnow(),
-                'is_active': True
+                'is_active': True,
+                'must_change_password': True,  # Force password change on first login
+                'password_changed_at': None    # Track when password was changed
             }
             
             # Save user to Firestore

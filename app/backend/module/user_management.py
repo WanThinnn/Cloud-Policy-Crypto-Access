@@ -169,9 +169,14 @@ class UserManager:
             user_response = user_data.copy()
             del user_response['password']
             
+            # Check if user must change password
+            must_change_password = user_data.get('must_change_password', False)
+            
             return {
                 'success': True,
                 'user': user_response,
+                'user_id': user_data['id'],
+                'must_change_password': must_change_password,
                 'message': 'Authentication successful.'
             }
             
