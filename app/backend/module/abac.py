@@ -96,7 +96,9 @@ class AttributeBasedAccessControl:
                 'updated_at': datetime.utcnow()
             }
             
-            self.user_attributes_collection.document(user_id).set(attribute_doc)
+            # Use consistent document ID format: UA+UserID
+            attr_document_id = f"UA{user_id}"
+            self.user_attributes_collection.document(attr_document_id).set(attribute_doc)
             
             logger.info(f"User attributes set for user: {user_id}")
             return {

@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional
 from firebase_admin import firestore
 from .database import db
 from .user_management import UserManager
+from .attribute_validator import attribute_validator
 
 class SuperAdmin:
     """
@@ -436,16 +437,11 @@ class SuperAdmin:
                 'updated_at': datetime.utcnow()
             }
             
-            # Check if attributes exist
-            existing_attrs = self.attributes_collection.where('user_id', '==', user_id).limit(1).get()
+            # Use consistent document ID format: UA+UserID
+            attr_document_id = f"UA{user_id}"
             
-            if existing_attrs:
-                # Update existing
-                attr_doc = existing_attrs[0]
-                self.attributes_collection.document(attr_doc.id).update(attr_data)
-            else:
-                # Create new
-                self.attributes_collection.document().set(attr_data)
+            # Create or update with consistent document ID
+            self.attributes_collection.document(attr_document_id).set(attr_data)
             
             return {
                 'success': True,
@@ -463,15 +459,17 @@ class SuperAdmin:
         Get attributes for a user
         """
         try:
-            attrs_query = self.attributes_collection.where('user_id', '==', user_id).limit(1).get()
+            # Use consistent document ID format: UA+UserID
+            attr_document_id = f"UA{user_id}"
+            attr_doc = self.attributes_collection.document(attr_document_id).get()
             
-            if not attrs_query:
+            if not attr_doc.exists:
                 return {
                     'success': False,
                     'error': 'User attributes not found'
                 }
             
-            attr_data = attrs_query[0].to_dict()
+            attr_data = attr_doc.to_dict()
             
             return {
                 'success': True,
@@ -646,54 +644,23 @@ class SuperAdmin:
     
     def _validate_user_attributes(self, attributes: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Validate user attributes against the schema
+        Validate user attributes against database schemas
         """
         try:
-            schema_result = self.get_attribute_schema()
-            if not schema_result['success']:
+            # Use the new attribute validator
+            validation_result = attribute_validator.validate_attributes(attributes)
+            
+            if not validation_result['success']:
                 return {
                     'valid': False,
-                    'errors': ['Could not load attribute schema']
+                    'errors': [validation_result.get('error', 'Validation failed')]
                 }
             
-            schema = schema_result['schema']
-            errors = []
-            
-            # Check required attributes
-            for attr_name, attr_config in schema.items():
-                if attr_config.get('required', False) and attr_name not in attributes:
-                    errors.append(f'Required attribute missing: {attr_name}')
-            
-            # Validate each provided attribute
-            for attr_name, attr_value in attributes.items():
-                if attr_name not in schema:
-                    errors.append(f'Unknown attribute: {attr_name}')
-                    continue
-                
-                attr_config = schema[attr_name]
-                
-                # Validate based on type
-                if attr_config['type'] == 'single_choice':
-                    if attr_value not in attr_config['values']:
-                        errors.append(f'Invalid value for {attr_name}: {attr_value}. Valid values: {attr_config["values"]}')
-                
-                elif attr_config['type'] == 'multiple_choice':
-                    if not isinstance(attr_value, list):
-                        errors.append(f'Attribute {attr_name} must be a list')
-                    else:
-                        for value in attr_value:
-                            if value not in attr_config['values']:
-                                errors.append(f'Invalid value for {attr_name}: {value}. Valid values: {attr_config["values"]}')
-                
-                elif attr_config['type'] == 'range':
-                    if not isinstance(attr_value, (int, float)):
-                        errors.append(f'Attribute {attr_name} must be a number')
-                    elif not (attr_config['min_value'] <= attr_value <= attr_config['max_value']):
-                        errors.append(f'Attribute {attr_name} must be between {attr_config["min_value"]} and {attr_config["max_value"]}')
-            
             return {
-                'valid': len(errors) == 0,
-                'errors': errors
+                'valid': validation_result['valid'],
+                'errors': validation_result.get('errors', []),
+                'warnings': validation_result.get('warnings', []),
+                'details': validation_result.get('errors', [])  # For backward compatibility
             }
             
         except Exception as e:

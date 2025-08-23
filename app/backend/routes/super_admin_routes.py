@@ -629,3 +629,74 @@ def get_system_stats():
             'success': False,
             'error': f'Failed to get system stats: {str(e)}'
         }), 500
+
+# Schema management endpoints
+@super_admin_api.route('/schema/attributes', methods=['GET'])
+@super_admin_required
+def get_attribute_schemas():
+    """Get all attribute schemas"""
+    try:
+        from module.attribute_validator import attribute_validator
+        
+        schemas = attribute_validator.get_all_schemas()
+        
+        if not schemas:
+            return jsonify({
+                'success': False,
+                'error': 'Attribute schemas not found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'schemas': schemas
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Get attribute schemas error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get attribute schemas: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/schema/attributes/<attribute_name>/valid-values', methods=['GET'])
+@super_admin_required 
+def get_valid_values(attribute_name):
+    """Get valid values for a specific attribute"""
+    try:
+        from module.attribute_validator import attribute_validator
+        
+        valid_values = attribute_validator.get_valid_values(attribute_name)
+        
+        return jsonify({
+            'success': True,
+            'attribute': attribute_name,
+            'valid_values': valid_values
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Get valid values error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get valid values: {str(e)}'
+        }), 500
+
+@super_admin_api.route('/schema/refresh', methods=['POST'])
+@super_admin_required
+def refresh_schemas():
+    """Refresh cached schemas from database"""
+    try:
+        from module.attribute_validator import attribute_validator
+        
+        attribute_validator.refresh_schemas()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Schemas refreshed successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Refresh schemas error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to refresh schemas: {str(e)}'
+        }), 500
