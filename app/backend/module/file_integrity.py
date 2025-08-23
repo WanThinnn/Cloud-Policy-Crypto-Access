@@ -11,12 +11,17 @@ import os
 logger = logging.getLogger(__name__)
 
 try:
-    import ssdeep
+    import pyssdeep as ssdeep
     SSDEEP_AVAILABLE = True
-    logger.info("ssdeep library available for similarity detection")
+    logger.info("pyssdeep library available for similarity detection")
 except ImportError:
-    SSDEEP_AVAILABLE = False
-    logger.warning("ssdeep library not available - using fallback similarity detection")
+    try:
+        import ssdeep
+        SSDEEP_AVAILABLE = True
+        logger.info("ssdeep library available for similarity detection")
+    except ImportError:
+        SSDEEP_AVAILABLE = False
+        logger.warning("ssdeep/pyssdeep library not available - using fallback similarity detection")
 
 class FileIntegrityManager:
     """
@@ -43,7 +48,7 @@ class FileIntegrityManager:
             
             if SSDEEP_AVAILABLE:
                 try:
-                    hashes['ssdeep'] = ssdeep.hash(file_data)
+                    hashes['ssdeep'] = ssdeep.fuzzy_hash_buf(file_data, len(file_data))
                 except Exception as e:
                     logger.error(f"ssdeep hashing failed: {e}")
                     hashes['ssdeep'] = None
@@ -77,7 +82,7 @@ class FileIntegrityManager:
             return 0.0
             
         try:
-            similarity = ssdeep.compare(hash1, hash2)
+            similarity = ssdeep.fuzzy_compare(hash1, hash2)
             return float(similarity)
         except Exception as e:
             logger.error(f"Similarity calculation failed: {e}")

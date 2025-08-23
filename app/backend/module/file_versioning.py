@@ -23,7 +23,8 @@ class FileVersionManager:
                       file_data: bytes, 
                       uploader_id: str,
                       version_type: str = 'MINOR',
-                      change_description: Optional[str] = None) -> Dict[str, Any]:
+                      change_description: Optional[str] = None,
+                      access_policy: Optional[str] = None) -> Dict[str, Any]:
         """
         Create a new version of a file.
         The new version's data is encrypted and stored in the version document.
@@ -35,6 +36,7 @@ class FileVersionManager:
             uploader_id: User creating the version
             version_type: MAJOR, MINOR, PATCH
             change_description: Description of changes
+            access_policy: Access policy to use (if None, uses original file's policy)
             
         Returns:
             Version creation result
@@ -52,10 +54,11 @@ class FileVersionManager:
             
             original_file_metadata = file_doc.to_dict()
             
-            # For integrity comparison, decrypt the previous version's content.
-            # The uploader must have rights to decrypt the file to create a new version.
+            # IMPORTANT: Save the current file data BEFORE any modifications
+            # This is critical for proper version comparison
             old_encrypted_data = original_file_metadata.get('encrypted_data')
             old_decrypted_data = b""
+            old_file_size = original_file_metadata.get('original_size', 0)
             
             if old_encrypted_data:
                 decrypt_result = central_authority.decrypt_file_for_user(
@@ -97,9 +100,12 @@ class FileVersionManager:
             with open(temp_file_path, 'wb') as f:
                 f.write(file_data)
 
-            # Use the original file's access policy for the new version
-            access_policy = original_file_metadata.get('access_policy')
-            encrypt_result = central_authority.encrypt_file_for_policy(temp_file_path, access_policy)
+            # Use the provided access policy or fall back to original file's policy
+            effective_access_policy = access_policy or original_file_metadata.get('access_policy')
+            if not effective_access_policy:
+                return {'success': False, 'error': 'No access policy available for version encryption'}
+                
+            encrypt_result = central_authority.encrypt_file_for_policy(temp_file_path, effective_access_policy)
             
             import shutil
             shutil.rmtree(temp_dir)
@@ -477,6 +483,7 @@ class FileVersionManager:
         """
         Activate an approved version as the current version.
         This replaces the main file's encrypted data and metadata.
+        IMPORTANT: Before updating, we save the current version as a historical record.
         
         Args:
             file_id: File to update
@@ -489,16 +496,43 @@ class FileVersionManager:
         """
         try:
             file_ref = db.collection('shared_files').document(file_id)
+            current_file_data = file_ref.get().to_dict()
             
-            # Update main file document with new version info
+            # Save the current file state as a historical version before overwriting
+            current_version_id = current_file_data.get('current_version_id')
+            if current_version_id and current_version_id != version_id:
+                # Create historical version record
+                historical_version_data = {
+                    'version_id': current_version_id or f"historical_{file_id}_{datetime.utcnow().timestamp()}",
+                    'file_id': file_id,
+                    'version_number': current_file_data.get('current_version', '1.0.0'),
+                    'version_type': 'HISTORICAL',
+                    'uploader_id': current_file_data.get('owner_id'),
+                    'created_at': current_file_data.get('upload_time') or firestore.SERVER_TIMESTAMP,
+                    'status': 'HISTORICAL',
+                    'change_description': 'Historical version saved before activation',
+                    'integrity_hashes': current_file_data.get('integrity_hashes', {}),
+                    'encrypted_data': current_file_data.get('encrypted_data'),
+                    'file_size': current_file_data.get('original_size', 0),
+                    'metadata': {
+                        'original_filename': current_file_data.get('filename'),
+                        'content_type': current_file_data.get('file_type')
+                    }
+                }
+                
+                # Save historical version
+                historical_doc_id = current_version_id or f"historical_{file_id}_{int(datetime.utcnow().timestamp())}"
+                db.collection('file_versions').document(historical_doc_id).set(historical_version_data)
+                logger.info(f"Saved historical version {current_file_data.get('current_version')} before activating {version_data['version_number']}")
+            
+            # Update main file document with ONLY version metadata (DO NOT overwrite content)
+            # Main file should be metadata-only container, actual content stays in file_versions
             file_ref.update({
                 'current_version': version_data['version_number'],
                 'current_version_id': version_id,
                 'last_modified_at': firestore.SERVER_TIMESTAMP,
-                'last_modified_by': activator_id,
-                'integrity_hashes': version_data['integrity_hashes'],
-                'encrypted_data': version_data['encrypted_data'], # IMPORTANT: Update encrypted data
-                'original_size': version_data['file_size']      # IMPORTANT: Update file size
+                'last_modified_by': activator_id
+                # NOTE: DO NOT update encrypted_data or original_size - content stays in versions collection
             })
             
             # Mark version as active in its own document

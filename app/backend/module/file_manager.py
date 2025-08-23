@@ -51,9 +51,9 @@ class FileManager:
                     'error': f"Access denied by policy: {access_check.get('reason', 'Permission denied to create files.')}"
                 }
 
-            # Kiểm tra file có cùng tên đã tồn tại với owner này chưa
-            existing_file_query = self.files_collection.where('owner_id', '==', owner_id)\
-                                                      .where('filename', '==', filename)\
+            # Kiểm tra file có cùng tên đã tồn tại (không phụ thuộc vào owner)
+            # Cho phép users khác tạo version mới, nhưng chỉ owner mới được thay đổi policy
+            existing_file_query = self.files_collection.where('filename', '==', filename)\
                                                       .where('is_active', '==', True)\
                                                       .limit(1).get()
             
@@ -62,14 +62,49 @@ class FileManager:
             if existing_file_docs:
                 # File đã tồn tại, tạo phiên bản mới
                 original_file_id = existing_file_docs[0].id
-                logger.info(f"File '{filename}' already exists with ID {original_file_id}. Creating a new version.")
+                original_file_data = existing_file_docs[0].to_dict()
+                file_owner_id = original_file_data.get('owner_id')
+                
+                logger.info(f"File '{filename}' already exists with ID {original_file_id}. Creating a new version by user {owner_id}.")
+                
+                # Kiểm tra policy permission:
+                # - Nếu là owner: có thể thay đổi policy
+                # - Nếu không phải owner: phải sử dụng policy cũ
+                if owner_id == file_owner_id:
+                    # Owner có thể thay đổi policy
+                    version_policy = access_policy if access_policy else original_file_data.get('access_policy')
+                    logger.info(f"Owner {owner_id} can modify policy")
+                else:
+                    # Non-owner không được thay đổi policy
+                    version_policy = original_file_data.get('access_policy')
+                    logger.info(f"Non-owner {owner_id} must use existing policy: {version_policy}")
+                    
+                    # Kiểm tra user có quyền tạo version mới với policy hiện tại không
+                    version_access_request = {
+                        'user_id': owner_id,
+                        'resource': 'files',
+                        'action': 'write',
+                        'resource_attributes': {
+                            'owner_id': file_owner_id,
+                            'file_id': original_file_id,
+                            'access_policy': version_policy
+                        },
+                        'context': {}
+                    }
+                    version_access_check = abac.check_access(version_access_request)
+                    if not version_access_check.get('access_granted'):
+                        return {
+                            'success': False,
+                            'error': f"Access denied for versioning: {version_access_check.get('reason', 'Cannot create new version of this file.')}"
+                        }
                 
                 return FileVersionManager.create_version(
                     file_id=original_file_id,
                     file_data=file_data,
                     uploader_id=owner_id,
                     version_type='MINOR', # Có thể thay đổi dựa trên input
-                    change_description='File updated via upload.'
+                    change_description=f'File updated via upload by user {owner_id}',
+                    access_policy=version_policy  # Pass the determined policy
                 )
 
             # File chưa tồn tại, tạo file mới
@@ -100,7 +135,7 @@ class FileManager:
             file_size = len(file_data)
             file_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
             
-            # Tạo metadata
+            # Tạo metadata cho main file (NO encrypted content, just metadata)
             file_metadata = {
                 'id': file_id,
                 'filename': filename,
@@ -108,18 +143,50 @@ class FileManager:
                 'file_type': file_type,
                 'owner_id': owner_id,
                 'access_policy': access_policy,
-                'encrypted_data': encrypt_result['encrypted_data'],
+                # NOTE: NO encrypted_data in main file - content stored in versions collection
                 'upload_time': SERVER_TIMESTAMP,
                 'last_accessed': None,
                 'access_count': 0,
                 'is_active': True,
                 'metadata': metadata or {},
                 'current_version': '1.0.0', # Phiên bản đầu tiên
-                'current_version_id': None
+                'current_version_id': None  # Will be set after creating version
             }
             
-            # Lưu vào Firestore
+            # Lưu main file metadata vào Firestore (NO encrypted content)
             self.files_collection.document(file_id).set(file_metadata)
+            
+            # Create version 1.0.0 with actual encrypted content
+            version_id = str(uuid.uuid4())
+            version_data = {
+                'version_id': version_id,
+                'file_id': file_id,
+                'version_number': '1.0.0',
+                'version_type': 'INITIAL',
+                'uploader_id': owner_id,
+                'created_at': SERVER_TIMESTAMP,
+                'status': 'ACTIVE',
+                'change_description': 'Initial version',
+                'integrity_hashes': {
+                    'md5': 'initial',
+                    'sha256': 'initial',
+                    'ssdeep': 'initial'
+                },
+                'encrypted_data': encrypt_result['encrypted_data'], # ACTUAL content stored here
+                'file_size': file_size,
+                'metadata': {
+                    'original_filename': filename,
+                    'content_type': file_type
+                }
+            }
+            
+            # Save version to file_versions collection
+            db.collection('file_versions').document(version_id).set(version_data)
+            
+            # Update main file to point to this version
+            self.files_collection.document(file_id).update({
+                'current_version_id': version_id
+            })
             
             # Cleanup temp files
             import shutil
@@ -186,10 +253,27 @@ class FileManager:
                     'error': f"Access denied by policy: {access_check.get('reason', 'Permission denied.')}"
                 }
 
-            # Nếu ABAC cho phép, tiếp tục kiểm tra giải mã bằng CP-ABE
-            # Đây là lớp bảo vệ thứ hai, dựa trên thuộc tính mã hóa của file
+            # Get encrypted data from current active version (not main file)
+            current_version_id = file_data.get('current_version_id')
+            if current_version_id:
+                # Load content from active version in file_versions collection
+                version_ref = db.collection('file_versions').document(current_version_id)
+                version_doc = version_ref.get()
+                if version_doc.exists:
+                    version_data = version_doc.to_dict()
+                    encrypted_data_to_decrypt = version_data.get('encrypted_data')
+                else:
+                    # Fallback to main file if version not found (backward compatibility)
+                    encrypted_data_to_decrypt = file_data.get('encrypted_data')
+                    logger.warning(f"Version {current_version_id} not found, using main file data")
+            else:
+                # No version system, use main file data (backward compatibility)
+                encrypted_data_to_decrypt = file_data.get('encrypted_data')
+                logger.info(f"No version system for file {file_id}, using main file data")
+            
+            # CP-ABE decryption using content from active version
             decrypt_result = central_authority.decrypt_file_for_user(
-                file_data['encrypted_data'], 
+                encrypted_data_to_decrypt, 
                 user_id
             )
             
