@@ -93,7 +93,14 @@ def generate_user_private_key_with_id(user_id):
                 'error': 'Attributes must be a non-empty list'
             }), 400
         
-        result = central_authority.generate_user_private_key(user_id, attributes)
+        # Convert list attributes to dict format
+        attributes_dict = {}
+        for attr in attributes:
+            if ':' in attr:
+                key, value = attr.split(':', 1)
+                attributes_dict[key] = value
+        
+        result = central_authority.generate_user_private_key(user_id, user_id, attributes_dict)
         
         if result['success']:
             return jsonify(result), 201
@@ -147,141 +154,6 @@ def generate_user_policy(user_id):
         
     except Exception as e:
         logger.error(f"Generate user policy error: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Internal server error'
-        }), 500
-
-@ca_api.route('/encrypt', methods=['POST'])
-def encrypt_data():
-    """
-    Mã hóa dữ liệu với policy
-    
-    Expected form data:
-    - file: File to encrypt
-    - policy: Access policy string
-    """
-    try:
-        if 'file' not in request.files:
-            return jsonify({
-                'success': False,
-                'error': 'No file provided'
-            }), 400
-        
-        file = request.files['file']
-        policy = request.form.get('policy')
-        
-        if not policy:
-            return jsonify({
-                'success': False,
-                'error': 'Policy is required'
-            }), 400
-        
-        if file.filename == '':
-            return jsonify({
-                'success': False,
-                'error': 'No file selected'
-            }), 400
-        
-        # Read file data
-        file_data = file.read()
-        
-        # Save to temp file
-        import tempfile
-        import os
-        
-        # Handle filename - use fallback if None
-        filename = file.filename or 'uploaded_file'
-        temp_dir = tempfile.mkdtemp()
-        temp_file_path = os.path.join(temp_dir, filename)
-        
-        with open(temp_file_path, 'wb') as f:
-            f.write(file_data)
-        
-        # Encrypt file
-        result = central_authority.encrypt_file_for_policy(temp_file_path, policy)
-        
-        # Cleanup temp file
-        import shutil
-        shutil.rmtree(temp_dir)
-        
-        if result['success']:
-            # Return encrypted data as base64
-            import base64
-            
-            response = {
-                'success': True,
-                'policy': result['policy'],
-                'encrypted_data_base64': base64.b64encode(result['encrypted_data']).decode('utf-8'),
-                'original_filename': file.filename,
-                'message': result['message']
-            }
-            return jsonify(response)
-        else:
-            return jsonify(result), 400
-            
-    except Exception as e:
-        logger.error(f"Encrypt data error: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Internal server error'
-        }), 500
-
-@ca_api.route('/decrypt', methods=['POST'])
-def decrypt_data():
-    """
-    Giải mã dữ liệu cho user
-    
-    Expected JSON:
-    {
-        "encrypted_data_base64": "base64_encoded_data",
-        "user_id": "user_123"
-    }
-    """
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No data provided'
-            }), 400
-        
-        encrypted_data_base64 = data.get('encrypted_data_base64')
-        user_id = data.get('user_id')
-        
-        if not encrypted_data_base64 or not user_id:
-            return jsonify({
-                'success': False,
-                'error': 'encrypted_data_base64 and user_id are required'
-            }), 400
-        
-        # Decode base64 data
-        import base64
-        try:
-            encrypted_data = base64.b64decode(encrypted_data_base64)
-        except Exception:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid base64 encoded data'
-            }), 400
-        
-        # Decrypt data
-        result = central_authority.decrypt_file_for_user(encrypted_data, user_id)
-        
-        if result['success']:
-            # Return decrypted data as base64
-            response = {
-                'success': True,
-                'decrypted_data_base64': base64.b64encode(result['decrypted_data']).decode('utf-8'),
-                'message': result['message']
-            }
-            return jsonify(response)
-        else:
-            return jsonify(result), 400
-            
-    except Exception as e:
-        logger.error(f"Decrypt data error: {e}")
         return jsonify({
             'success': False,
             'error': 'Internal server error'
@@ -646,9 +518,18 @@ def generate_user_private_key():
                 }), 400
 
             # TRỰC TIẾP GỌI CA METHOD
+            # Convert list attributes to dict format for CA method
+            attributes_dict = {}
+            for attr in cpabe_attributes:
+                if ':' in attr:
+                    key, value = attr.split(':', 1)
+                    attributes_dict[key] = value
+            
+            # Sử dụng user_id làm default password cho tự động gen key
             result = central_authority.generate_user_private_key(
                 user_id, 
-                cpabe_attributes
+                user_id,  # Use user_id as password for automatic key generation
+                attributes_dict
             )
 
             if result.get('success'):

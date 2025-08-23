@@ -35,20 +35,6 @@ def run_async(async_func):
         return asyncio.run(async_func(*args, **kwargs))
     return wrapper
 
-@auth_api.route('/test', methods=['GET'])
-def test_auth():
-    """Test route to check if auth API is working"""
-    return jsonify({
-        'success': True,
-        'message': 'Auth API is working!',
-        'timestamp': str(datetime.now()),
-        'features': [
-            'Login',
-            'Password Reset', 
-            'Admin-controlled user creation only'
-        ]
-    })
-
 @auth_api.route('/register', methods=['POST'])
 def register_disabled():
     """Public registration is disabled - Admin only user creation"""
@@ -354,4 +340,59 @@ def reset_password():
         return jsonify({
             'success': False,
             'error': 'Password reset failed'
+        }), 500
+
+@auth_api.route('/profile', methods=['GET'])
+@jwt_required
+def get_profile():
+    """Get current user profile"""
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required'
+            }), 401
+        
+        user_id = current_user.get('user_id')
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'error': 'User ID not found in token'
+            }), 401
+        
+        # Get user details from database
+        user_doc = super_admin.users_collection.document(user_id).get()
+        if not user_doc.exists:
+            return jsonify({
+                'success': False,
+                'error': 'User not found'
+            }), 404
+        
+        user_data = user_doc.to_dict()
+        
+        # Return safe user profile (without sensitive data)
+        profile = {
+            'id': user_data['id'],
+            'username': user_data['username'],
+            'email': user_data.get('email', ''),
+            'full_name': user_data.get('full_name', ''),
+            'role': user_data.get('role', 'user'),
+            'department': user_data.get('department', ''),
+            'attributes': user_data.get('attributes', {}),
+            'is_active': user_data.get('is_active', True),
+            'created_at': user_data.get('created_at'),
+            'last_login': user_data.get('last_login')
+        }
+        
+        return jsonify({
+            'success': True,
+            'profile': profile
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting user profile: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to get user profile'
         }), 500

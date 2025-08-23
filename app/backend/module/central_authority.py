@@ -216,7 +216,7 @@ class CentralAuthority:
                 'error': f'Failed to get active keys: {str(e)}'
             }
     
-    def generate_user_private_key(self, user_id: str, password: str, user_attributes: Dict[str, Any] = None) -> Dict[str, Any]:
+    def generate_user_private_key(self, user_id: str, password: str, user_attributes: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Tạo/Update private key cho user dựa trên attributes
         - Chỉ có 1 private key duy nhất per user
@@ -288,9 +288,48 @@ class CentralAuthority:
             with open(master_key_path, 'wb') as f:
                 f.write(keys_result['master_key'])
             
-            # 4. Generate private key với ABE library
-            attributes_str = ' '.join(user_attributes_list)
-            abe_lib.generate_secret_key(public_key_path, master_key_path, attributes_str, private_key_path)
+            # 4. Check ABE library availability
+            if not abe_lib:
+                import shutil
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return {
+                    'success': False,
+                    'error': 'ABE library not loaded. Please check library installation.'
+                }
+            
+            if not hasattr(abe_lib, 'generate_secret_key'):
+                import shutil
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return {
+                    'success': False,
+                    'error': 'ABE library method generate_secret_key not available.'
+                }
+                
+            # 5. Generate private key với ABE library
+            try:
+                attributes_str = ' '.join(user_attributes_list)
+                logger.info(f"Generating private key for user {user_id} with attributes: {attributes_str}")
+                logger.info(f"Temp files: pub={public_key_path}, master={master_key_path}, private={private_key_path}")
+                
+                abe_lib.generate_secret_key(public_key_path, master_key_path, attributes_str, private_key_path)
+                
+                # Check if private key file was created
+                if not os.path.exists(private_key_path):
+                    import shutil
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                    return {
+                        'success': False,
+                        'error': f'Private key file was not created at {private_key_path}'
+                    }
+                
+            except Exception as abe_error:
+                import shutil
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                logger.error(f"ABE library error: {abe_error}")
+                return {
+                    'success': False,
+                    'error': f'Failed to generate private key: {str(abe_error)}'
+                }
             
             # Read generated private key
             with open(private_key_path, 'rb') as f:
@@ -807,6 +846,14 @@ class CentralAuthority:
                 f.write(encrypted_data)
             
             # Decrypt file
+            if not abe_lib:
+                import shutil
+                shutil.rmtree(temp_dir)
+                return {
+                    'success': False,
+                    'error': 'ABE library not loaded'
+                }
+                
             abe_lib.decrypt(public_key_path, private_key_path, encrypted_file_path, decrypted_file_path)
             
             # Read decrypted data

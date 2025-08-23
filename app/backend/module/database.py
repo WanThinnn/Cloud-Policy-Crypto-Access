@@ -12,5 +12,5 @@ firebase_admin.initialize_app(cred)
 # Kết nối tới Firestore
 db = firestore.client()
 
-for collection in db.collections():
-    print(collection.id)
+# for collection in db.collections():
+#     print(collection.id)

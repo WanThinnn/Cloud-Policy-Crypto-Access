@@ -8,6 +8,7 @@ import mimetypes
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from firebase_admin import firestore, storage
+from google.cloud.firestore_v1 import SERVER_TIMESTAMP, Increment, Query
 from .database import db
 from .central_authority import central_authority
 from .abac import abac
@@ -27,7 +28,7 @@ class FileManager:
         self.access_logs_collection = db.collection('file_access_logs')
         
     def upload_file(self, file_data: bytes, filename: str, owner_id: str, 
-                   access_policy: str = None, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
+                   access_policy: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Upload và mã hóa file
         
@@ -77,7 +78,7 @@ class FileManager:
                 'owner_id': owner_id,
                 'access_policy': access_policy,
                 'encrypted_data': encrypt_result['encrypted_data'],
-                'upload_time': firestore.SERVER_TIMESTAMP,
+                'upload_time': SERVER_TIMESTAMP,
                 'last_accessed': None,
                 'access_count': 0,
                 'is_active': True,
@@ -137,45 +138,55 @@ class FileManager:
                     'error': 'File is no longer available'
                 }
             
-            # Kiểm tra quyền truy cập với ABAC
-            access_request = {
-                'user_id': user_id,
-                'resource': 'files',
-                'action': 'read',
-                'resource_attributes': {
-                    'file_id': file_id,
-                    'owner_id': file_data['owner_id'],
-                    'file_type': file_data['file_type']
-                }
-            }
+            # Kiểm tra quyền truy cập 
+            # Option 1: Owner can always access
+            if file_data['owner_id'] == user_id:
+                access_granted = True
+                access_reason = "File owner access"
+            else:
+                # Option 2: Check if user can decrypt with their private key
+                # This is the real CP-ABE access control
+                decrypt_result = central_authority.decrypt_file_for_user(
+                    file_data['encrypted_data'], 
+                    user_id
+                )
+                
+                if decrypt_result['success']:
+                    access_granted = True
+                    access_reason = "CP-ABE policy match"
+                    decrypted_data = decrypt_result['decrypted_data']
+                else:
+                    access_granted = False
+                    access_reason = f"CP-ABE access denied: {decrypt_result.get('error', 'No matching attributes')}"
             
-            access_check = abac.check_access(access_request)
-            
-            if not access_check['success'] or not access_check['access_granted']:
+            if not access_granted:
                 # Log access attempt
-                self._log_access_attempt(file_id, user_id, 'denied', access_check.get('reason', 'Access denied'))
+                self._log_access_attempt(file_id, user_id, 'denied', access_reason)
                 
                 return {
                     'success': False,
-                    'error': f"Access denied: {access_check.get('reason', 'Insufficient permissions')}"
+                    'error': f"Access denied: {access_reason}"
                 }
             
-            # Giải mã file
-            decrypt_result = central_authority.decrypt_file_for_user(
-                file_data['encrypted_data'], 
-                user_id
-            )
-            
-            if not decrypt_result['success']:
-                # Log failed decryption
-                self._log_access_attempt(file_id, user_id, 'failed', 'Decryption failed')
+            # If we reach here and haven't decrypted yet (owner case), decrypt now
+            if file_data['owner_id'] == user_id and 'decrypted_data' not in locals():
+                decrypt_result = central_authority.decrypt_file_for_user(
+                    file_data['encrypted_data'], 
+                    user_id
+                )
                 
-                return decrypt_result
+                if not decrypt_result['success']:
+                    # Log failed decryption
+                    self._log_access_attempt(file_id, user_id, 'failed', 'Owner decryption failed')
+                    
+                    return decrypt_result
+                
+                decrypted_data = decrypt_result['decrypted_data']
             
             # Update access statistics
             self.files_collection.document(file_id).update({
-                'last_accessed': firestore.SERVER_TIMESTAMP,
-                'access_count': firestore.Increment(1)
+                'last_accessed': SERVER_TIMESTAMP,
+                'access_count': Increment(1)
             })
             
             # Log successful access
@@ -314,7 +325,7 @@ class FileManager:
             # Soft delete - set is_active = False
             self.files_collection.document(file_id).update({
                 'is_active': False,
-                'deleted_at': firestore.SERVER_TIMESTAMP,
+                'deleted_at': SERVER_TIMESTAMP,
                 'deleted_by': user_id
             })
             
@@ -394,7 +405,7 @@ class FileManager:
             self.files_collection.document(file_id).update({
                 'access_policy': new_policy,
                 'encrypted_data': encrypt_result['encrypted_data'],
-                'policy_updated_at': firestore.SERVER_TIMESTAMP,
+                'policy_updated_at': SERVER_TIMESTAMP,
                 'policy_updated_by': user_id
             })
             
@@ -501,7 +512,7 @@ class FileManager:
                 'user_id': user_id,
                 'status': status,  # 'success', 'denied', 'failed', 'error'
                 'details': details,
-                'timestamp': firestore.SERVER_TIMESTAMP
+                'timestamp': SERVER_TIMESTAMP
             }
             
             self.access_logs_collection.add(log_entry)
@@ -540,7 +551,7 @@ class FileManager:
             
             # Lấy access logs
             logs = self.access_logs_collection.where('file_id', '==', file_id)\
-                                             .order_by('timestamp', direction=firestore.Query.DESCENDING)\
+                                             .order_by('timestamp', direction=Query.DESCENDING)\
                                              .limit(100).get()
             
             logs_list = []
