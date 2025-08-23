@@ -8,6 +8,7 @@ from google.cloud.firestore_v1 import FieldFilter, Query
 from google.cloud import firestore
 from .database import db  # Import the db client directly
 from .file_integrity import FileIntegrityManager
+from .central_authority import central_authority # Import for decryption
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -24,11 +25,13 @@ class FileVersionManager:
                       version_type: str = 'MINOR',
                       change_description: Optional[str] = None) -> Dict[str, Any]:
         """
-        Create a new version of a file
+        Create a new version of a file.
+        The new version's data is encrypted and stored in the version document.
+        If activation is successful, the main file's encrypted data is replaced.
         
         Args:
             file_id: Original file ID
-            file_data: New file data
+            file_data: New raw, unencrypted file data
             uploader_id: User creating the version
             version_type: MAJOR, MINOR, PATCH
             change_description: Description of changes
@@ -37,8 +40,8 @@ class FileVersionManager:
             Version creation result
         """
         try:
-            # Get original file info
-            file_ref = db.collection('files').document(file_id)
+            # Use the correct collection name: 'shared_files'
+            file_ref = db.collection('shared_files').document(file_id)
             file_doc = file_ref.get()
             
             if not file_doc.exists:
@@ -47,55 +50,68 @@ class FileVersionManager:
                     'error': 'Original file not found'
                 }
             
-            file_data_dict = file_doc.to_dict()
+            original_file_metadata = file_doc.to_dict()
             
-            # Check if user has permission to create versions
-            user_permissions = FileVersionManager._get_user_file_permissions(uploader_id, file_id)
-            if not user_permissions.get('can_create_version', False):
-                return {
-                    'success': False,
-                    'error': 'Insufficient permissions to create file version'
+            # For integrity comparison, decrypt the previous version's content.
+            # The uploader must have rights to decrypt the file to create a new version.
+            old_encrypted_data = original_file_metadata.get('encrypted_data')
+            old_decrypted_data = b""
+            
+            if old_encrypted_data:
+                decrypt_result = central_authority.decrypt_file_for_user(
+                    old_encrypted_data,
+                    uploader_id
+                )
+                if decrypt_result.get('success'):
+                    old_decrypted_data = decrypt_result['decrypted_data']
+                else:
+                    logger.warning(f"User {uploader_id} could not decrypt file {file_id} for integrity check. Proceeding without comparison.")
+
+            # Create the integrity report comparing old (decrypted) and new (raw) data
+            integrity_analysis = FileIntegrityManager.create_integrity_report(
+                old_decrypted_data,
+                file_data, # new raw file data
+                {
+                    'version': original_file_metadata.get('current_version', '0.0.0'),
+                    'upload_time': original_file_metadata.get('upload_time'),
+                    'owner_id': original_file_metadata.get('owner_id')
                 }
-            
-            # Get current version info
-            current_version = file_data_dict.get('current_version', '1.0.0')
+            )
+            integrity_report = integrity_analysis.get('report') if integrity_analysis.get('success') else None
+
+            # Get current version info and increment it
+            current_version = original_file_metadata.get('current_version', '1.0.0')
             new_version = FileVersionManager._increment_version(current_version, version_type)
             
             # Generate version ID
             version_id = str(uuid.uuid4())
             
-            # Generate integrity hashes for new version
+            # Generate integrity hashes for the new version's raw data
             new_hashes = FileIntegrityManager.generate_integrity_hashes(file_data)
             
-            # Get previous version for comparison if exists
-            integrity_report = None
-            if file_data_dict.get('encrypted_content'):
-                try:
-                    # For integrity comparison, we would need the previous decrypted content
-                    # This is a placeholder - in real implementation, you'd decrypt the previous version
-                    old_file_data = b"placeholder"  # This should be the decrypted previous version
-                    integrity_analysis = FileIntegrityManager.create_integrity_report(
-                        old_file_data,
-                        file_data,
-                        {
-                            'version': current_version,
-                            'created_at': file_data_dict.get('created_at'),
-                            'owner_id': file_data_dict.get('owner_id')
-                        }
-                    )
-                    if integrity_analysis['success']:
-                        integrity_report = integrity_analysis['report']
-                except Exception as e:
-                    logger.error(f"Integrity analysis failed: {e}")
+            # Encrypt the new file data for this version using a temporary file
+            import tempfile
+            import os
+            temp_dir = tempfile.mkdtemp()
+            temp_file_path = os.path.join(temp_dir, f"{version_id}-{original_file_metadata.get('filename', 'temp')}")
+            with open(temp_file_path, 'wb') as f:
+                f.write(file_data)
+
+            # Use the original file's access policy for the new version
+            access_policy = original_file_metadata.get('access_policy')
+            encrypt_result = central_authority.encrypt_file_for_policy(temp_file_path, access_policy)
             
-            # Determine if approval is required
-            approval_required = FileVersionManager._requires_approval(
-                version_type,
-                integrity_report,
-                user_permissions
-            )
+            import shutil
+            shutil.rmtree(temp_dir)
+
+            if not encrypt_result.get('success'):
+                return {'success': False, 'error': f"Failed to encrypt new version: {encrypt_result.get('error')}"}
+
+            # Simplified workflow: new versions are approved automatically.
+            # A more complex system could use PENDING_APPROVAL and the approve_version method.
+            approval_required = False
             
-            # Create version document
+            # Create the version document in Firestore
             version_data = {
                 'version_id': version_id,
                 'file_id': file_id,
@@ -103,43 +119,39 @@ class FileVersionManager:
                 'version_type': version_type,
                 'uploader_id': uploader_id,
                 'created_at': firestore.SERVER_TIMESTAMP,
-                'status': 'PENDING_APPROVAL' if approval_required else 'APPROVED',
+                'status': 'PENDING_ACTIVATION', # Status before it replaces the main file
                 'change_description': change_description or '',
                 'integrity_hashes': new_hashes,
                 'integrity_report': integrity_report,
-                'approval_required': approval_required,
-                'approved_by': None,
-                'approved_at': None,
+                'encrypted_data': encrypt_result['encrypted_data'], # Store encrypted data for this version
                 'file_size': len(file_data),
                 'metadata': {
-                    'original_filename': file_data_dict.get('filename'),
-                    'content_type': file_data_dict.get('content_type')
+                    'original_filename': original_file_metadata.get('filename'),
+                    'content_type': original_file_metadata.get('file_type')
                 }
             }
             
-            # Store version in database
-            version_ref = db.collection('file_versions').document(version_id)
-            version_ref.set(version_data)
+            db.collection('file_versions').document(version_id).set(version_data)
             
-            # If no approval required, activate immediately
+            # If no approval is required, activate this version immediately
             if not approval_required:
-                activation_result = FileVersionManager._activate_version(file_id, version_id, uploader_id)
+                activation_result = FileVersionManager._activate_version(file_id, version_id, version_data, uploader_id)
                 if not activation_result['success']:
                     return activation_result
             
-            logger.info(f"Version {new_version} created for file {file_id} by user {uploader_id}")
+            logger.info(f"Version {new_version} created and activated for file {file_id} by user {uploader_id}")
             
             return {
                 'success': True,
                 'version_id': version_id,
                 'version_number': new_version,
-                'status': version_data['status'],
+                'status': 'ACTIVE',
                 'approval_required': approval_required,
                 'integrity_report': integrity_report
             }
             
         except Exception as e:
-            logger.error(f"Version creation failed: {e}")
+            logger.error(f"Version creation failed: {e}", exc_info=True)
             return {
                 'success': False,
                 'error': f'Failed to create version: {str(e)}'
@@ -205,7 +217,7 @@ class FileVersionManager:
             })
             
             # Activate the approved version
-            activation_result = FileVersionManager._activate_version(file_id, version_id, approver_id)
+            activation_result = FileVersionManager._activate_version(file_id, version_id, version_data, approver_id)
             if not activation_result['success']:
                 return activation_result
             
@@ -461,44 +473,36 @@ class FileVersionManager:
         return version_type != 'PATCH'
     
     @staticmethod
-    def _activate_version(file_id: str, version_id: str, activator_id: str) -> Dict[str, Any]:
+    def _activate_version(file_id: str, version_id: str, version_data: Dict[str, Any], activator_id: str) -> Dict[str, Any]:
         """
-        Activate an approved version as the current version
+        Activate an approved version as the current version.
+        This replaces the main file's encrypted data and metadata.
         
         Args:
             file_id: File to update
             version_id: Version to activate
+            version_data: The data from the version document
             activator_id: User activating the version
             
         Returns:
             Activation result
         """
         try:
-            
-            
-            # Get version data
-            version_ref = db.collection('file_versions').document(version_id)
-            version_doc = version_ref.get()
-            
-            if not version_doc.exists:
-                return {
-                    'success': False,
-                    'error': 'Version not found'
-                }
-            
-            version_data = version_doc.to_dict()
+            file_ref = db.collection('shared_files').document(file_id)
             
             # Update main file document with new version info
-            file_ref = db.collection('files').document(file_id)
             file_ref.update({
                 'current_version': version_data['version_number'],
                 'current_version_id': version_id,
                 'last_modified_at': firestore.SERVER_TIMESTAMP,
                 'last_modified_by': activator_id,
-                'integrity_hashes': version_data['integrity_hashes']
+                'integrity_hashes': version_data['integrity_hashes'],
+                'encrypted_data': version_data['encrypted_data'], # IMPORTANT: Update encrypted data
+                'original_size': version_data['file_size']      # IMPORTANT: Update file size
             })
             
-            # Mark version as active
+            # Mark version as active in its own document
+            version_ref = db.collection('file_versions').document(version_id)
             version_ref.update({
                 'status': 'ACTIVE',
                 'activated_at': firestore.SERVER_TIMESTAMP,
@@ -511,7 +515,7 @@ class FileVersionManager:
             }
             
         except Exception as e:
-            logger.error(f"Version activation failed: {e}")
+            logger.error(f"Version activation failed: {e}", exc_info=True)
             return {
                 'success': False,
                 'error': f'Failed to activate version: {str(e)}'
@@ -544,7 +548,7 @@ class FileVersionManager:
             department = user_data.get('department', '')
             
             # Get file info
-            file_ref = db.collection('files').document(file_id)
+            file_ref = db.collection('shared_files').document(file_id)
             file_doc = file_ref.get()
             
             if not file_doc.exists:

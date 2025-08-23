@@ -66,7 +66,7 @@ def upload_file():
     
     Form data:
     - file: File to upload (required)
-    - access_policy: Custom access policy (optional)
+    - access_policy: Custom access policy (required)
     - metadata: JSON metadata (optional)
     
     User ID is extracted from JWT token for security
@@ -95,6 +95,12 @@ def upload_file():
         
         file = request.files['file']
         access_policy = request.form.get('access_policy')
+        
+        if not access_policy:
+            return jsonify({
+                'success': False,
+                'error': 'access_policy is required'
+            }), 400
         
         if not file or file.filename == '':
             return jsonify({
@@ -129,7 +135,7 @@ def upload_file():
             file_data=file_data,
             filename=file.filename or 'untitled',
             owner_id=owner_id,
-            access_policy=access_policy or 'owner_only',
+            access_policy=access_policy,
             metadata=metadata or {}
         )
         

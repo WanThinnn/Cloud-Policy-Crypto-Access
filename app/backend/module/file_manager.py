@@ -12,6 +12,7 @@ from google.cloud.firestore_v1 import SERVER_TIMESTAMP, Increment, Query
 from .database import db
 from .central_authority import central_authority
 from .abac import abac
+from .file_versioning import FileVersionManager
 import tempfile
 import requests
 from config import Config
@@ -30,19 +31,49 @@ class FileManager:
     def upload_file(self, file_data: bytes, filename: str, owner_id: str, 
                    access_policy: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Upload và mã hóa file
-        
-        Args:
-            file_data: Dữ liệu file
-            filename: Tên file
-            owner_id: ID của người upload
-            access_policy: Policy cho access control (nếu không có sẽ tự generate)
-            metadata: Metadata bổ sung
-            
-        Returns:
-            Dict with file info
+        Upload và mã hóa file.
+        Nếu một file có cùng tên đã tồn tại, nó sẽ tạo một phiên bản mới.
+        Nếu không, nó sẽ tạo một file mới.
         """
         try:
+            # ABAC Check: User có quyền upload/create file không?
+            access_request = {
+                'user_id': owner_id,
+                'resource': 'files',
+                'action': 'upload',
+                'resource_attributes': {'owner_id': owner_id},
+                'context': {}
+            }
+            access_check = abac.check_access(access_request)
+            if not access_check.get('access_granted'):
+                return {
+                    'success': False,
+                    'error': f"Access denied by policy: {access_check.get('reason', 'Permission denied to create files.')}"
+                }
+
+            # Kiểm tra file có cùng tên đã tồn tại với owner này chưa
+            existing_file_query = self.files_collection.where('owner_id', '==', owner_id)\
+                                                      .where('filename', '==', filename)\
+                                                      .where('is_active', '==', True)\
+                                                      .limit(1).get()
+            
+            existing_file_docs = list(existing_file_query)
+
+            if existing_file_docs:
+                # File đã tồn tại, tạo phiên bản mới
+                original_file_id = existing_file_docs[0].id
+                logger.info(f"File '{filename}' already exists with ID {original_file_id}. Creating a new version.")
+                
+                return FileVersionManager.create_version(
+                    file_id=original_file_id,
+                    file_data=file_data,
+                    uploader_id=owner_id,
+                    version_type='MINOR', # Có thể thay đổi dựa trên input
+                    change_description='File updated via upload.'
+                )
+
+            # File chưa tồn tại, tạo file mới
+            logger.info(f"File '{filename}' does not exist for user {owner_id}. Creating a new file.")
             # Tạo file ID unique
             file_id = str(uuid.uuid4())
             
@@ -82,7 +113,9 @@ class FileManager:
                 'last_accessed': None,
                 'access_count': 0,
                 'is_active': True,
-                'metadata': metadata or {}
+                'metadata': metadata or {},
+                'current_version': '1.0.0', # Phiên bản đầu tiên
+                'current_version_id': None
             }
             
             # Lưu vào Firestore
@@ -103,7 +136,7 @@ class FileManager:
             }
             
         except Exception as e:
-            logger.error(f"Failed to upload file: {e}")
+            logger.error(f"Failed to upload file: {e}", exc_info=True)
             return {
                 'success': False,
                 'error': f'Failed to upload file: {str(e)}'
@@ -125,63 +158,50 @@ class FileManager:
             file_doc = self.files_collection.document(file_id).get()
             
             if not file_doc.exists:
-                return {
-                    'success': False,
-                    'error': 'File not found'
-                }
+                return {'success': False, 'error': 'File not found'}
             
             file_data = file_doc.to_dict()
             
-            if not file_data['is_active']:
+            if not file_data.get('is_active', False):
+                return {'success': False, 'error': 'File is no longer available'}
+
+            # ABAC Check: User có quyền đọc file này không?
+            access_request = {
+                'user_id': user_id,
+                'resource': 'files',
+                'action': 'read',
+                'resource_attributes': {
+                    'file_id': file_id,
+                    'owner_id': file_data.get('owner_id'),
+                    'file_type': file_data.get('file_type'),
+                    'access_policy': file_data.get('access_policy')
+                },
+                'context': {}
+            }
+            access_check = abac.check_access(access_request)
+            if not access_check.get('access_granted'):
+                self._log_access_attempt(file_id, user_id, 'denied', f"ABAC policy denied: {access_check.get('reason')}")
                 return {
                     'success': False,
-                    'error': 'File is no longer available'
+                    'error': f"Access denied by policy: {access_check.get('reason', 'Permission denied.')}"
                 }
+
+            # Nếu ABAC cho phép, tiếp tục kiểm tra giải mã bằng CP-ABE
+            # Đây là lớp bảo vệ thứ hai, dựa trên thuộc tính mã hóa của file
+            decrypt_result = central_authority.decrypt_file_for_user(
+                file_data['encrypted_data'], 
+                user_id
+            )
             
-            # Kiểm tra quyền truy cập 
-            # Option 1: Owner can always access
-            if file_data['owner_id'] == user_id:
-                access_granted = True
-                access_reason = "File owner access"
-            else:
-                # Option 2: Check if user can decrypt with their private key
-                # This is the real CP-ABE access control
-                decrypt_result = central_authority.decrypt_file_for_user(
-                    file_data['encrypted_data'], 
-                    user_id
-                )
-                
-                if decrypt_result['success']:
-                    access_granted = True
-                    access_reason = "CP-ABE policy match"
-                    decrypted_data = decrypt_result['decrypted_data']
-                else:
-                    access_granted = False
-                    access_reason = f"CP-ABE access denied: {decrypt_result.get('error', 'No matching attributes')}"
-            
-            if not access_granted:
-                # Log access attempt
+            if not decrypt_result['success']:
+                access_reason = f"CP-ABE access denied: {decrypt_result.get('error', 'No matching attributes')}"
                 self._log_access_attempt(file_id, user_id, 'denied', access_reason)
-                
                 return {
                     'success': False,
                     'error': f"Access denied: {access_reason}"
                 }
-            
-            # If we reach here and haven't decrypted yet (owner case), decrypt now
-            if file_data['owner_id'] == user_id and 'decrypted_data' not in locals():
-                decrypt_result = central_authority.decrypt_file_for_user(
-                    file_data['encrypted_data'], 
-                    user_id
-                )
-                
-                if not decrypt_result['success']:
-                    # Log failed decryption
-                    self._log_access_attempt(file_id, user_id, 'failed', 'Owner decryption failed')
-                    
-                    return decrypt_result
-                
-                decrypted_data = decrypt_result['decrypted_data']
+
+            decrypted_data = decrypt_result['decrypted_data']
             
             # Update access statistics
             self.files_collection.document(file_id).update({
@@ -198,12 +218,12 @@ class FileManager:
                 'success': True,
                 'filename': file_data['filename'],
                 'file_type': file_data['file_type'],
-                'file_data': decrypt_result['decrypted_data'],
+                'file_data': decrypted_data,
                 'message': 'File downloaded successfully'
             }
             
         except Exception as e:
-            logger.error(f"Failed to download file: {e}")
+            logger.error(f"Failed to download file: {e}", exc_info=True)
             self._log_access_attempt(file_id, user_id, 'error', str(e))
             
             return {
@@ -308,18 +328,26 @@ class FileManager:
             file_doc = self.files_collection.document(file_id).get()
             
             if not file_doc.exists:
-                return {
-                    'success': False,
-                    'error': 'File not found'
-                }
+                return {'success': False, 'error': 'File not found'}
             
             file_data = file_doc.to_dict()
             
-            # Kiểm tra quyền owner
-            if file_data['owner_id'] != user_id:
+            # ABAC Check: User có quyền xóa file này không?
+            access_request = {
+                'user_id': user_id,
+                'resource': 'files',
+                'action': 'delete',
+                'resource_attributes': {
+                    'file_id': file_id,
+                    'owner_id': file_data.get('owner_id'),
+                },
+                'context': {}
+            }
+            access_check = abac.check_access(access_request)
+            if not access_check.get('access_granted'):
                 return {
                     'success': False,
-                    'error': 'Only file owner can delete the file'
+                    'error': f"Access denied by policy: {access_check.get('reason', 'Permission denied.')}"
                 }
             
             # Soft delete - set is_active = False
@@ -329,7 +357,7 @@ class FileManager:
                 'deleted_by': user_id
             })
             
-            logger.info(f"File deleted: {file_id} by user: {user_id}")
+            logger.info(f"File deleted (soft): {file_id} by user: {user_id}")
             
             return {
                 'success': True,
@@ -337,7 +365,7 @@ class FileManager:
             }
             
         except Exception as e:
-            logger.error(f"Failed to delete file: {e}")
+            logger.error(f"Failed to delete file: {e}", exc_info=True)
             return {
                 'success': False,
                 'error': f'Failed to delete file: {str(e)}'
@@ -360,18 +388,26 @@ class FileManager:
             file_doc = self.files_collection.document(file_id).get()
             
             if not file_doc.exists:
-                return {
-                    'success': False,
-                    'error': 'File not found'
-                }
+                return {'success': False, 'error': 'File not found'}
             
             file_data = file_doc.to_dict()
             
-            # Kiểm tra quyền owner
-            if file_data['owner_id'] != user_id:
+            # ABAC Check: User có quyền cập nhật policy không?
+            access_request = {
+                'user_id': user_id,
+                'resource': 'files',
+                'action': 'update_policy',
+                'resource_attributes': {
+                    'file_id': file_id,
+                    'owner_id': file_data.get('owner_id'),
+                },
+                'context': {}
+            }
+            access_check = abac.check_access(access_request)
+            if not access_check.get('access_granted'):
                 return {
                     'success': False,
-                    'error': 'Only file owner can update access policy'
+                    'error': f"Access denied by policy: {access_check.get('reason', 'Permission denied.')}"
                 }
             
             # Re-encrypt file với policy mới
@@ -379,6 +415,7 @@ class FileManager:
             temp_file_path = os.path.join(temp_dir, file_data['filename'])
             
             # Giải mã file hiện tại
+            # User thực hiện phải có quyền giải mã file cũ
             decrypt_result = central_authority.decrypt_file_for_user(
                 file_data['encrypted_data'], 
                 user_id
@@ -387,7 +424,7 @@ class FileManager:
             if not decrypt_result['success']:
                 import shutil
                 shutil.rmtree(temp_dir)
-                return decrypt_result
+                return {'success': False, 'error': f"Could not decrypt file to re-encrypt: {decrypt_result.get('error')}"}
             
             # Ghi file tạm
             with open(temp_file_path, 'wb') as f:
@@ -422,7 +459,7 @@ class FileManager:
             }
             
         except Exception as e:
-            logger.error(f"Failed to update file policy: {e}")
+            logger.error(f"Failed to update file policy: {e}", exc_info=True)
             return {
                 'success': False,
                 'error': f'Failed to update file policy: {str(e)}'
