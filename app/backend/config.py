@@ -11,7 +11,7 @@ load_dotenv(dotenv_path=dotenv_path)
 class Config:
     """Base configuration"""
     # Server settings - support Docker environment
-    HOST = os.environ.get('HOST', '192.168.1.2')
+    HOST = os.environ.get('HOST', '0.0.0.0')
     PORT = int(os.environ.get('PORT', 5000))
     DEBUG = False
     

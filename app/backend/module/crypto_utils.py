@@ -115,7 +115,7 @@ class CryptoUtils:
             logger.info("Private key encryption completed successfully")
             
             return {
-                'encrypted_blob': combined_data,  # Chỉ 1 field thay vì nhiều fields
+                'encrypted_key': combined_data,  # Chỉ 1 field thay vì nhiều fields
                 'algorithm': 'AES-256-GCM'  # Minimal metadata
             }
             
@@ -124,26 +124,26 @@ class CryptoUtils:
             raise Exception(f"Private key encryption failed: {str(e)}")
     
     @staticmethod
-    def decrypt_private_key_from_blob(encrypted_blob: bytes, password: str) -> bytes:
+    def decrypt_private_key_from_key(encrypted_key: bytes, password: str) -> bytes:
         """
-        Decrypt private key data from combined blob
+        Decrypt private key data from combined key
         
         Args:
-            encrypted_blob: Combined salt + nonce + ciphertext
+            encrypted_key: Combined salt + nonce + ciphertext
             password: User password
             
         Returns:
             Decrypted private key data
         """
         try:
-            # Extract components từ blob
+            # Extract components từ key
             # Format: [salt(16) + nonce(12) + ciphertext_with_tag]
-            if len(encrypted_blob) < CryptoUtils.ARGON2_SALT_LEN + CryptoUtils.GCM_NONCE_LEN + CryptoUtils.GCM_TAG_LEN:
-                raise Exception("Invalid encrypted blob format")
+            if len(encrypted_key) < CryptoUtils.ARGON2_SALT_LEN + CryptoUtils.GCM_NONCE_LEN + CryptoUtils.GCM_TAG_LEN:
+                raise Exception("Invalid encrypted key format")
             
-            salt = encrypted_blob[:CryptoUtils.ARGON2_SALT_LEN]
-            nonce = encrypted_blob[CryptoUtils.ARGON2_SALT_LEN:CryptoUtils.ARGON2_SALT_LEN + CryptoUtils.GCM_NONCE_LEN]
-            ciphertext_with_tag = encrypted_blob[CryptoUtils.ARGON2_SALT_LEN + CryptoUtils.GCM_NONCE_LEN:]
+            salt = encrypted_key[:CryptoUtils.ARGON2_SALT_LEN]
+            nonce = encrypted_key[CryptoUtils.ARGON2_SALT_LEN:CryptoUtils.ARGON2_SALT_LEN + CryptoUtils.GCM_NONCE_LEN]
+            ciphertext_with_tag = encrypted_key[CryptoUtils.ARGON2_SALT_LEN + CryptoUtils.GCM_NONCE_LEN:]
             
             # Derive key from password and salt
             encryption_key = CryptoUtils.derive_key_from_password(password, salt)

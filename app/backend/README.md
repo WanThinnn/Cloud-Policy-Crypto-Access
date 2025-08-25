@@ -877,7 +877,7 @@ user_attributes/UA{user_id} {
 ```javascript
 abe_keys/privkey_{user_id}_{timestamp} {
   user_id: string,
-  encrypted_blob: bytes,
+  encrypted_key: bytes,
   attributes: array,
   is_active: boolean,
   created_at: timestamp,

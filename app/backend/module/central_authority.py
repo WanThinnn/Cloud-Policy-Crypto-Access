@@ -415,7 +415,7 @@ class CentralAuthority:
             return {
                 'success': True,
                 'has_key': True,
-                'private_key': key_data['encrypted_blob'],
+                'private_key': key_data['encrypted_key'],
                 'attributes': key_data['attributes'],
                 'created_at': key_data.get('created_at'),
                 'updated_at': key_data.get('updated_at'),
@@ -560,7 +560,7 @@ class CentralAuthority:
             # Save encrypted user private key to Firestore với minimal metadata
             user_key_doc = {
                 'user_id': user_id,
-                'encrypted_blob': encrypted_key_info['encrypted_blob'],
+                'encrypted_key': encrypted_key_info['encrypted_key'],
                 'algorithm': encrypted_key_info['algorithm'],
                 'attributes': attributes,
                 'created_at': datetime.utcnow(),
@@ -616,11 +616,11 @@ class CentralAuthority:
             
             key_data = user_keys[0].to_dict()
             
-            # Extract encrypted blob
-            encrypted_blob = key_data['encrypted_blob']
+            # Extract encrypted key
+            encrypted_key = key_data['encrypted_key']
             
             # Decrypt private key using new method
-            private_key_data = CryptoUtils.decrypt_private_key_from_blob(encrypted_blob, password)
+            private_key_data = CryptoUtils.decrypt_private_key_from_key(encrypted_key, password)
             
             logger.info(f"Private key decrypted successfully for user: {user_id}")
             
