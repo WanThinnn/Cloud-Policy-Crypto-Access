@@ -81,7 +81,7 @@ Cloud-Firestore-Crypto-Access/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Client Applications                   │
+│                    Client Applications                  │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
 │  │ Web Frontend│  │ Mobile Apps │  │   CLI Tools │      │
 │  └─────────────┘  └─────────────┘  └─────────────┘      │
@@ -100,7 +100,7 @@ Cloud-Firestore-Crypto-Access/
 └─────────────────────┬───────────────────────────────────┘
                       │ Firebase Admin SDK
 ┌─────────────────────▼───────────────────────────────────┐
-│                 Cloud Firestore                        │
+│                 Cloud Firestore                         │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
 │  │   Users     │  │ File Meta-  │  │ Access Logs │      │
 │  │ Collection  │  │ data Coll.  │  │ Collection  │      │

@@ -142,7 +142,7 @@ ls -la lib/
 
 1. **Clone the Repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/WanThinnn/Cloud-Firestore-Crypto-Access 
    cd Cloud-Firestore-Crypto-Access/app/backend
    ```
 
