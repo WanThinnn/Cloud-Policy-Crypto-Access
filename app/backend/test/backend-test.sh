@@ -230,7 +230,7 @@ echo "Testing with user ID: $TEST_USER_ID"
 echo "First login attempt..."
 curl -s -X POST "$SERVER_URL/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username": "22520001", "password": "Manager123!"}' | jq
+  -d '{"username": "22520001", "password": "User123!@#"}' | jq
 
 # Since it's first login, change password
 echo "Changing password for first-time user..."
@@ -238,7 +238,7 @@ curl -s -X POST "$SERVER_URL/api/auth/change-password" \
   -H "Content-Type: application/json" \
   -d '{
     "username": "22520001",
-    "old_password": "Manager123!",
+    "old_password": "User123!@#!",
     "new_password": "User123!@#"
   }' | jq
 
@@ -250,7 +250,7 @@ curl -s -X POST "$SERVER_URL/api/auth/login" \
 
 USER_TOKEN=$(curl -s -X POST "$SERVER_URL/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username": "22520001", "password": "NewPassword123!"}' | \
+  -d '{"username": "22520001", "password": "User123!@#!"}' | \
   python3 -c "import json,sys; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
 
 echo "User Token: $USER_TOKEN"
@@ -445,8 +445,8 @@ echo "Checking user private key status..."
 curl -s "$SERVER_URL/api/ca/user/private-key/check" \
   -H "Authorization: Bearer $USER_TOKEN" | jq
 
-echo "Generating user private key..."
-curl -s -X POST "$SERVER_URL/api/ca/user/private-key/generate" \
+echo "Generating user private key (JWT mode - will force regenerate if attributes changed)..."
+curl -s -X POST "$SERVER_URL/api/ca/user/generate-private-key" \
   -H "Authorization: Bearer $USER_TOKEN" | jq
 
 # Step 15: System Statistics and Health Checks

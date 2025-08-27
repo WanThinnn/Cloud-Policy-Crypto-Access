@@ -56,7 +56,7 @@ class AttributeSchemaValidator:
                     'error': 'Schema validation unavailable - schemas not loaded'
                 }
             
-            schema_definitions = schemas.get('schemas', {})
+            schema_definitions = schemas.get('attributes', {})
             errors = []
             warnings = []
             
@@ -141,7 +141,7 @@ class AttributeSchemaValidator:
         """
         try:
             schemas = self._load_schemas()
-            schema_definitions = schemas.get('schemas', {})
+            schema_definitions = schemas.get('attributes', {})
             
             if attribute_name in schema_definitions:
                 attr_schema = schema_definitions[attribute_name]

@@ -472,30 +472,19 @@ def change_password():
         # Check if user has private key
         key_status = central_authority.check_user_has_private_key(user_id)
         if key_status['has_key']:
-            logger.info(f"Re-encrypting private key for user {user_id} with new password")
+            logger.info(f"Regenerating private key for user {user_id} with new password")
             
-            # Get user attributes for key regeneration
-            attrs_result = super_admin.get_user_attributes(user_id)
-            if attrs_result['success']:
-                user_attributes = attrs_result['attributes']
-                
-                # Convert to ABE format
-                abe_attributes = []
-                for key, value in user_attributes.items():
-                    abe_attributes.append(f"{key}:{value}")
-                
-                # Re-generate encrypted private key with new password
-                rekey_result = central_authority.generate_encrypted_user_private_key(
-                    user_id=user_id,
-                    password=new_password,
-                    attributes=abe_attributes
-                )
-                
-                if not rekey_result['success']:
-                    logger.error(f"Failed to re-encrypt private key for user {user_id}: {rekey_result.get('error')}")
-                    # Don't fail the password change, but log the error
-                else:
-                    logger.info(f"Successfully re-encrypted private key for user {user_id}")
+            # Regenerate key with new password
+            rekey_result = central_authority.regenerate_key_for_password_change(
+                user_id=user_id,
+                new_password=new_password
+            )
+            
+            if not rekey_result['success']:
+                logger.error(f"Failed to regenerate private key for user {user_id}: {rekey_result.get('error')}")
+                # Don't fail the password change, but log the error
+            else:
+                logger.info(f"Successfully regenerated private key for user {user_id}")
         
         logger.info(f"Password changed successfully for user: {username}")
         

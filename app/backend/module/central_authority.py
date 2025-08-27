@@ -491,7 +491,7 @@ class CentralAuthority:
                 'error': f'Failed to check private key status: {str(e)}'
             }
     
-    def generate_encrypted_user_private_key(self, user_id: str, password: str, attributes: List[str]) -> Dict[str, Any]:
+    def generate_encrypted_user_private_key(self, user_id: str, password: str, attributes: List[str], force_regenerate: bool = False) -> Dict[str, Any]:
         """
         Tạo và mã hóa private key cho user bằng password
         
@@ -499,6 +499,7 @@ class CentralAuthority:
             user_id: User ID
             password: User password để mã hóa private key
             attributes: List of attributes ['role:doctor', 'department:cardiology']
+            force_regenerate: If True, regenerate even if key exists (for password/attribute changes)
             
         Returns:
             Dict with success status and encrypted key info
@@ -506,7 +507,7 @@ class CentralAuthority:
         try:
             # Kiểm tra xem user đã có private key chưa
             existing_key = self.check_user_has_private_key(user_id)
-            if existing_key['has_key']:
+            if existing_key['has_key'] and not force_regenerate:
                 return {
                     'success': False,
                     'error': 'User already has a private key. Use password authentication to retrieve it.',
@@ -557,31 +558,54 @@ class CentralAuthority:
             # Encrypt private key with password
             encrypted_key_info = CryptoUtils.encrypt_private_key(private_key_data, password)
             
-            # Save encrypted user private key to Firestore với minimal metadata
+            # Save encrypted user private key to Firestore
             user_key_doc = {
                 'user_id': user_id,
                 'encrypted_key': encrypted_key_info['encrypted_key'],
                 'algorithm': encrypted_key_info['algorithm'],
                 'attributes': attributes,
-                'created_at': datetime.utcnow(),
+                'created_at': datetime.utcnow() if not force_regenerate else datetime.utcnow(),
+                'updated_at': datetime.utcnow() if force_regenerate else None,
+                'regeneration_reason': 'password_change' if force_regenerate else None,
                 'is_active': True
             }
             
-            # Save new encrypted private key with consistent format
-            private_key_id = f"privkey_{user_id}_{int(datetime.utcnow().timestamp())}"
-            self.keys_collection.document(private_key_id).set(user_key_doc)
+            if force_regenerate and existing_key['has_key']:
+                # Update existing key document
+                private_keys_collection = db.collection('user_private_keys')
+                existing_docs = private_keys_collection.where('user_id', '==', user_id).where('is_active', '==', True).limit(1).get()
+                
+                if existing_docs:
+                    doc = list(existing_docs)[0]
+                    # Keep original created_at but add updated_at
+                    user_key_doc['created_at'] = doc.to_dict().get('created_at', datetime.utcnow())
+                    doc.reference.update(user_key_doc)
+                    private_key_id = doc.id
+                    logger.info(f"Updated existing encrypted private key for user: {user_id}")
+                else:
+                    # Fallback: create new if existing not found
+                    private_key_id = f"privkey_{user_id}_{int(datetime.utcnow().timestamp())}"
+                    self.keys_collection.document(private_key_id).set(user_key_doc)
+                    logger.info(f"Created new encrypted private key for user: {user_id} (fallback)")
+            else:
+                # Create new key document (first time generation)
+                private_key_id = f"privkey_{user_id}_{int(datetime.utcnow().timestamp())}"
+                # Remove regeneration fields for new keys
+                user_key_doc.pop('updated_at', None)
+                user_key_doc.pop('regeneration_reason', None)
+                self.keys_collection.document(private_key_id).set(user_key_doc)
+                logger.info(f"Created new encrypted private key for user: {user_id}")
             
             # Cleanup temp files
             import shutil
             shutil.rmtree(temp_dir)
             
-            logger.info(f"Encrypted private key generated for user: {user_id}")
-            
             return {
                 'success': True,
                 'private_key_id': private_key_id,
                 'attributes': attributes,
-                'message': 'Encrypted private key generated and saved to cloud successfully (minimal metadata)'
+                'regenerated': force_regenerate,
+                'message': f'Encrypted private key {"updated" if force_regenerate else "generated"} successfully'
             }
             
         except Exception as e:
@@ -591,6 +615,94 @@ class CentralAuthority:
                 'error': f'Failed to generate encrypted private key: {str(e)}'
             }
     
+    def regenerate_key_for_password_change(self, user_id: str, new_password: str) -> Dict[str, Any]:
+        """
+        Regenerate private key when user changes password
+        
+        Args:
+            user_id: User ID
+            new_password: New password to encrypt key
+            
+        Returns:
+            Dict with success status
+        """
+        try:
+            # Get current user attributes
+            from module.super_admin import super_admin
+            attrs_result = super_admin.get_user_attributes(user_id)
+            if not attrs_result['success']:
+                return {
+                    'success': False,
+                    'error': 'Could not retrieve user attributes for key regeneration'
+                }
+            
+            user_attributes = attrs_result['attributes']
+            
+            # Convert to ABE format
+            abe_attributes = []
+            for key, value in user_attributes.items():
+                abe_attributes.append(f"{key}:{value}")
+            
+            # Regenerate key with same attributes but new password
+            return self.generate_encrypted_user_private_key(
+                user_id=user_id,
+                password=new_password,
+                attributes=abe_attributes,
+                force_regenerate=True
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to regenerate key for password change: {e}")
+            return {
+                'success': False,
+                'error': f'Key regeneration failed: {str(e)}'
+            }
+    
+    def regenerate_key_for_attribute_change(self, user_id: str, new_attributes: List[str]) -> Dict[str, Any]:
+        """
+        Regenerate private key when user attributes change
+        
+        Args:
+            user_id: User ID
+            new_attributes: New attributes list ['role:manager', 'department:it']
+            
+        Returns:
+            Dict with success status
+        """
+        try:
+            # Get user's current password hash (we need password to re-encrypt)
+            # But since we can't reverse hash, we need user to provide password
+            # This method should be called with user's current password
+            
+            # For now, we'll mark the old key as inactive and require user to re-authenticate
+            # to generate new key with new attributes
+            
+            # Mark existing key as inactive
+            private_keys_collection = db.collection('user_private_keys')
+            existing_docs = private_keys_collection.where('user_id', '==', user_id).where('is_active', '==', True).get()
+            
+            for doc in existing_docs:
+                doc.reference.update({
+                    'is_active': False,
+                    'deactivated_at': datetime.utcnow(),
+                    'deactivation_reason': 'attribute_change'
+                })
+            
+            logger.info(f"Marked existing keys as inactive for user {user_id} due to attribute change")
+            
+            return {
+                'success': True,
+                'message': 'Previous keys deactivated. User must re-authenticate to generate new key with updated attributes.',
+                'requires_reauth': True
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to handle attribute change: {e}")
+            return {
+                'success': False,
+                'error': f'Attribute change handling failed: {str(e)}'
+            }
+
     def get_user_private_key_with_password(self, user_id: str, password: str) -> Dict[str, Any]:
         """
         Lấy và giải mã private key của user bằng password
@@ -699,35 +811,35 @@ class CentralAuthority:
             
             attrs_result = abac.get_user_attributes(user_id)
             if not attrs_result['success']:
-                return "(PUBLIC)"  # Default policy
+                return "guest"  # Default policy
             
             attributes = attrs_result['attributes']
-            role = attributes.get('role', 'public')
+            role = attributes.get('role', 'guest')
             department = attributes.get('department', '')
             clearance = attributes.get('clearance_level', 'low')
             
-            # Tạo policy dựa trên role và attributes
-            if role == 'admin':
-                return "(ADMIN)"
-            elif role == 'doctor':
-                if department:
-                    return f"(DOCTOR AND {department.upper()})"
-                else:
-                    return "(DOCTOR)"
-            elif role == 'nurse':
-                if department:
-                    return f"(NURSE AND {department.upper()})"
-                else:
-                    return "(NURSE)"
-            elif role == 'patient':
-                return "(PATIENT)"
-            else:
-                return "(PUBLIC)"
+            # # Tạo policy dựa trên role và attributes
+            # if role == 'admin':
+            #     return "(ADMIN)"
+            # elif role == 'doctor':
+            #     if department:
+            #         return f"(DOCTOR AND {department.upper()})"
+            #     else:
+            #         return "(DOCTOR)"
+            # elif role == 'nurse':
+            #     if department:
+            #         return f"(NURSE AND {department.upper()})"
+            #     else:
+            #         return "(NURSE)"
+            # elif role == 'patient':
+            #     return "(PATIENT)"
+            # else:
+            #     return "(PUBLIC)"
                 
         except Exception as e:
             logger.error(f"Failed to generate policy for user {user_id}: {e}")
-            return "(PUBLIC)"
-    
+            return "guest"
+
     def encrypt_file_for_policy(self, file_path: str, policy: str) -> Dict[str, Any]:
         """
         Mã hóa file với policy cho trước

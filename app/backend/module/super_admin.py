@@ -5,12 +5,15 @@ import uuid
 import hashlib
 import bcrypt
 import random
+import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from firebase_admin import firestore
 from .database import db
 from .user_management import UserManager
 from .attribute_validator import attribute_validator
+
+logger = logging.getLogger(__name__)
 
 class SuperAdmin:
     """
@@ -20,7 +23,7 @@ class SuperAdmin:
     def __init__(self):
         self.users_collection = db.collection('users')
         self.attributes_collection = db.collection('user_attributes')
-        self.attribute_schema_collection = db.collection('attributes_schema')
+        self.attribute_schema_collection = db.collection('system_schemas')
         self.super_admin_collection = db.collection('super_admin')
         
         # Initialize attribute schema if not exists
@@ -95,84 +98,74 @@ class SuperAdmin:
     def _initialize_attribute_schema(self):
         """Initialize default attribute schema"""
         try:
-            # Check if schema exists
-            schema_doc = self.attribute_schema_collection.document('default').get()
+            # Check if schema exists (using same document name as create_attribute_schemas.py)
+            schema_doc = self.attribute_schema_collection.document('user_attribute_schemas').get()
             
             if not schema_doc.exists:
+                # Use same structure as create_attribute_schemas.py
                 default_schema = {
-                    'schema_id': 'default',
-                    'version': '1.0',
-                    'created_at': datetime.utcnow(),
-                    'updated_at': datetime.utcnow(),
+                    'version': '1.0.0',
+                    'last_updated': datetime.utcnow(),
+                    'updated_by': 'super_admin_init',
                     'attributes': {
                         # Role attributes - Corporate roles
                         'role': {
-                            'type': 'single_choice',
+                            'type': 'enum',
                             'required': True,
                             'description': 'Employee role in the organization',
-                            'values': ['employee', 'manager', 'it_admin', 'hr_staff', 'finance_staff', 'executive']
+                            'valid_values': ['employee', 'manager', 'it_admin', 'hr_staff', 'finance_staff', 'executive', 'senior_employee', 'intern', 'contractor'],
+                            'default': 'employee'
                         },
                         
                         # Department attributes - Corporate departments
                         'department': {
-                            'type': 'single_choice',
+                            'type': 'enum',
                             'required': True,
-                            'description': 'Department/Division assignment',
-                            'values': ['it', 'hr', 'finance', 'sales', 'marketing', 'operations']
+                            'description': 'Department where user works',
+                            'valid_values': ['it', 'hr', 'finance', 'marketing', 'sales', 'operations', 'legal', 'security', 'research', 'development'],
+                            'default': None
                         },
                         
                         # Clearance level - Corporate security levels
                         'clearance_level': {
-                            'type': 'single_choice',
+                            'type': 'enum',
                             'required': True,
                             'description': 'Security clearance level',
-                            'values': ['low', 'medium', 'high', 'top_secret']
-                        },
-                        
-                        # Specialization - Professional skills/expertise
-                        'specialization': {
-                            'type': 'multiple_choice',
-                            'required': False,
-                            'description': 'Professional specialization and skills',
-                            'values': ['management', 'technical', 'analytics', 'customer_service', 'project_management', 'business_development']
-                        },
-                        
-                        # Years of experience
-                        'experience_years': {
-                            'type': 'range',
-                            'required': False,
-                            'description': 'Years of professional experience',
-                            'min_value': 0,
-                            'max_value': 50
-                        },
-                        
-                        # Location - Office locations
-                        'location': {
-                            'type': 'single_choice',
-                            'required': False,
-                            'description': 'Primary work location',
-                            'values': ['hanoi', 'hcm', 'remote', 'hybrid']
-                        },
-                        
-                        # Shift assignment
-                        'shift': {
-                            'type': 'single_choice',
-                            'required': False,
-                            'description': 'Work shift assignment',
-                            'values': ['day', 'night', 'rotating', 'on_call']
+                            'valid_values': ['public', 'internal', 'confidential', 'restricted', 'secret', 'top_secret'],
+                            'default': 'internal',
+                            'hierarchy': ['public', 'internal', 'confidential', 'restricted', 'secret', 'top_secret']
                         },
                         
                         # Data access level
                         'data_access': {
-                            'type': 'single_choice',
+                            'type': 'enum',
                             'required': True,
-                            'description': 'Data access classification',
-                            'values': ['public', 'internal', 'confidential', 'restricted', 'top_secret']
+                            'description': 'Data access level',
+                            'valid_values': ['read_only', 'standard', 'advanced', 'admin', 'super_admin'],
+                            'default': 'standard'
+                        },
+                        
+                        # Employment status
+                        'employment_status': {
+                            'type': 'enum',
+                            'required': False,
+                            'description': 'Employment status',
+                            'valid_values': ['active', 'inactive', 'suspended', 'terminated', 'on_leave'],
+                            'default': 'active'
+                        },
+                        
+                        # Location - Office locations
+                        'location': {
+                            'type': 'enum',
+                            'required': False,
+                            'description': 'Work location',
+                            'valid_values': ['hq_hcm', 'branch_hanoi', 'branch_danang', 'remote', 'hybrid'],
+                            'default': 'hq_hcm'
                         }
                     }
                 }
                 
-                self.attribute_schema_collection.document('default').set(default_schema)
+                self.attribute_schema_collection.document('user_attribute_schemas').set(default_schema)
                 print("✅ Attribute schema initialized successfully")
                 
         except Exception as e:
@@ -445,9 +438,36 @@ class SuperAdmin:
             # Create or update with consistent document ID
             self.attributes_collection.document(attr_document_id).set(attr_data)
             
+            # Handle private key regeneration for attribute changes
+            try:
+                from module.central_authority import central_authority
+                key_status = central_authority.check_user_has_private_key(user_id)
+                
+                if key_status['has_key']:
+                    # Convert attributes to ABE format
+                    abe_attributes = []
+                    for key, value in attributes.items():
+                        abe_attributes.append(f"{key}:{value}")
+                    
+                    # Mark old key as inactive due to attribute change
+                    attr_change_result = central_authority.regenerate_key_for_attribute_change(
+                        user_id=user_id,
+                        new_attributes=abe_attributes
+                    )
+                    
+                    if attr_change_result['success']:
+                        logger.info(f"Handled private key for attribute change for user {user_id}")
+                    else:
+                        logger.warning(f"Could not handle private key for user {user_id}: {attr_change_result.get('error')}")
+                        
+            except Exception as e:
+                logger.warning(f"Failed to handle private key regeneration for user {user_id}: {e}")
+                # Don't fail the attribute update, just log warning
+            
             return {
                 'success': True,
-                'message': 'User attributes updated successfully'
+                'message': 'User attributes updated successfully',
+                'private_key_status': 'deactivated_requires_reauth' if key_status.get('has_key') else 'no_key'
             }
             
         except Exception as e:
@@ -606,7 +626,7 @@ class SuperAdmin:
         Get the current attribute schema
         """
         try:
-            schema_doc = self.attribute_schema_collection.document('default').get()
+            schema_doc = self.attribute_schema_collection.document('user_attribute_schemas').get()
             
             if not schema_doc.exists:
                 return {

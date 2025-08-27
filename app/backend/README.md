@@ -172,7 +172,7 @@ ls -la lib/
 2. **Generate Service Account Key**
    - Go to Project Settings > Service Accounts
    - Generate new private key
-   - Save as `env/cloud-crypto-access-firebase-adminsdk-fbsvc-cb0114721f.json`
+   - Save as `env/cloud-firestore-crypto-access.json`
 
 3. **Configure Firestore Rules**
    ```javascript
@@ -206,7 +206,7 @@ JWT_SECRET_KEY=your-super-secret-jwt-key-here
 SYSTEM_SERVICE_TOKEN=your-system-service-token
 
 # Firebase Configuration (automatically detected)
-GOOGLE_APPLICATION_CREDENTIALS=./env/cloud-crypto-access-firebase-adminsdk-fbsvc-cb0114721f.json
+GOOGLE_APPLICATION_CREDENTIALS=./env/cloud-firestore-crypto-access.json
 
 # Logging
 LOG_LEVEL=INFO

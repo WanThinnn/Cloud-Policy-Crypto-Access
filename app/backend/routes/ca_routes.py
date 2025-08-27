@@ -238,41 +238,106 @@ def get_ca_status():
         }), 500
 
 @ca_api.route('/user/private-key/generate', methods=['POST'])
+@jwt_required
 def generate_encrypted_user_private_key():
     """
     Tạo và mã hóa private key cho user bằng password
+    Nếu có JWT token thì dùng thông tin từ token, nếu không thì dùng body
     """
     try:
         data = request.get_json()
+        current_user = get_current_user()
         
-        if not data:
+        if data:
+            # Use provided data
+            # Validate required fields
+            required_fields = ['user_id', 'password']
+            missing_fields = [field for field in required_fields if not data.get(field)]
+            
+            if missing_fields:
+                return jsonify({
+                    'success': False,
+                    'error': f'Missing required fields: {", ".join(missing_fields)}'
+                }), 400
+            
+            user_id = data['user_id']
+            password = data['password']
+            
+            # Check if attributes are provided in JSON, otherwise get from JWT or database
+            if 'attributes' in data:
+                attributes = data['attributes']
+                if not isinstance(attributes, list):
+                    return jsonify({
+                        'success': False,
+                        'error': 'Attributes must be a list'
+                    }), 400
+            elif current_user and current_user.get('attributes'):
+                # Get attributes from JWT token
+                user_attributes = current_user.get('attributes', {})
+                attributes = []
+                for key, value in user_attributes.items():
+                    if value:  # Only add non-empty values
+                        if isinstance(value, list):
+                            for v in value:
+                                attributes.append(f"{key}:{v}")
+                        else:
+                            attributes.append(f"{key}:{value}")
+            else:
+                # Try to get attributes from database
+                from module.super_admin import super_admin
+                attrs_result = super_admin.get_user_attributes(user_id)
+                if attrs_result['success']:
+                    user_attributes = attrs_result['attributes']
+                    attributes = []
+                    for key, value in user_attributes.items():
+                        if value:  # Only add non-empty values
+                            if isinstance(value, list):
+                                for v in value:
+                                    attributes.append(f"{key}:{v}")
+                            else:
+                                attributes.append(f"{key}:{value}")
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Attributes not provided and could not retrieve from token or database'
+                    }), 400
+        elif current_user:
+            # Use JWT token data
+            user_id = current_user.get('user_id')
+            if not user_id:
+                return jsonify({
+                    'success': False,
+                    'error': 'User ID not found in token'
+                }), 401
+            
+            # Use user_id as password for JWT-based generation
+            password = user_id
+            
+            # Get attributes from JWT token
+            user_attributes = current_user.get('attributes', {})
+            if not user_attributes:
+                return jsonify({
+                    'success': False,
+                    'error': 'No user attributes found in token'
+                }), 400
+            
+            # Convert JWT attributes to list format
+            attributes = []
+            for key, value in user_attributes.items():
+                if value:  # Only add non-empty values
+                    if isinstance(value, list):
+                        for v in value:
+                            attributes.append(f"{key}:{v}")
+                    else:
+                        attributes.append(f"{key}:{value}")
+        else:
             return jsonify({
                 'success': False,
-                'error': 'Request body is required'
-            }), 400
-        
-        # Validate required fields
-        required_fields = ['user_id', 'password', 'attributes']
-        missing_fields = [field for field in required_fields if not data.get(field)]
-        
-        if missing_fields:
-            return jsonify({
-                'success': False,
-                'error': f'Missing required fields: {", ".join(missing_fields)}'
-            }), 400
-        
-        user_id = data['user_id']
-        password = data['password']
-        attributes = data['attributes']
-        
-        if not isinstance(attributes, list):
-            return jsonify({
-                'success': False,
-                'error': 'Attributes must be a list'
+                'error': 'Request body is required or valid JWT token must be provided'
             }), 400
         
         result = central_authority.generate_encrypted_user_private_key(
-            user_id, password, attributes
+            user_id, password, attributes, force_regenerate=True
         )
         
         if result['success']:

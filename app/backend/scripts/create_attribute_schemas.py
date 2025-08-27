@@ -26,7 +26,7 @@ def create_attribute_schemas():
                 'version': '1.0.0',
                 'last_updated': datetime.utcnow(),
                 'updated_by': 'system_init',
-                'schemas': {
+                'attributes': {
                     'role': {
                         'type': 'enum',
                         'description': 'User role in the organization',
