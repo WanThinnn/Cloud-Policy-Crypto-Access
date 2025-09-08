@@ -932,13 +932,14 @@ class CentralAuthority:
                 'error': f'Failed to encrypt file: {str(e)}'
             }
     
-    def decrypt_file_for_user(self, encrypted_data: bytes, user_id: str) -> Dict[str, Any]:
+    def decrypt_file_for_user(self, encrypted_data: bytes, user_id: str, password: str) -> Dict[str, Any]:
         """
         Giải mã file cho user
         
         Args:
             encrypted_data: Dữ liệu đã mã hóa
             user_id: User ID
+            password: User password để decrypt private key
             
         Returns:
             Dict with decrypted data
@@ -949,8 +950,8 @@ class CentralAuthority:
             if not keys_result['success']:
                 return keys_result
             
-            # Lấy user private key
-            private_key_result = self.get_user_private_key(user_id)
+            # Lấy user private key và decrypt với password
+            private_key_result = self.get_user_private_key_with_password(user_id, password)
             if not private_key_result['success']:
                 return private_key_result
             

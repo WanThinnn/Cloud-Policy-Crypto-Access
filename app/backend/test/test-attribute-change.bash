@@ -52,7 +52,7 @@ curl -s -X PUT "$SERVER_URL/api/super-admin/users/$TEST_USER_ID/attributes" \
       "role": "intern",
       "department": "hr", 
       "clearance_level": "secret",
-      "data_access": "read_only",
+      "data_access": "super_admin",
       "employment_status": "active",
       "location": "hq_hcm"
     }

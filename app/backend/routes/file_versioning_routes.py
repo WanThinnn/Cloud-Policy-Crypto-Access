@@ -18,16 +18,14 @@ file_versioning_bp = Blueprint('file_versioning', __name__)
 
 @file_versioning_bp.route('/file/<file_id>/version', methods=['POST'])
 @jwt_required
-def create_file_version(file_id):
+def create_new_version(file_id):
     """
     Create a new version of a file
     
-    Expected JSON payload:
-    {
-        "file_data": "base64_encoded_file_data",
-        "version_type": "MAJOR|MINOR|PATCH",
-        "change_description": "Description of changes"
-    }
+    Expected form data:
+    - file: The file to upload (required)
+    - version_type: MAJOR|MINOR|PATCH (default: MINOR)
+    - change_description: Description of changes (default: "New version uploaded")
     """
     try:
         current_user = get_current_user()
@@ -39,33 +37,23 @@ def create_file_version(file_id):
             
         current_user_id = current_user.get('user_id')
         
-        data = request.get_json()
-        
-        if not data:
+        # Check if file exists in request
+        if 'file' not in request.files:
             return jsonify({
                 'success': False,
-                'error': 'No data provided'
+                'error': 'No file uploaded'
             }), 400
         
-        # Validate required fields
-        if 'file_data' not in data:
+        uploaded_file = request.files['file']
+        if uploaded_file.filename == '':
             return jsonify({
                 'success': False,
-                'error': 'file_data is required'
+                'error': 'No file selected'
             }), 400
         
-        # Decode base64 file data
-        try:
-            file_data = base64.b64decode(data['file_data'])
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'error': f'Invalid base64 file data: {str(e)}'
-            }), 400
-        
-        # Get optional parameters
-        version_type = data.get('version_type', 'MINOR').upper()
-        change_description = data.get('change_description', '')
+        # Get form data
+        version_type = request.form.get('version_type', 'MINOR').upper()
+        change_description = request.form.get('change_description', 'New version uploaded')
         
         # Validate version type
         if version_type not in ['MAJOR', 'MINOR', 'PATCH']:
@@ -74,7 +62,10 @@ def create_file_version(file_id):
                 'error': 'version_type must be MAJOR, MINOR, or PATCH'
             }), 400
         
-        # Create version
+        # Read file data
+        file_data = uploaded_file.read()
+        
+        # Create version with file data
         result = FileVersionManager.create_version(
             file_id=file_id,
             file_data=file_data,
@@ -96,7 +87,7 @@ def create_file_version(file_id):
         logger.error(f"Create version error: {e}")
         return jsonify({
             'success': False,
-            'error': f'Internal server error: {str(e)}'
+            'error': 'Internal server error'
         }), 500
 
 @file_versioning_bp.route('/version/<version_id>/approve', methods=['POST'])
@@ -457,11 +448,16 @@ def versioning_health():
         }), 500
 
 # Download specific version endpoint
-@file_versioning_bp.route('/version/<version_id>/download', methods=['GET'])
+@file_versioning_bp.route('/version/<version_id>/download', methods=['POST'])
 @jwt_required
 def download_version(version_id):
     """
     Download a specific version of a file
+    
+    Expected JSON payload:
+    {
+        "password": "user_password"  // Required to decrypt private key
+    }
     
     Args:
         version_id: The version ID to download
@@ -479,6 +475,16 @@ def download_version(version_id):
             
         current_user_id = current_user.get('user_id')
         
+        # Get password from request body
+        data = request.get_json()
+        if not data or 'password' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Password required to decrypt private key'
+            }), 400
+            
+        password = data['password']
+        
         # Get version data
         result = FileVersionManager.get_version_data(version_id, current_user_id)
         
@@ -494,10 +500,11 @@ def download_version(version_id):
                 'error': 'No encrypted data found for this version'
             }), 404
         
-        # Decrypt the file data
+        # Decrypt the file data with password
         decrypt_result = central_authority.decrypt_file_for_user(
             encrypted_data=encrypted_data,
-            user_id=current_user_id
+            user_id=current_user_id,
+            password=password
         )
         
         if not decrypt_result['success']:

@@ -274,7 +274,6 @@ curl -s "$SERVER_URL/api/files/" \
 echo "Checking files health..."
 curl -s "$SERVER_URL/api/files/health" \
   -H "Authorization: Bearer $USER_TOKEN" | jq
-
 # Step 11: Test File Versioning
 echo "=== Step 11: Testing File Versioning ==="
 
@@ -289,30 +288,59 @@ UPLOAD_RESULT=$(curl -s -X POST "$SERVER_URL/api/files/upload" \
 
 echo "$UPLOAD_RESULT" | jq
 
-# Extract file ID for versioning test
+# Extract file ID for versioning test - try multiple possible field names
 FILE_ID=$(echo "$UPLOAD_RESULT" | python3 -c "
 import json, sys
 try:
     data = json.load(sys.stdin)
-    print(data.get('file', {}).get('id', ''))
-except:
-    pass
+    # Try different possible field names
+    file_id = data.get('file', {}).get('id', '') or \
+              data.get('file', {}).get('file_id', '') or \
+              data.get('file_id', '') or \
+              data.get('id', '') or \
+              data.get('data', {}).get('file_id', '')
+    print(file_id)
+except Exception as e:
+    print('', file=sys.stderr)
 " 2>/dev/null)
 
 echo "File ID for versioning: $FILE_ID"
 
-# Create new version
+# If FILE_ID is empty, try to get it from file list
+if [ -z "$FILE_ID" ]; then
+    echo "FILE_ID is empty, getting from file list..."
+    FILE_ID=$(curl -s "$SERVER_URL/api/files/" \
+      -H "Authorization: Bearer $USER_TOKEN" | \
+      python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    files = data.get('files', [])
+    for f in files:
+        if f.get('filename') == 'version_test.txt':
+            print(f.get('file_id', ''))
+            break
+except:
+    pass
+" 2>/dev/null)
+    echo "FILE_ID from file list: $FILE_ID"
+fi
+
+# Debug: Show what we have
+echo "Debug info:"
+echo "USER_TOKEN: ${USER_TOKEN:0:20}..." 
+echo "FILE_ID: $FILE_ID"
+echo "UPLOAD_RESULT: $UPLOAD_RESULT"
+
+# Create new version file
 echo "Version 2 content - updated!" > version_test_v2.txt
 
 echo "Uploading new version..."
 VERSION_RESULT=$(curl -s -X POST "$SERVER_URL/api/file-versioning/file/$FILE_ID/version" \
   -H "Authorization: Bearer $USER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "file_data": "'$(base64 -w 0 version_test_v2.txt)'",
-    "version_type": "MINOR",
-    "change_description": "Updated content for version 2"
-  }')
+  -F "file=@version_test_v2.txt" \
+  -F "version_type=MINOR" \
+  -F "change_description=Updated content for version 2")
 
 echo "$VERSION_RESULT" | jq
 
@@ -321,7 +349,12 @@ VERSION_ID=$(echo "$VERSION_RESULT" | python3 -c "
 import json, sys
 try:
     data = json.load(sys.stdin)
-    print(data.get('version', {}).get('id', ''))
+    # Try different possible field names for version ID
+    version_id = data.get('version', {}).get('version_id', '') or \
+                 data.get('version', {}).get('id', '') or \
+                 data.get('version_id', '') or \
+                 data.get('id', '')
+    print(version_id)
 except:
     pass
 " 2>/dev/null)
@@ -340,7 +373,9 @@ import json, sys
 try:
     data = json.load(sys.stdin)
     versions = data.get('versions', [])
-    ids = [v.get('id', '') for v in versions[:2]]  # Get first 2 versions
+    # Sort versions by version_number to get correct order (1.0.0, 1.1.0, etc.)
+    sorted_versions = sorted(versions, key=lambda v: v.get('version_number', '0.0.0'))
+    ids = [v.get('version_id', '') for v in sorted_versions[:2]]  # Get first 2 versions in order
     print(' '.join(ids))
 except:
     pass
@@ -353,13 +388,17 @@ VERSION_2_ID=$(echo $VERSION_IDS | cut -d' ' -f2)
 
 echo "Testing version download..."
 if [ ! -z "$VERSION_1_ID" ]; then
-  curl -s "$SERVER_URL/api/file-versioning/version/$VERSION_1_ID/download" \
-    -H "Authorization: Bearer $USER_TOKEN" > downloaded_v1.txt
+  curl -s -X POST "$SERVER_URL/api/file-versioning/version/$VERSION_1_ID/download" \
+    -H "Authorization: Bearer $USER_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"password": "User123!@#"}' > downloaded_v1.txt
 fi
 
 if [ ! -z "$VERSION_2_ID" ]; then
-  curl -s "$SERVER_URL/api/file-versioning/version/$VERSION_2_ID/download" \
-    -H "Authorization: Bearer $USER_TOKEN" > downloaded_v2.txt
+  curl -s -X POST "$SERVER_URL/api/file-versioning/version/$VERSION_2_ID/download" \
+    -H "Authorization: Bearer $USER_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"password": "User123!@#"}' > downloaded_v2.txt
 fi
 
 echo "Downloaded version 1 content:"
@@ -380,12 +419,12 @@ curl -s "$SERVER_URL/api/files/$FILE_ID/access-logs?user_id=22520001" \
 echo "Updating file access policy..."
 curl -s -X PUT "$SERVER_URL/api/files/$FILE_ID/policy" \
   -H "Authorization: Bearer $USER_TOKEN" \
-  -H "Content-Type: application/json" \
+  -H "Content-Type: application/json" \  # ← THÊM DÒNG NÀY
   -d '{
     "user_id": "22520001",
     "new_policy": "department:it AND clearance_level:confidential"
   }' | jq
-
+  
 # Test versioning service health
 echo "Checking file versioning service health..."
 curl -s "$SERVER_URL/api/file-versioning/versions/health" | jq
