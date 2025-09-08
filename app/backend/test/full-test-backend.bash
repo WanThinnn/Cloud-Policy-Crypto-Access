@@ -642,3 +642,150 @@ curl -s "http://192.168.1.200:5000/api/abac/health" \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq
 
 echo "=== Full Backend Test Completed ==="
+
+# Step 13: Test User Attribute Changes and Private Key Regeneration
+echo "=== Testing User Attribute Changes ==="
+
+if [ ! -z "$ADMIN_TOKEN" ] && [ ! -z "$TEST_USER_ID" ]; then
+  
+  # Get current user info before changes
+  echo "Getting current user info before attribute changes..."
+  curl -s "http://192.168.1.200:5000/api/super-admin/users/$TEST_USER_ID" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" | jq
+  
+  # Check if user has private key before attribute change
+  echo "Checking private key status before attribute change..."
+  if [ ! -z "$USER_TOKEN" ]; then
+    curl -s "http://192.168.1.167:5000/api/ca/user/private-key/check" \
+      -H "Authorization: Bearer $USER_TOKEN" | jq
+  fi
+  
+  # Update user attributes (this should deactivate old private key)
+  echo "Updating user attributes (promoting to director with higher clearance)..."
+  curl -s -X PUT "http://192.168.1.167:5000/api/super-admin/users/$TEST_USER_ID/attributes" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "attributes": {
+        "role": "director",
+        "department": "it",
+        "clearance_level": "secret",
+        "data_access": "super_admin",
+        "employment_status": "active",
+        "location": "hq_hcm"
+      }
+    }' | jq
+  
+  # Get updated user info
+  echo "Getting updated user info after attribute changes..."
+  curl -s "http://192.168.1.200:5000/api/super-admin/users/$TEST_USER_ID" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" | jq
+  
+  # Check private key status after attribute change (should be deactivated)
+  echo "Checking private key status after attribute change..."
+  if [ ! -z "$USER_TOKEN" ]; then
+    curl -s "http://192.168.1.167:5000/api/ca/user/private-key/check" \
+      -H "Authorization: Bearer $USER_TOKEN" | jq
+  fi
+  
+  # User needs to regenerate private key with new attributes
+  echo "User regenerating private key with new attributes..."
+  if [ ! -z "$USER_TOKEN" ]; then
+    curl -s -X POST "http://192.168.1.167:5000/api/ca/user/generate-private-key" \
+      -H "Authorization: Bearer $USER_TOKEN" | jq
+  fi
+  
+  # Verify new private key works
+  echo "Verifying new private key status..."
+  if [ ! -z "$USER_TOKEN" ]; then
+    curl -s "http://192.168.1.200:5000/api/ca/user/private-key/check" \
+      -H "Authorization: Bearer $USER_TOKEN" | jq
+  fi
+  
+  # Test another attribute change with different values
+  echo "Testing another attribute change (department transfer)..."
+  curl -s -X PUT "http://192.168.1.200:5000/api/super-admin/users/$TEST_USER_ID/attributes" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "attributes": {
+        "role": "director",
+        "department": "security",
+        "clearance_level": "top_secret",
+        "data_access": "super_admin",
+        "employment_status": "active",
+        "location": "hq_hcm"
+      }
+    }' | jq
+  
+  # Again, user needs to regenerate key
+  echo "User regenerating private key after department transfer..."
+  if [ ! -z "$USER_TOKEN" ]; then
+    curl -s -X POST "http://192.168.1.200:5000/api/ca/user/generate-private-key" \
+      -H "Authorization: Bearer $USER_TOKEN" | jq
+  fi
+  
+  # Test validation error with invalid attribute values
+  echo "Testing attribute validation with invalid values..."
+  curl -s -X PUT "http://192.168.1.200:5000/api/super-admin/users/$TEST_USER_ID/attributes" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "attributes": {
+        "role": "invalid_role",
+        "department": "invalid_dept"
+      }
+    }' | jq
+
+fi
+
+# Step 14: Test Password Change and Private Key Re-encryption
+echo "=== Testing Password Change and Key Re-encryption ==="
+
+if [ ! -z "$USER_TOKEN" ] && [ ! -z "$TEST_USER_ID" ]; then
+  
+  # Check current private key status
+  echo "Checking private key before password change..."
+  curl -s "http://192.168.1.200:5000/api/ca/user/private-key/check" \
+    -H "Authorization: Bearer $USER_TOKEN" | jq
+  
+  # Change user password (this should re-encrypt the private key)
+  echo "Changing user password (will re-encrypt private key)..."
+  curl -s -X POST "http://192.168.1.200:5000/api/auth/change-password" \
+    -H "Authorization: Bearer $USER_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "old_password": "Manager123!",
+      "new_password": "NewManager456!"
+    }' | jq
+  
+  # Login with new password to get new token
+  echo "Logging in with new password..."
+  NEW_USER_TOKEN=$(curl -s -X POST "http://192.168.1.200:5000/api/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\": \"$TEST_USER_ID\", \"password\": \"NewManager456!\"}" | \
+    python3 -c "import json,sys; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
+  
+  echo "New User Token: $NEW_USER_TOKEN"
+  
+  # Check private key status with new token (should still work)
+  echo "Checking private key after password change..."
+  if [ ! -z "$NEW_USER_TOKEN" ]; then
+    curl -s "http://192.168.1.200:5000/api/ca/user/private-key/check" \
+      -H "Authorization: Bearer $NEW_USER_TOKEN" | jq
+  fi
+  
+  # Test file operations with re-encrypted key
+  echo "Testing file operations with re-encrypted private key..."
+  if [ ! -z "$NEW_USER_TOKEN" ]; then
+    echo "Test content after password change" > test_after_pwd_change.txt
+    
+    curl -s -X POST "http://192.168.1.200:5000/api/files/upload" \
+      -H "Authorization: Bearer $NEW_USER_TOKEN" \
+      -F "file=@test_after_pwd_change.txt" \
+      -F "access_policy=department:security AND clearance_level:top_secret" | jq
+    
+    rm -f test_after_pwd_change.txt
+  fi
+
+fi

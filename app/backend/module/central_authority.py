@@ -24,6 +24,7 @@ class CentralAuthority:
     
     def __init__(self):
         self.keys_collection = db.collection('abe_keys')
+        self.user_private_keys_collection = db.collection('user_private_keys')  # Dedicated collection for user private keys
         self.policies_collection = db.collection('access_policies')
         self.user_attributes_collection = db.collection('user_attributes')
         
@@ -338,7 +339,7 @@ class CentralAuthority:
             # 5. Save user private key to Firestore (REPLACE existing)
             user_key_doc = {
                 'user_id': user_id,
-                'private_key': private_key_data,
+                'encrypted_key': private_key_data,
                 'attributes': user_attributes_list,
                 'created_at': datetime.utcnow(),
                 'updated_at': datetime.utcnow(),
@@ -346,18 +347,23 @@ class CentralAuthority:
                 'key_version': 1  # For future versioning if needed
             }
             
-            # 6. CRITICAL: Remove ALL old private keys for this user (ensure uniqueness)
-            old_keys = self.keys_collection.where('user_id', '==', user_id).get()
-            deleted_count = 0
+            # 6. CRITICAL: DEACTIVATE old private keys (DON'T DELETE for audit logs)
+            # FIXED: Use user_private_keys collection for user keys, NOT abe_keys
+            old_keys = self.user_private_keys_collection.where('user_id', '==', user_id).where('is_active', '==', True).get()
+            deactivated_count = 0
             for old_key in old_keys:
-                self.keys_collection.document(old_key.id).delete()
-                deleted_count += 1
+                self.user_private_keys_collection.document(old_key.id).update({
+                    'is_active': False,
+                    'deactivated_at': datetime.utcnow(),
+                    'deactivation_reason': 'new_key_generated'
+                })
+                deactivated_count += 1
                 
-            logger.info(f"Deleted {deleted_count} old private keys for user {user_id}")
+            logger.info(f"Deactivated {deactivated_count} old private keys for user {user_id}")
             
             # 7. Save the ONE AND ONLY private key for this user
             private_key_id = f"privkey_{user_id}_{int(datetime.utcnow().timestamp())}"
-            self.keys_collection.document(private_key_id).set(user_key_doc)
+            self.user_private_keys_collection.document(private_key_id).set(user_key_doc)
             
             # 8. Cleanup temp files
             import shutil
@@ -371,7 +377,7 @@ class CentralAuthority:
                 'attributes': user_attributes_list,
                 'message': 'Private key generated/updated successfully',
                 'action': 'generated_new',
-                'old_keys_removed': deleted_count
+                'old_keys_deactivated': deactivated_count
             }
             
         except Exception as e:
@@ -393,7 +399,8 @@ class CentralAuthority:
         """
         try:
             # Query for user's active private key (should only be 1)
-            user_keys = self.keys_collection.where('user_id', '==', user_id)\
+            # FIXED: Use user_private_keys collection
+            user_keys = self.user_private_keys_collection.where('user_id', '==', user_id)\
                                            .where('is_active', '==', True)\
                                            .get()
             
@@ -412,10 +419,13 @@ class CentralAuthority:
             key_data = key_doc.to_dict()
             key_data['private_key_id'] = key_doc.id
             
+            # Handle both old and new field names for backward compatibility
+            private_key_value = key_data.get('encrypted_key') or key_data.get('private_key')
+            
             return {
                 'success': True,
                 'has_key': True,
-                'private_key': key_data['encrypted_key'],
+                'private_key': private_key_value,
                 'attributes': key_data['attributes'],
                 'created_at': key_data.get('created_at'),
                 'updated_at': key_data.get('updated_at'),
@@ -464,7 +474,7 @@ class CentralAuthority:
                     'needs_generation': False,
                     'needs_update': False,
                     'recommendation': 'KEEP_EXISTING',
-                    'reason': 'Attributes unchanged',
+                    'reason': 'Attributes unchanged or Password unchanged',
                     'existing_attributes': list(existing_attributes)
                 }
             else:
@@ -571,29 +581,30 @@ class CentralAuthority:
             }
             
             if force_regenerate and existing_key['has_key']:
-                # Update existing key document
-                private_keys_collection = db.collection('user_private_keys')
-                existing_docs = private_keys_collection.where('user_id', '==', user_id).where('is_active', '==', True).limit(1).get()
+                # FIXED: Use dedicated user_private_keys collection and DEACTIVATE old keys first
+                existing_docs = self.user_private_keys_collection.where('user_id', '==', user_id).where('is_active', '==', True).get()
                 
-                if existing_docs:
-                    doc = list(existing_docs)[0]
-                    # Keep original created_at but add updated_at
-                    user_key_doc['created_at'] = doc.to_dict().get('created_at', datetime.utcnow())
-                    doc.reference.update(user_key_doc)
-                    private_key_id = doc.id
-                    logger.info(f"Updated existing encrypted private key for user: {user_id}")
-                else:
-                    # Fallback: create new if existing not found
-                    private_key_id = f"privkey_{user_id}_{int(datetime.utcnow().timestamp())}"
-                    self.keys_collection.document(private_key_id).set(user_key_doc)
-                    logger.info(f"Created new encrypted private key for user: {user_id} (fallback)")
+                # First, deactivate ALL existing keys for this user
+                for doc in existing_docs:
+                    doc.reference.update({
+                        'is_active': False,
+                        'deactivated_at': datetime.utcnow(),
+                        'deactivation_reason': 'regenerated'
+                    })
+                    logger.info(f"Deactivated old private key {doc.id} for user: {user_id}")
+                
+                # Then create new key
+                private_key_id = f"privkey_{user_id}_{int(datetime.utcnow().timestamp())}"
+                self.user_private_keys_collection.document(private_key_id).set(user_key_doc)
+                logger.info(f"Created new encrypted private key for user: {user_id} (regenerated)")
             else:
                 # Create new key document (first time generation)
+                # FIXED: Use user_private_keys collection consistently
                 private_key_id = f"privkey_{user_id}_{int(datetime.utcnow().timestamp())}"
                 # Remove regeneration fields for new keys
                 user_key_doc.pop('updated_at', None)
                 user_key_doc.pop('regeneration_reason', None)
-                self.keys_collection.document(private_key_id).set(user_key_doc)
+                self.user_private_keys_collection.document(private_key_id).set(user_key_doc)
                 logger.info(f"Created new encrypted private key for user: {user_id}")
             
             # Cleanup temp files
@@ -678,8 +689,7 @@ class CentralAuthority:
             # to generate new key with new attributes
             
             # Mark existing key as inactive
-            private_keys_collection = db.collection('user_private_keys')
-            existing_docs = private_keys_collection.where('user_id', '==', user_id).where('is_active', '==', True).get()
+            existing_docs = self.user_private_keys_collection.where('user_id', '==', user_id).where('is_active', '==', True).get()
             
             for doc in existing_docs:
                 doc.reference.update({
@@ -716,7 +726,8 @@ class CentralAuthority:
         """
         try:
             # Tìm encrypted private key của user
-            user_keys = self.keys_collection.where('user_id', '==', user_id)\
+            # FIXED: Use user_private_keys collection
+            user_keys = self.user_private_keys_collection.where('user_id', '==', user_id)\
                                            .where('is_active', '==', True)\
                                            .limit(1).get()
             
@@ -767,7 +778,8 @@ class CentralAuthority:
             Dict with check results
         """
         try:
-            user_keys = self.keys_collection.where('user_id', '==', user_id)\
+            # FIXED: Use user_private_keys collection instead of keys_collection
+            user_keys = self.user_private_keys_collection.where('user_id', '==', user_id)\
                                            .where('is_active', '==', True)\
                                            .limit(1).get()
             
@@ -835,6 +847,9 @@ class CentralAuthority:
             #     return "(PATIENT)"
             # else:
             #     return "(PUBLIC)"
+            
+            # Return a simple policy based on role for now
+            return f"role:{role}" if role != 'guest' else "guest"
                 
         except Exception as e:
             logger.error(f"Failed to generate policy for user {user_id}: {e}")

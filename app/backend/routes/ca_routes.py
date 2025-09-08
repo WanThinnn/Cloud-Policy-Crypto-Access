@@ -421,13 +421,22 @@ def check_user_private_key():
             }), 401
 
         user_id = current_user.get('user_id')
-        user_attributes = current_user.get('attributes', {})
         
         if not user_id:
             return jsonify({
                 'success': False,
                 'error': 'User ID not found in token'
             }), 401
+        
+        # Get CURRENT attributes from database (not from JWT which may be outdated)
+        from module.super_admin import super_admin
+        attrs_result = super_admin.get_user_attributes(user_id)
+        
+        if attrs_result['success']:
+            user_attributes = attrs_result['attributes']
+        else:
+            # Fallback to JWT attributes if database fetch fails
+            user_attributes = current_user.get('attributes', {})
         
         # Convert attributes to CP-ABE format
         cpabe_attributes = []
@@ -550,13 +559,23 @@ def generate_user_private_key():
 
         logger.info(f"Generating private key for authenticated user: {user_id}")
 
-        # TỰ ĐỘNG LẤY USER ATTRIBUTES TỪ JWT TOKEN
-        user_attributes = current_user.get('attributes', {})
+        # TỰ ĐỘNG LẤY USER ATTRIBUTES TỪ DATABASE (NOT JWT) để đảm bảo attributes mới nhất
+        # JWT token có thể chứa attributes cũ, cần lấy từ database để có attributes mới nhất
+        from module.super_admin import super_admin
+        attrs_result = super_admin.get_user_attributes(user_id)
+        
+        if not attrs_result['success']:
+            return jsonify({
+                'success': False,
+                'error': 'Could not retrieve current user attributes from database'
+            }), 400
+        
+        user_attributes = attrs_result['attributes']
         
         if not user_attributes:
             return jsonify({
                 'success': False,
-                'error': 'No user attributes found in token'
+                'error': 'No user attributes found in database'
             }), 400
         
         # Convert JWT attributes to CP-ABE format

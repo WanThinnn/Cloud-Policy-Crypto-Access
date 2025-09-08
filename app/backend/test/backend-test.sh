@@ -238,7 +238,7 @@ curl -s -X POST "$SERVER_URL/api/auth/change-password" \
   -H "Content-Type: application/json" \
   -d '{
     "username": "22520001",
-    "old_password": "User123!@#!",
+    "old_password": "User123!!@#",
     "new_password": "User123!@#"
   }' | jq
 
