@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Đăng ký - Crypto Access{% endblock %}
+
+{% block content %}
+<div class="min-h-[calc(100vh-16rem)] flex items-center justify-center px-4 py-12">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Header -->
+        <div class="text-center">
+            <div class="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-indigo-100">
+                <svg class="h-10 w-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                </svg>
+            </div>
+            <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
+                Tạo tài khoản mới
+            </h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Đăng ký để truy cập hệ thống quản lý dữ liệu mã hóa
+            </p>
+        </div>
+
+        <!-- Alert -->
+        <div id="alert" class="hidden rounded-md p-4 fade-in">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg id="alert-icon" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p id="alert-message" class="text-sm font-medium"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Register Form -->
+        <form id="register-form" class="mt-8 space-y-6 bg-white p-8 rounded-lg shadow-md">
+            <div class="space-y-4">
+                <!-- Full Name -->
+                <div>
+                    <label for="full_name" class="block text-sm font-medium text-gray-700">
+                        Họ và tên <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                        id="full_name" 
+                        name="full_name" 
+                        type="text" 
+                        required 
+                        class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition"
+                        placeholder="Nguyễn Văn A"
+                    >
+                </div>
+
+                <!-- Username -->
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">
+                        Tên đăng nhập <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                        id="username" 
+                        name="username" 
+                        type="text" 
+                        required 
+                        pattern="[a-zA-Z0-9_]{3,30}"
+                        class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition"
+                        placeholder="nva_it"
+                    >
+                    <p class="mt-1 text-xs text-gray-500">3-30 ký tự, chỉ chữ, số và dấu gạch dưới</p>
+                </div>
+
+                <!-- Email -->
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">
+                        Email <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                        id="email" 
+                        name="email" 
+                        type="email" 
+                        required 
+                        class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition"
+                        placeholder="user@example.com"
+                    >
+                </div>
+
+                <!-- Phone -->
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-gray-700">
+                        Số điện thoại
+                    </label>
+                    <input 
+                        id="phone" 
+                        name="phone" 
+                        type="tel" 
+                        pattern="[0-9]{10,11}"
+                        class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition"
+                        placeholder="0123456789"
+                    >
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">
+                        Mật khẩu <span class="text-red-500">*</span>
+                    </label>
+                    <div class="mt-1 relative">
+                        <input 
+                            id="password" 
+                            name="password" 
+                            type="password" 
+                            required 
+                            minlength="8"
+                            class="appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition"
+                            placeholder="Ít nhất 8 ký tự"
+                        >
+                        <button 
+                            type="button" 
+                            id="toggle-password"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                        >
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="password-strength" class="mt-2 hidden">
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                <div id="strength-bar" class="h-2 rounded-full transition-all duration-300"></div>
+                            </div>
+                            <span id="strength-text" class="text-xs font-medium"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confirm Password -->
+                <div>
+                    <label for="password2" class="block text-sm font-medium text-gray-700">
+                        Xác nhận mật khẩu <span class="text-red-500">*</span>
+                    </label>
+                    <div class="mt-1 relative">
+                        <input 
+                            id="password2" 
+                            name="password2" 
+                            type="password" 
+                            required 
+                            class="appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition"
+                            placeholder="Nhập lại mật khẩu"
+                        >
+                        <button 
+                            type="button" 
+                            id="toggle-password2"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                        >
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p id="password-match" class="mt-1 text-xs hidden"></p>
+                </div>
+
+                <!-- Terms -->
+                <div class="flex items-start">
+                    <input 
+                        id="terms" 
+                        name="terms" 
+                        type="checkbox" 
+                        required
+                        class="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    >
+                    <label for="terms" class="ml-2 text-sm text-gray-700">
+                        Tôi đồng ý với <a href="#" class="text-indigo-600 hover:text-indigo-500">điều khoản sử dụng</a> và <a href="#" class="text-indigo-600 hover:text-indigo-500">chính sách bảo mật</a>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div>
+                <button 
+                    type="submit"
+                    class="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <span id="button-text">Đăng ký</span>
+                    <svg id="spinner" class="hidden animate-spin ml-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Login Link -->
+            <div class="text-center text-sm">
+                <span class="text-gray-600">Đã có tài khoản?</span>
+                <a href="/auth/login/" class="ml-1 font-medium text-indigo-600 hover:text-indigo-500">
+                    Đăng nhập ngay
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const form = document.getElementById('register-form');
+    const alertBox = document.getElementById('alert');
+    const alertMessage = document.getElementById('alert-message');
+    const buttonText = document.getElementById('button-text');
+    const spinner = document.getElementById('spinner');
+    const passwordInput = document.getElementById('password');
+    const password2Input = document.getElementById('password2');
+    const passwordMatch = document.getElementById('password-match');
+    const strengthBar = document.getElementById('strength-bar');
+    const strengthText = document.getElementById('strength-text');
+    const passwordStrength = document.getElementById('password-strength');
+
+    // Toggle password visibility
+    document.getElementById('toggle-password').addEventListener('click', () => {
+        passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+    });
+
+    document.getElementById('toggle-password2').addEventListener('click', () => {
+        password2Input.type = password2Input.type === 'password' ? 'text' : 'password';
+    });
+
+    // Password strength checker
+    passwordInput.addEventListener('input', () => {
+        const password = passwordInput.value;
+        if (password.length === 0) {
+            passwordStrength.classList.add('hidden');
+            return;
+        }
+        
+        passwordStrength.classList.remove('hidden');
+        let strength = 0;
+        
+        if (password.length >= 8) strength++;
+        if (password.match(/[a-z]+/)) strength++;
+        if (password.match(/[A-Z]+/)) strength++;
+        if (password.match(/[0-9]+/)) strength++;
+        if (password.match(/[^a-zA-Z0-9]+/)) strength++;
+        
+        const strengthLevels = [
+            { width: '20%', color: 'bg-red-500', text: 'Rất yếu', textColor: 'text-red-600' },
+            { width: '40%', color: 'bg-orange-500', text: 'Yếu', textColor: 'text-orange-600' },
+            { width: '60%', color: 'bg-yellow-500', text: 'Trung bình', textColor: 'text-yellow-600' },
+            { width: '80%', color: 'bg-blue-500', text: 'Mạnh', textColor: 'text-blue-600' },
+            { width: '100%', color: 'bg-green-500', text: 'Rất mạnh', textColor: 'text-green-600' },
+        ];
+        
+        const level = strengthLevels[strength - 1];
+        strengthBar.style.width = level.width;
+        strengthBar.className = `h-2 rounded-full transition-all duration-300 ${level.color}`;
+        strengthText.textContent = level.text;
+        strengthText.className = `text-xs font-medium ${level.textColor}`;
+    });
+
+    // Password match checker
+    password2Input.addEventListener('input', () => {
+        if (password2Input.value.length === 0) {
+            passwordMatch.classList.add('hidden');
+            return;
+        }
+        
+        passwordMatch.classList.remove('hidden');
+        if (passwordInput.value === password2Input.value) {
+            passwordMatch.textContent = '✓ Mật khẩu khớp';
+            passwordMatch.className = 'mt-1 text-xs text-green-600';
+        } else {
+            passwordMatch.textContent = '✗ Mật khẩu không khớp';
+            passwordMatch.className = 'mt-1 text-xs text-red-600';
+        }
+    });
+
+    // Show alert
+    function showAlert(message, type = 'error') {
+        alertBox.className = `rounded-md p-4 fade-in ${type === 'error' ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'}`;
+        alertMessage.textContent = message;
+        alertBox.classList.remove('hidden');
+        
+        setTimeout(() => {
+            alertBox.classList.add('hidden');
+        }, 5000);
+    }
+
+    // Handle form submission
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Validate passwords match
+        if (passwordInput.value !== password2Input.value) {
+            showAlert('Mật khẩu xác nhận không khớp!');
+            return;
+        }
+        
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        buttonText.textContent = 'Đang xử lý...';
+        spinner.classList.remove('hidden');
+        
+        const formData = {
+            username: document.getElementById('username').value,
+            email: document.getElementById('email').value,
+            password: passwordInput.value,
+            password2: password2Input.value,
+            full_name: document.getElementById('full_name').value,
+            phone: document.getElementById('phone').value || ''
+        };
+
+        try {
+            const response = await fetch('/api/auth/register/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Store tokens
+                localStorage.setItem('access_token', data.tokens.access);
+                localStorage.setItem('refresh_token', data.tokens.refresh);
+                localStorage.setItem('username', data.user.username);
+                localStorage.setItem('user_id', data.user.id);
+                
+                showAlert('Đăng ký thành công! Đang chuyển hướng...', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+            } else {
+                // Handle validation errors
+                if (data.username) {
+                    showAlert(`Tên đăng nhập: ${data.username[0]}`);
+                } else if (data.email) {
+                    showAlert(`Email: ${data.email[0]}`);
+                } else if (data.password) {
+                    showAlert(`Mật khẩu: ${data.password[0]}`);
+                } else {
+                    showAlert(data.message || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.');
+                }
+            }
+        } catch (error) {
+            console.error('Register error:', error);
+            showAlert('Có lỗi xảy ra. Vui lòng thử lại.');
+        } finally {
+            submitButton.disabled = false;
+            buttonText.textContent = 'Đăng ký';
+            spinner.classList.add('hidden');
+        }
+    });
+
+    // Check if already logged in
+    if (localStorage.getItem('access_token')) {
+        window.location.href = '/';
+    }
+</script>
+{% endblock %}

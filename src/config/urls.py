@@ -18,11 +18,14 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from crypto_access.urls.auth import template_patterns as auth_template_patterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('__reload__/', include('django_browser_reload.urls')),
     path('', include('crypto_access.urls', namespace='crypto_access')),
+    path('auth/', include(auth_template_patterns)),  # Auth template pages (/auth/login/, /auth/register/)
+    path('api/auth/', include('crypto_access.urls.auth')),  # Auth API endpoints (/api/auth/login/)
     path('api/storage/', include('crypto_access.urls.storage')),  # Storage API
 ]
 
