@@ -233,7 +233,57 @@
     }
 
     async function downloadFile(filePath) {
-        window.open(`${API_BASE}files/download_by_path/?path=${encodeURIComponent(filePath)}`, '_blank');
+        try {
+            showAlert('Đang tải file...', 'info');
+            const url = `${API_BASE}files/download_by_path/?path=${encodeURIComponent(filePath)}`;
+            console.log('🔍 Download URL:', url);
+            console.log('🔍 Full request path would be:', new URL(url, window.location.origin).pathname);
+            
+            const response = await fetch(url, { headers });
+            
+            console.log('📊 Download response status:', response.status);
+            console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            // Check for ABAC denial (403 Forbidden)
+            if (response.status === 403) {
+                const error = await response.json();
+                showAlert('🚫 ' + (error.error || 'Bạn không có quyền download file này'), 'error');
+                console.error('ABAC denied:', error);
+                return;
+            }
+            
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ error: response.statusText }));
+                showAlert('Lỗi: ' + (error.error || error.detail || response.statusText), 'error');
+                return;
+            }
+            
+            // Get filename from Content-Disposition header or use path
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = filePath.split('/').pop();
+            if (contentDisposition) {
+                const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (matches && matches[1]) {
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            }
+            
+            // Convert to blob and download
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+            
+            showAlert('✅ Đã tải file thành công!', 'success');
+        } catch (error) {
+            console.error('Download error:', error);
+            showAlert('Lỗi tải file: ' + error.message, 'error');
+        }
     }
     
     async function deleteFileByPath(filePath) {
@@ -294,16 +344,27 @@
                 body: formData
             });
             
+            console.log('Upload response status:', response.status);
+            
+            // Check for ABAC denial
+            if (response.status === 403) {
+                const err = await response.json();
+                showAlert('🚫 ' + (err.error || 'Bạn không có quyền upload file'), 'error');
+                console.error('ABAC denied upload:', err);
+                return;
+            }
+            
             if (response.ok) {
-                showAlert('Upload thành công!');
+                showAlert('✅ Upload thành công!');
                 document.getElementById('upload-modal').classList.add('hidden');
                 form.reset();
                 loadFolder(currentPath);
             } else {
-                const err = await response.json();
-                showAlert(err.error || 'Upload thất bại', 'error');
+                const err = await response.json().catch(() => ({ error: 'Upload thất bại' }));
+                showAlert(err.error || err.detail || 'Upload thất bại', 'error');
             }
         } catch (error) {
+            console.error('Upload error:', error);
             showAlert('Lỗi: ' + error.message, 'error');
         }
     });
