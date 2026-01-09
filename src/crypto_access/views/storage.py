@@ -290,3 +290,88 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             stats['by_type'][file_type] = count
         
         return Response(stats)
+    
+    @action(detail=False, methods=['get'])
+    def browse(self, request):
+        """
+        Browse files directly from Supabase storage bucket
+        GET /api/storage/files/browse/?path=public
+        """
+        storage = get_storage_service()
+        bucket_name = request.query_params.get('bucket', 'documents')
+        path = request.query_params.get('path', '')
+        
+        try:
+            files = storage.list_files(
+                bucket_name=bucket_name,
+                path=path,
+                limit=100
+            )
+            
+            # Transform to standard format
+            result = []
+            for f in files:
+                is_folder = f.get('id') is None  # Folders don't have id
+                result.append({
+                    'name': f.get('name', ''),
+                    'type': 'folder' if is_folder else 'file',
+                    'size': f.get('metadata', {}).get('size', 0) if not is_folder else None,
+                    'id': f.get('id'),
+                    'created_at': f.get('created_at'),
+                    'updated_at': f.get('updated_at'),
+                    'path': f"{path}/{f.get('name', '')}" if path else f.get('name', '')
+                })
+            
+            return Response({
+                'path': path,
+                'bucket': bucket_name,
+                'files': result
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': f"Failed to list files: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['get'])
+    def download_by_path(self, request):
+        """
+        Download file by path from Supabase
+        GET /api/storage/files/download_by_path/?path=public/company-policy.md
+        """
+        storage = get_storage_service()
+        bucket_name = request.query_params.get('bucket', 'documents')
+        file_path = request.query_params.get('path', '')
+        
+        if not file_path:
+            return Response(
+                {'error': 'path parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            file_data = storage.download_file(bucket_name, file_path)
+            file_name = file_path.split('/')[-1]
+            
+            # Guess content type
+            ext = file_name.split('.')[-1].lower() if '.' in file_name else ''
+            content_types = {
+                'md': 'text/markdown',
+                'txt': 'text/plain',
+                'pdf': 'application/pdf',
+                'doc': 'application/msword',
+                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            }
+            content_type = content_types.get(ext, 'application/octet-stream')
+            
+            response = HttpResponse(file_data, content_type=content_type)
+            response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+            return response
+            
+        except Exception as e:
+            return Response(
+                {'error': f"Download failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
