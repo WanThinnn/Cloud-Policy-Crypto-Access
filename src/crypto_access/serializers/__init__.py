@@ -23,6 +23,16 @@ from .storage import (
     SignedUrlRequestSerializer,
 )
 
+# ABAC Attribute serializers
+from .attributes import (
+    UserTypeSerializer,
+    AttributeDefinitionSerializer,
+    UserAttributeSerializer,
+    UserAttributeAssignSerializer,
+    UserAttributeBulkAssignSerializer,
+    UserWithAttributesSerializer,
+)
+
 __all__ = [
     # Base
     'UserSerializer',
@@ -41,4 +51,13 @@ __all__ = [
     'UploadedFileSerializer',
     'FileUploadSerializer',
     'SignedUrlRequestSerializer',
+    
+    # ABAC Attributes
+    'UserTypeSerializer',
+    'AttributeDefinitionSerializer',
+    'UserAttributeSerializer',
+    'UserAttributeAssignSerializer',
+    'UserAttributeBulkAssignSerializer',
+    'UserWithAttributesSerializer',
 ]
+

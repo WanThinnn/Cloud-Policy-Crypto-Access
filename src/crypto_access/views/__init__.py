@@ -22,6 +22,20 @@ from .auth import (
 # Import storage views
 from .storage import StorageBucketViewSet, UploadedFileViewSet
 
+# Import attribute management views
+from .attributes import (
+    UserTypeViewSet,
+    AttributeDefinitionViewSet,
+    user_types_page,
+    attributes_page,
+    user_attributes_page,
+    list_user_attributes,
+    assign_user_attribute,
+    bulk_assign_user_attributes,
+    delete_user_attribute,
+    list_users_with_attributes,
+)
+
 __all__ = [
     # Base views
     'index',
@@ -42,4 +56,17 @@ __all__ = [
     # Storage views
     'StorageBucketViewSet',
     'UploadedFileViewSet',
+    
+    # Attribute management views
+    'UserTypeViewSet',
+    'AttributeDefinitionViewSet',
+    'user_types_page',
+    'attributes_page',
+    'user_attributes_page',
+    'list_user_attributes',
+    'assign_user_attribute',
+    'bulk_assign_user_attributes',
+    'delete_user_attribute',
+    'list_users_with_attributes',
 ]
+
