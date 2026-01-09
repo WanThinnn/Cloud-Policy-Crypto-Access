@@ -1,4 +1,4 @@
-# Cloud Firestore Crypto Access
+# Cloud Policy Crypto Access
 
 A comprehensive system implementing Hybrid Ciphertext-Policy Attribute-Based Encryption (CP-ABE) with Cloud Firestore integration, providing secure file storage, user management, and attribute-based access control.
 
