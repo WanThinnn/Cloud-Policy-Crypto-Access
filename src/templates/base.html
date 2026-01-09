@@ -6,17 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Crypto Access{% endblock %}</title>
     {% tailwind_css %}
-    <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.3s ease-in;
-        }
-        /* Dropdown menu */
-        .dropdown:hover .dropdown-menu { display: block; }
-    </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
@@ -39,14 +28,14 @@
                     <a href="/" class="text-gray-300 hover:text-white transition">Trang chủ</a>
                     
                     <!-- Admin Dropdown (shown when logged in as admin) -->
-                    <div id="admin-menu" class="hidden relative dropdown">
-                        <button class="text-gray-300 hover:text-white transition flex items-center">
+                    <div id="admin-menu" class="hidden relative">
+                        <button id="admin-dropdown-btn" class="text-gray-300 hover:text-white transition flex items-center">
                             Quản trị
                             <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </button>
-                        <div class="dropdown-menu hidden absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50">
+                        <div id="admin-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 transition-opacity duration-200">
                             <a href="/api/admin/pages/user-types/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 👤 Loại người dùng
                             </a>
@@ -163,6 +152,42 @@
         document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
             document.getElementById('mobile-menu').classList.toggle('hidden');
         });
+        
+        // Admin dropdown functionality
+        const adminDropdownBtn = document.getElementById('admin-dropdown-btn');
+        const adminDropdownMenu = document.getElementById('admin-dropdown-menu');
+        let dropdownTimeout;
+        
+        if (adminDropdownBtn && adminDropdownMenu) {
+            const showDropdown = () => {
+                clearTimeout(dropdownTimeout);
+                adminDropdownMenu.classList.remove('hidden');
+                // Small delay for transition
+                setTimeout(() => {
+                    adminDropdownMenu.classList.remove('opacity-0');
+                    adminDropdownMenu.classList.add('opacity-100');
+                }, 10);
+            };
+            
+            const hideDropdown = () => {
+                dropdownTimeout = setTimeout(() => {
+                    adminDropdownMenu.classList.remove('opacity-100');
+                    adminDropdownMenu.classList.add('opacity-0');
+                    // Wait for transition to complete before hiding
+                    setTimeout(() => {
+                        adminDropdownMenu.classList.add('hidden');
+                    }, 200);
+                }, 100); // 100ms delay before hiding
+            };
+            
+            // Show on button hover
+            adminDropdownBtn.addEventListener('mouseenter', showDropdown);
+            adminDropdownBtn.addEventListener('mouseleave', hideDropdown);
+            
+            // Keep open when hovering menu
+            adminDropdownMenu.addEventListener('mouseenter', showDropdown);
+            adminDropdownMenu.addEventListener('mouseleave', hideDropdown);
+        }
     </script>
 
     {% block extra_js %}{% endblock %}
