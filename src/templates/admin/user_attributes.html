@@ -171,7 +171,7 @@
             
             const select = document.getElementById('attribute-select');
             select.innerHTML = '<option value="">-- Chọn thuộc tính --</option>' +
-                data.map(a => `<option value="${a.name}" data-type="${a.data_type}" data-values='${JSON.stringify(a.allowed_values || [])}'>${a.display_name} (${a.name})</option>`).join('');
+                attributeDefinitions.map(a => `<option value="${a.name}" data-type="${a.data_type}" data-values='${JSON.stringify(a.allowed_values || [])}'>${a.display_name} (${a.name})</option>`).join('');
         } catch (error) {
             console.error('Error loading attributes:', error);
         }
@@ -211,6 +211,16 @@
             
             document.getElementById('user-attributes-section').classList.remove('hidden');
             document.getElementById('selected-user-name').textContent = data.username;
+            document.getElementById('selected-user-email').textContent = data.email || data.full_name || '-';
+            
+            // Display user type
+            const userTypeEl = document.getElementById('selected-user-type');
+            if (data.user_type) {
+                userTypeEl.textContent = data.user_type.name || data.user_type.code;
+                userTypeEl.classList.remove('hidden');
+            } else {
+                userTypeEl.classList.add('hidden');
+            }
             
             renderAttributes(data.attributes);
             renderActiveSummary(data.active_attributes);

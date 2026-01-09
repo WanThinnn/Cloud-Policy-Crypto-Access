@@ -139,9 +139,27 @@ def list_user_attributes(request, user_id):
     attributes = UserAttribute.objects.filter(user=user).select_related('attribute', 'updated_by')
     serializer = UserAttributeSerializer(attributes, many=True)
     
+    # Get user type info
+    user_type_info = None
+    if hasattr(user, 'profile'):
+        profile = user.profile
+        if profile.user_type_ref:
+            user_type_info = {
+                'code': profile.user_type_ref.code,
+                'name': profile.user_type_ref.name
+            }
+        else:
+            user_type_info = {
+                'code': profile.user_type,
+                'name': profile.get_user_type_display()
+            }
+    
     return Response({
         'user_id': user_id,
         'username': user.username,
+        'email': user.email,
+        'full_name': getattr(user.profile, 'full_name', '') if hasattr(user, 'profile') else '',
+        'user_type': user_type_info,
         'attributes': serializer.data,
         'active_attributes': UserAttribute.get_user_attributes(user)
     })

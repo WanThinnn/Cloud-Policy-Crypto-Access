@@ -21,7 +21,8 @@ from django.conf.urls.static import static
 from crypto_access.urls.auth import template_patterns as auth_template_patterns
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin.site.urls),  # Django admin
+    path('manage/', include('crypto_access.urls.admin_pages')),  # ABAC admin pages (HTML)
     path('__reload__/', include('django_browser_reload.urls')),
     path('', include('crypto_access.urls', namespace='crypto_access')),
     path('auth/', include(auth_template_patterns)),  # Auth template pages (/auth/login/, /auth/register/)
