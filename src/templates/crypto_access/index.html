@@ -1,0 +1,38 @@
+{% extends 'crypto_access/base.html' %}
+
+{% block title %}Home - Crypto Access{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="hero">
+        <h1>Welcome to Crypto Access</h1>
+        <p>Secure cryptographic access control system</p>
+        <div class="hero-buttons">
+            <a href="/admin/" class="btn btn-primary">Admin Panel</a>
+            <a href="{% url 'crypto_access:health_check' %}" class="btn btn-secondary">Health Check</a>
+        </div>
+    </div>
+
+    <div class="features">
+        <h2>Features</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>🔐 Secure Access</h3>
+                <p>Advanced cryptographic access control</p>
+            </div>
+            <div class="feature-card">
+                <h3>👥 User Management</h3>
+                <p>Complete user profile management system</p>
+            </div>
+            <div class="feature-card">
+                <h3>🚀 Production Ready</h3>
+                <p>Built with best practices for deployment</p>
+            </div>
+            <div class="feature-card">
+                <h3>🔄 REST API</h3>
+                <p>Full REST API support with Django REST Framework</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

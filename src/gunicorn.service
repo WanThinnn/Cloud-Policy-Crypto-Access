@@ -1,0 +1,16 @@
+[Unit]
+Description=Crypto Access Gunicorn daemon
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/path/to/Cloud-Firestore-Crypto-Access/src
+EnvironmentFile=/path/to/Cloud-Firestore-Crypto-Access/src/.env
+ExecStart=/path/to/Cloud-Firestore-Crypto-Access/src/venv/bin/gunicorn \
+          --workers 4 \
+          --bind unix:/path/to/Cloud-Firestore-Crypto-Access/src/gunicorn.sock \
+          config.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
