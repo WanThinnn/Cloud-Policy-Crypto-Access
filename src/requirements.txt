@@ -51,4 +51,8 @@ isort==5.13.2
 django-debug-toolbar==4.4.6
 ipython==8.31.0
 
+# Database
 dj-database-url==2.1.0
+
+# Python Casbin
+pycasbin==2.7.1
