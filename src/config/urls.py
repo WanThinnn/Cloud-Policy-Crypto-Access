@@ -27,6 +27,7 @@ urlpatterns = [
     path('auth/', include(auth_template_patterns)),  # Auth template pages (/auth/login/, /auth/register/)
     path('api/auth/', include('crypto_access.urls.auth')),  # Auth API endpoints (/api/auth/login/)
     path('api/storage/', include('crypto_access.urls.storage')),  # Storage API
+    path('api/admin/', include('crypto_access.urls.admin')),  # Admin API for ABAC management
 ]
 
 # Serve media files in development
