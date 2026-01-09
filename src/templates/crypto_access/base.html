@@ -4,32 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Crypto Access{% endblock %}</title>
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    <!-- Tailwind CSS -->
+    {% load static tailwind_tags %}
+    {% tailwind_css %}
+    
     {% block extra_css %}{% endblock %}
 </head>
-<body>
-    <nav class="navbar">
-        <div class="container">
-            <a href="{% url 'crypto_access:index' %}" class="logo">Crypto Access</a>
-            <ul class="nav-links">
-                <li><a href="{% url 'crypto_access:index' %}">Home</a></li>
-                <li><a href="/admin/">Admin</a></li>
-            </ul>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="bg-slate-800 shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <a href="{% url 'crypto_access:index' %}" class="text-white text-2xl font-bold hover:text-blue-400 transition duration-200">
+                    🔐 Crypto Access
+                </a>
+                <ul class="flex space-x-8">
+                    <li>
+                        <a href="{% url 'crypto_access:index' %}" class="text-white hover:text-blue-400 transition duration-200">Home</a>
+                    </li>
+                    <li>
+                        <a href="/admin/" class="text-white hover:text-blue-400 transition duration-200">Admin</a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </nav>
 
-    <main class="main-content">
+    <!-- Main Content -->
+    <main class="flex-grow">
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="footer">
-        <div class="container">
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-white mt-auto">
+        <div class="container mx-auto px-4 py-6 text-center">
             <p>&copy; 2026 Crypto Access. All rights reserved.</p>
         </div>
     </footer>
 
-    <script src="{% static 'js/main.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

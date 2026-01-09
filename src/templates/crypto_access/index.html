@@ -3,35 +3,69 @@
 {% block title %}Home - Crypto Access{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="hero">
-        <h1>Welcome to Crypto Access</h1>
-        <p>Secure cryptographic access control system</p>
-        <div class="hero-buttons">
-            <a href="/admin/" class="btn btn-primary">Admin Panel</a>
-            <a href="{% url 'crypto_access:health_check' %}" class="btn btn-secondary">Health Check</a>
+<div class="container mx-auto px-4 py-12">
+    <!-- Hero Section -->
+    <div class="bg-white rounded-2xl shadow-xl p-12 mb-12 text-center transform hover:scale-105 transition duration-300">
+        <h1 class="text-5xl font-bold text-gray-900 mb-4">
+            Welcome to <span class="text-blue-600">Crypto Access</span>
+        </h1>
+        <p class="text-xl text-gray-600 mb-8">
+            Secure cryptographic access control system built with Django
+        </p>
+        <div class="flex justify-center gap-4 flex-wrap">
+            <a href="/admin/" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-lg shadow-lg transition duration-200 transform hover:scale-105">
+                🔑 Admin Panel
+            </a>
+            <a href="{% url 'crypto_access:health_check' %}" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-8 py-3 rounded-lg shadow-lg transition duration-200 transform hover:scale-105">
+                ✓ Health Check
+            </a>
         </div>
     </div>
 
-    <div class="features">
-        <h2>Features</h2>
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h3>🔐 Secure Access</h3>
-                <p>Advanced cryptographic access control</p>
+    <!-- Features Section -->
+    <div class="mb-8">
+        <h2 class="text-4xl font-bold text-center text-gray-900 mb-12">Features</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Feature Card 1 -->
+            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition duration-300 transform hover:-translate-y-2">
+                <div class="text-5xl mb-4">🔐</div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">Secure Access</h3>
+                <p class="text-gray-600">Advanced cryptographic access control with enterprise-grade security</p>
             </div>
-            <div class="feature-card">
-                <h3>👥 User Management</h3>
-                <p>Complete user profile management system</p>
+
+            <!-- Feature Card 2 -->
+            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition duration-300 transform hover:-translate-y-2">
+                <div class="text-5xl mb-4">👥</div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">User Management</h3>
+                <p class="text-gray-600">Complete user profile management system with role-based access</p>
             </div>
-            <div class="feature-card">
-                <h3>🚀 Production Ready</h3>
-                <p>Built with best practices for deployment</p>
+
+            <!-- Feature Card 3 -->
+            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition duration-300 transform hover:-translate-y-2">
+                <div class="text-5xl mb-4">🚀</div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">Production Ready</h3>
+                <p class="text-gray-600">Built with best practices for scalable deployment</p>
             </div>
-            <div class="feature-card">
-                <h3>🔄 REST API</h3>
-                <p>Full REST API support with Django REST Framework</p>
+
+            <!-- Feature Card 4 -->
+            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition duration-300 transform hover:-translate-y-2">
+                <div class="text-5xl mb-4">🔄</div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">REST API</h3>
+                <p class="text-gray-600">Full REST API support with Django REST Framework</p>
             </div>
+        </div>
+    </div>
+
+    <!-- Tech Stack Section -->
+    <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl shadow-xl p-12 text-white text-center">
+        <h2 class="text-3xl font-bold mb-6">Built with Modern Technologies</h2>
+        <div class="flex flex-wrap justify-center gap-4 text-lg">
+            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">Django 5.2</span>
+            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">Tailwind CSS</span>
+            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">REST Framework</span>
+            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">PostgreSQL</span>
+            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">Redis</span>
+            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">WhiteNoise</span>
         </div>
     </div>
 </div>

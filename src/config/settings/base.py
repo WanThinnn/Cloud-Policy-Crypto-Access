@@ -24,6 +24,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     
     # Third-party apps
+    'tailwind',
+    'theme',
+    'django_browser_reload',
     'corsheaders',
     'rest_framework',
     
@@ -31,9 +34,14 @@ INSTALLED_APPS = [
     'crypto_access.apps.CryptoAccessConfig',
 ]
 
+# Tailwind CSS Configuration
+TAILWIND_APP_NAME = 'theme'
+NPM_BIN_PATH = r'C:\Program Files\nodejs\npm.cmd'
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files
+    'django_browser_reload.middleware.BrowserReloadMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
