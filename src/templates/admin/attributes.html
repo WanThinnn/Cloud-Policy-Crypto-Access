@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Lược đồ Thuộc tính - Admin{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Quản lý Lược đồ Thuộc tính</h1>
+            <p class="mt-1 text-sm text-gray-600">Định nghĩa các thuộc tính ABAC trong hệ thống (BM9)</p>
+        </div>
+        <button id="add-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Thêm thuộc tính
+        </button>
+    </div>
+
+    <!-- Alert -->
+    <div id="alert" class="hidden rounded-md p-4"></div>
+
+    <!-- Attributes Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên hiển thị</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loại dữ liệu</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giá trị cho phép</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bắt buộc</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="attributes-list" class="bg-white divide-y divide-gray-200">
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">Đang tải...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <h3 id="modal-title" class="text-lg font-semibold mb-4">Thêm thuộc tính</h3>
+        <form id="attribute-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Tên (code)</label>
+                <input type="text" name="name" required pattern="[a-z][a-z0-9_]*"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="project_code">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Tên hiển thị</label>
+                <input type="text" name="display_name" required
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Mã dự án">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Loại dữ liệu</label>
+                <select name="data_type" required
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="enum">Enum (danh sách giá trị)</option>
+                    <option value="string">String (chuỗi)</option>
+                    <option value="integer">Integer (số nguyên)</option>
+                    <option value="boolean">Boolean (đúng/sai)</option>
+                    <option value="date">Date (ngày)</option>
+                </select>
+            </div>
+            <div id="allowed-values-group">
+                <label class="block text-sm font-medium text-gray-700">Giá trị cho phép (mỗi dòng 1 giá trị)</label>
+                <textarea name="allowed_values" rows="4"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="value1&#10;value2&#10;value3"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Giá trị mặc định</label>
+                <input type="text" name="default_value"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Mô tả</label>
+                <textarea name="description" rows="2"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+            </div>
+            <div class="flex items-center space-x-6">
+                <label class="flex items-center">
+                    <input type="checkbox" name="is_required" checked class="h-4 w-4 text-indigo-600 rounded">
+                    <span class="ml-2 text-sm text-gray-700">Bắt buộc</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" name="is_active" checked class="h-4 w-4 text-indigo-600 rounded">
+                    <span class="ml-2 text-sm text-gray-700">Kích hoạt</span>
+                </label>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Hủy</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const API_BASE = '/api/admin/attributes/';
+    const accessToken = localStorage.getItem('access_token');
+    let editingId = null;
+
+    if (!accessToken) {
+        window.location.href = '/auth/login/';
+    }
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+    };
+
+    // Toggle allowed values based on data type
+    document.querySelector('[name="data_type"]').addEventListener('change', (e) => {
+        document.getElementById('allowed-values-group').classList.toggle('hidden', e.target.value !== 'enum');
+    });
+
+    async function loadAttributes() {
+        try {
+            const response = await fetch(API_BASE, { headers });
+            if (response.status === 401) {
+                window.location.href = '/auth/login/';
+                return;
+            }
+            const data = await response.json();
+            renderAttributes(data);
+        } catch (error) {
+            showAlert('Lỗi tải dữ liệu: ' + error.message, 'error');
+        }
+    }
+
+    function renderAttributes(attributes) {
+        const tbody = document.getElementById('attributes-list');
+        if (attributes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Không có dữ liệu</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = attributes.map(attr => `
+            <tr>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-sm font-mono bg-gray-100 rounded">${attr.name}</span>
+                </td>
+                <td class="px-6 py-4 font-medium text-gray-900">${attr.display_name}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">${attr.data_type}</span>
+                </td>
+                <td class="px-6 py-4 text-sm">
+                    ${attr.allowed_values ? 
+                        `<div class="flex flex-wrap gap-1 max-w-xs">
+                            ${attr.allowed_values.slice(0, 4).map(v => `<span class="px-1.5 py-0.5 text-xs bg-gray-100 rounded">${v}</span>`).join('')}
+                            ${attr.allowed_values.length > 4 ? `<span class="text-xs text-gray-500">+${attr.allowed_values.length - 4}</span>` : ''}
+                        </div>` : 
+                        '<span class="text-gray-400">-</span>'
+                    }
+                </td>
+                <td class="px-6 py-4">
+                    ${attr.is_required ? 
+                        '<span class="text-green-600">✓ Có</span>' : 
+                        '<span class="text-gray-400">Không</span>'
+                    }
+                </td>
+                <td class="px-6 py-4 text-right space-x-2">
+                    <button onclick="editAttribute(${attr.id})" class="text-indigo-600 hover:text-indigo-900">Sửa</button>
+                    <button onclick="deleteAttribute(${attr.id})" class="text-red-600 hover:text-red-900">Xóa</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function showAlert(message, type = 'success') {
+        const alert = document.getElementById('alert');
+        alert.className = `rounded-md p-4 ${type === 'error' ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'}`;
+        alert.textContent = message;
+        alert.classList.remove('hidden');
+        setTimeout(() => alert.classList.add('hidden'), 5000);
+    }
+
+    document.getElementById('add-btn').addEventListener('click', () => {
+        editingId = null;
+        document.getElementById('modal-title').textContent = 'Thêm thuộc tính';
+        document.getElementById('attribute-form').reset();
+        document.getElementById('allowed-values-group').classList.remove('hidden');
+        document.getElementById('modal').classList.remove('hidden');
+    });
+
+    document.getElementById('cancel-btn').addEventListener('click', () => {
+        document.getElementById('modal').classList.add('hidden');
+    });
+
+    async function editAttribute(id) {
+        try {
+            const response = await fetch(`${API_BASE}${id}/`, { headers });
+            const attr = await response.json();
+            editingId = id;
+            document.getElementById('modal-title').textContent = 'Sửa thuộc tính';
+            const form = document.getElementById('attribute-form');
+            form.name.value = attr.name;
+            form.display_name.value = attr.display_name;
+            form.data_type.value = attr.data_type;
+            form.allowed_values.value = attr.allowed_values ? attr.allowed_values.join('\n') : '';
+            form.default_value.value = attr.default_value || '';
+            form.description.value = attr.description || '';
+            form.is_required.checked = attr.is_required;
+            form.is_active.checked = attr.is_active;
+            document.getElementById('allowed-values-group').classList.toggle('hidden', attr.data_type !== 'enum');
+            document.getElementById('modal').classList.remove('hidden');
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    }
+
+    async function deleteAttribute(id) {
+        if (!confirm('Bạn chắc chắn muốn xóa thuộc tính này?')) return;
+        try {
+            const response = await fetch(`${API_BASE}${id}/`, { method: 'DELETE', headers });
+            if (response.ok) {
+                showAlert('Đã xóa thành công');
+                loadAttributes();
+            } else {
+                const data = await response.json();
+                showAlert(data.error || 'Lỗi xóa', 'error');
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    }
+
+    document.getElementById('attribute-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const data = {
+            name: form.name.value,
+            display_name: form.display_name.value,
+            data_type: form.data_type.value,
+            default_value: form.default_value.value || null,
+            description: form.description.value,
+            is_required: form.is_required.checked,
+            is_active: form.is_active.checked
+        };
+
+        if (form.data_type.value === 'enum') {
+            data.allowed_values = form.allowed_values.value.split('\n').filter(v => v.trim());
+        } else {
+            data.allowed_values = null;
+        }
+
+        try {
+            const url = editingId ? `${API_BASE}${editingId}/` : API_BASE;
+            const method = editingId ? 'PUT' : 'POST';
+            const response = await fetch(url, {
+                method, headers,
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                showAlert(editingId ? 'Đã cập nhật' : 'Đã thêm thành công');
+                document.getElementById('modal').classList.add('hidden');
+                loadAttributes();
+            } else {
+                const err = await response.json();
+                showAlert(JSON.stringify(err), 'error');
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    });
+
+    loadAttributes();
+</script>
+{% endblock %}

@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Loại Người Dùng - Admin{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Quản lý Loại Người Dùng</h1>
+            <p class="mt-1 text-sm text-gray-600">Quản lý các loại người dùng trong hệ thống (QĐ1)</p>
+        </div>
+        <button id="add-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Thêm loại mới
+        </button>
+    </div>
+
+    <!-- Alert -->
+    <div id="alert" class="hidden rounded-md p-4"></div>
+
+    <!-- User Types Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mô tả</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quyền</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="user-types-list" class="bg-white divide-y divide-gray-200">
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">Đang tải...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+        <h3 id="modal-title" class="text-lg font-semibold mb-4">Thêm loại người dùng</h3>
+        <form id="user-type-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Code</label>
+                <input type="text" name="code" required pattern="[a-z][a-z0-9_]*"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="data_analyst">
+                <p class="mt-1 text-xs text-gray-500">Chỉ chữ thường, số và dấu gạch dưới</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Tên hiển thị</label>
+                <input type="text" name="name" required
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Data Analyst">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Mô tả</label>
+                <textarea name="description" rows="2"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Quyền (mỗi dòng 1 quyền)</label>
+                <textarea name="permissions" rows="3"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="file_read&#10;file_download"></textarea>
+            </div>
+            <div class="flex items-center">
+                <input type="checkbox" name="is_active" checked class="h-4 w-4 text-indigo-600 rounded">
+                <label class="ml-2 text-sm text-gray-700">Kích hoạt</label>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Hủy</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const API_BASE = '/api/admin/user-types/';
+    const accessToken = localStorage.getItem('access_token');
+    let editingId = null;
+
+    // Check auth
+    if (!accessToken) {
+        window.location.href = '/auth/login/';
+    }
+
+    // Fetch headers
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+    };
+
+    // Load user types
+    async function loadUserTypes() {
+        try {
+            const response = await fetch(API_BASE, { headers });
+            if (response.status === 401) {
+                window.location.href = '/auth/login/';
+                return;
+            }
+            const data = await response.json();
+            renderUserTypes(data);
+        } catch (error) {
+            showAlert('Lỗi tải dữ liệu: ' + error.message, 'error');
+        }
+    }
+
+    function renderUserTypes(userTypes) {
+        const tbody = document.getElementById('user-types-list');
+        if (userTypes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Không có dữ liệu</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = userTypes.map(ut => `
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 text-sm font-mono bg-gray-100 rounded">${ut.code}</span>
+                    ${ut.is_system ? '<span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">System</span>' : ''}
+                </td>
+                <td class="px-6 py-4 font-medium text-gray-900">${ut.name}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">${ut.description || '-'}</td>
+                <td class="px-6 py-4">
+                    <div class="flex flex-wrap gap-1">
+                        ${ut.permissions.slice(0, 3).map(p => `<span class="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded">${p}</span>`).join('')}
+                        ${ut.permissions.length > 3 ? `<span class="text-xs text-gray-500">+${ut.permissions.length - 3}</span>` : ''}
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs rounded-full ${ut.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        ${ut.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-right space-x-2">
+                    <button onclick="editUserType(${ut.id})" class="text-indigo-600 hover:text-indigo-900">Sửa</button>
+                    ${!ut.is_system ? `<button onclick="deleteUserType(${ut.id})" class="text-red-600 hover:text-red-900">Xóa</button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Show alert
+    function showAlert(message, type = 'success') {
+        const alert = document.getElementById('alert');
+        alert.className = `rounded-md p-4 ${type === 'error' ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'}`;
+        alert.textContent = message;
+        alert.classList.remove('hidden');
+        setTimeout(() => alert.classList.add('hidden'), 5000);
+    }
+
+    // Modal handlers
+    document.getElementById('add-btn').addEventListener('click', () => {
+        editingId = null;
+        document.getElementById('modal-title').textContent = 'Thêm loại người dùng';
+        document.getElementById('user-type-form').reset();
+        document.getElementById('modal').classList.remove('hidden');
+    });
+
+    document.getElementById('cancel-btn').addEventListener('click', () => {
+        document.getElementById('modal').classList.add('hidden');
+    });
+
+    // Edit user type
+    async function editUserType(id) {
+        try {
+            const response = await fetch(`${API_BASE}${id}/`, { headers });
+            const ut = await response.json();
+            editingId = id;
+            document.getElementById('modal-title').textContent = 'Sửa loại người dùng';
+            const form = document.getElementById('user-type-form');
+            form.code.value = ut.code;
+            form.name.value = ut.name;
+            form.description.value = ut.description || '';
+            form.permissions.value = ut.permissions.join('\n');
+            form.is_active.checked = ut.is_active;
+            document.getElementById('modal').classList.remove('hidden');
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    }
+
+    // Delete user type
+    async function deleteUserType(id) {
+        if (!confirm('Bạn chắc chắn muốn xóa loại người dùng này?')) return;
+        try {
+            const response = await fetch(`${API_BASE}${id}/`, { method: 'DELETE', headers });
+            if (response.ok) {
+                showAlert('Đã xóa thành công');
+                loadUserTypes();
+            } else {
+                const data = await response.json();
+                showAlert(data.error || 'Lỗi xóa', 'error');
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    }
+
+    // Form submit
+    document.getElementById('user-type-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const data = {
+            code: form.code.value,
+            name: form.name.value,
+            description: form.description.value,
+            permissions: form.permissions.value.split('\n').filter(p => p.trim()),
+            is_active: form.is_active.checked
+        };
+
+        try {
+            const url = editingId ? `${API_BASE}${editingId}/` : API_BASE;
+            const method = editingId ? 'PUT' : 'POST';
+            const response = await fetch(url, {
+                method, headers,
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                showAlert(editingId ? 'Đã cập nhật' : 'Đã thêm thành công');
+                document.getElementById('modal').classList.add('hidden');
+                loadUserTypes();
+            } else {
+                const err = await response.json();
+                showAlert(JSON.stringify(err), 'error');
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    });
+
+    // Initial load
+    loadUserTypes();
+</script>
+{% endblock %}

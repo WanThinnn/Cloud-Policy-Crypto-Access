@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Thuộc tính Người dùng - Admin{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Quản lý Thuộc tính Người dùng</h1>
+            <p class="mt-1 text-sm text-gray-600">Gán và quản lý thuộc tính ABAC cho người dùng (BM4)</p>
+        </div>
+    </div>
+
+    <!-- Alert -->
+    <div id="alert" class="hidden rounded-md p-4"></div>
+
+    <!-- User Selection -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Chọn người dùng</h3>
+        <div class="flex gap-4">
+            <select id="user-select" class="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">-- Chọn người dùng --</option>
+            </select>
+            <button id="load-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">
+                Xem thuộc tính
+            </button>
+        </div>
+    </div>
+
+    <!-- User Info & Attributes -->
+    <div id="user-attributes-section" class="hidden space-y-6">
+        <!-- User Info Card -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900" id="selected-user-name">-</h3>
+                    <p class="text-sm text-gray-500" id="selected-user-email">-</p>
+                    <span id="selected-user-type" class="inline-block mt-2 px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded"></span>
+                </div>
+                <button id="assign-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Gán thuộc tính
+                </button>
+            </div>
+        </div>
+
+        <!-- Current Attributes -->
+        <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Thuộc tính hiện tại</h3>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thuộc tính</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giá trị</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phiên bản</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cập nhật bởi</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="attributes-list" class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">Chưa có thuộc tính</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Active Attributes Summary -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Tóm tắt thuộc tính Active</h3>
+            <div id="active-summary" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <p class="text-gray-500">Chưa có dữ liệu</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Attribute Modal -->
+<div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+        <h3 class="text-lg font-semibold mb-4">Gán thuộc tính cho người dùng</h3>
+        <form id="assign-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Thuộc tính</label>
+                <select name="attribute_name" required id="attribute-select"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">-- Chọn thuộc tính --</option>
+                </select>
+            </div>
+            <div id="value-input-group">
+                <label class="block text-sm font-medium text-gray-700">Giá trị</label>
+                <select name="value_select" id="value-select"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </select>
+                <input type="text" name="value_text" id="value-text"
+                    class="hidden mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Nhập giá trị">
+            </div>
+            <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Hủy</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Gán</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const API_BASE = '/api/admin/';
+    const accessToken = localStorage.getItem('access_token');
+    let selectedUserId = null;
+    let attributeDefinitions = [];
+
+    if (!accessToken) {
+        window.location.href = '/auth/login/';
+    }
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+    };
+
+    // Load users and attribute definitions
+    async function init() {
+        await loadUsers();
+        await loadAttributeDefinitions();
+    }
+
+    async function loadUsers() {
+        try {
+            const response = await fetch(`${API_BASE}users-with-attributes/`, { headers });
+            if (response.status === 401) {
+                window.location.href = '/auth/login/';
+                return;
+            }
+            const data = await response.json();
+            const select = document.getElementById('user-select');
+            select.innerHTML = '<option value="">-- Chọn người dùng --</option>' +
+                data.users.map(u => `<option value="${u.id}">${u.username} - ${u.full_name || u.email}</option>`).join('');
+        } catch (error) {
+            showAlert('Lỗi tải danh sách người dùng: ' + error.message, 'error');
+        }
+    }
+
+    async function loadAttributeDefinitions() {
+        try {
+            const response = await fetch(`${API_BASE}attributes/`, { headers });
+            const data = await response.json();
+            attributeDefinitions = data;
+            
+            const select = document.getElementById('attribute-select');
+            select.innerHTML = '<option value="">-- Chọn thuộc tính --</option>' +
+                data.map(a => `<option value="${a.name}" data-type="${a.data_type}" data-values='${JSON.stringify(a.allowed_values || [])}'>${a.display_name} (${a.name})</option>`).join('');
+        } catch (error) {
+            console.error('Error loading attributes:', error);
+        }
+    }
+
+    // Handle attribute selection change
+    document.getElementById('attribute-select').addEventListener('change', (e) => {
+        const option = e.target.selectedOptions[0];
+        const dataType = option?.dataset.type;
+        const allowedValues = option?.dataset.values ? JSON.parse(option.dataset.values) : [];
+        
+        const valueSelect = document.getElementById('value-select');
+        const valueText = document.getElementById('value-text');
+        
+        if (dataType === 'enum' && allowedValues.length > 0) {
+            valueSelect.innerHTML = allowedValues.map(v => `<option value="${v}">${v}</option>`).join('');
+            valueSelect.classList.remove('hidden');
+            valueText.classList.add('hidden');
+        } else {
+            valueSelect.classList.add('hidden');
+            valueText.classList.remove('hidden');
+        }
+    });
+
+    document.getElementById('load-btn').addEventListener('click', () => {
+        const userId = document.getElementById('user-select').value;
+        if (userId) {
+            selectedUserId = userId;
+            loadUserAttributes(userId);
+        }
+    });
+
+    async function loadUserAttributes(userId) {
+        try {
+            const response = await fetch(`${API_BASE}users/${userId}/attributes/`, { headers });
+            const data = await response.json();
+            
+            document.getElementById('user-attributes-section').classList.remove('hidden');
+            document.getElementById('selected-user-name').textContent = data.username;
+            
+            renderAttributes(data.attributes);
+            renderActiveSummary(data.active_attributes);
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    }
+
+    function renderAttributes(attributes) {
+        const tbody = document.getElementById('attributes-list');
+        if (attributes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Chưa có thuộc tính</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = attributes.map(attr => `
+            <tr>
+                <td class="px-6 py-4">
+                    <div class="font-medium text-gray-900">${attr.attribute_display_name}</div>
+                    <div class="text-xs text-gray-500 font-mono">${attr.attribute_name}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">${attr.value}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs rounded-full ${attr.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">
+                        ${attr.status}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500">v${attr.version}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${attr.updated_by_username || '-'}</td>
+                <td class="px-6 py-4 text-right">
+                    <button onclick="deleteAttribute(${attr.id})" class="text-red-600 hover:text-red-900">Xóa</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function renderActiveSummary(activeAttrs) {
+        const container = document.getElementById('active-summary');
+        const entries = Object.entries(activeAttrs);
+        
+        if (entries.length === 0) {
+            container.innerHTML = '<p class="text-gray-500">Không có thuộc tính active</p>';
+            return;
+        }
+
+        container.innerHTML = entries.map(([key, value]) => `
+            <div class="bg-gray-50 rounded-lg p-3">
+                <div class="text-xs text-gray-500 uppercase">${key}</div>
+                <div class="font-medium text-gray-900">${value}</div>
+            </div>
+        `).join('');
+    }
+
+    function showAlert(message, type = 'success') {
+        const alert = document.getElementById('alert');
+        alert.className = `rounded-md p-4 ${type === 'error' ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'}`;
+        alert.textContent = message;
+        alert.classList.remove('hidden');
+        setTimeout(() => alert.classList.add('hidden'), 5000);
+    }
+
+    document.getElementById('assign-btn').addEventListener('click', () => {
+        document.getElementById('modal').classList.remove('hidden');
+    });
+
+    document.getElementById('cancel-btn').addEventListener('click', () => {
+        document.getElementById('modal').classList.add('hidden');
+    });
+
+    async function deleteAttribute(attrId) {
+        if (!confirm('Xóa thuộc tính này?')) return;
+        try {
+            const response = await fetch(`${API_BASE}users/${selectedUserId}/attributes/${attrId}/`, {
+                method: 'DELETE', headers
+            });
+            if (response.ok) {
+                showAlert('Đã xóa');
+                loadUserAttributes(selectedUserId);
+            } else {
+                const data = await response.json();
+                showAlert(data.error || 'Lỗi', 'error');
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    }
+
+    document.getElementById('assign-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const attrName = form.attribute_name.value;
+        const valueSelect = document.getElementById('value-select');
+        const valueText = document.getElementById('value-text');
+        const value = valueSelect.classList.contains('hidden') ? valueText.value : valueSelect.value;
+
+        try {
+            const response = await fetch(`${API_BASE}users/${selectedUserId}/attributes/assign/`, {
+                method: 'POST', headers,
+                body: JSON.stringify({ attribute_name: attrName, value })
+            });
+
+            if (response.ok) {
+                showAlert('Đã gán thuộc tính');
+                document.getElementById('modal').classList.add('hidden');
+                form.reset();
+                loadUserAttributes(selectedUserId);
+            } else {
+                const err = await response.json();
+                showAlert(JSON.stringify(err), 'error');
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    });
+
+    init();
+</script>
+{% endblock %}
