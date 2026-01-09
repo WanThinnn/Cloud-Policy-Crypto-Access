@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Chính sách Truy cập - Admin{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Quản lý Chính sách Truy cập</h1>
+            <p class="mt-1 text-sm text-gray-600">Định nghĩa chính sách ABAC cho hệ thống (BM7)</p>
+        </div>
+        <div class="flex gap-2">
+            <button id="reload-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Reload Casbin
+            </button>
+            <button id="add-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Thêm chính sách
+            </button>
+        </div>
+    </div>
+
+    <!-- Alert -->
+    <div id="alert" class="hidden rounded-md p-4"></div>
+
+    <!-- Policies Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Điều kiện</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tài nguyên</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hành động</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hiệu lực</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ưu tiên</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="policies-list" class="bg-white divide-y divide-gray-200">
+                <tr><td colspan="8" class="px-6 py-4 text-center text-gray-500">Đang tải...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <h3 id="modal-title" class="text-lg font-semibold mb-4">Thêm chính sách</h3>
+        <form id="policy-form" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tên (lowercase, underscore)</label>
+                    <input type="text" name="name" required pattern="[a-z][a-z0-9_]*"
+                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="policy_name">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Ưu tiên (1 = cao nhất)</label>
+                    <input type="number" name="priority" value="100" min="1" max="999"
+                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Mô tả</label>
+                <input type="text" name="description"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Mô tả chính sách">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Điều kiện Subject (ABAC Expression)</label>
+                <textarea name="subject_condition" required rows="2"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                    placeholder="r.sub.user_type == 'admin' && r.sub.department == 'it'"></textarea>
+                <p class="mt-1 text-xs text-gray-500">Ví dụ: r.sub.user_type == 'data_owner', r.sub.department in ['it', 'security']</p>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tài nguyên</label>
+                    <select name="resource" required
+                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="document">Document</option>
+                        <option value="key">Encryption Key</option>
+                        <option value="user">User Management</option>
+                        <option value="policy">Policy Management</option>
+                        <option value="attribute">Attribute Management</option>
+                        <option value="audit">Audit Logs</option>
+                        <option value="*">All Resources (*)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Hành động</label>
+                    <select name="action" required
+                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="read">Read</option>
+                        <option value="write">Write/Create</option>
+                        <option value="update">Update</option>
+                        <option value="delete">Delete</option>
+                        <option value="upload">Upload</option>
+                        <option value="download">Download</option>
+                        <option value="encrypt">Encrypt</option>
+                        <option value="decrypt">Decrypt</option>
+                        <option value="manage">Full Management</option>
+                        <option value="*">All Actions (*)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Hiệu lực</label>
+                    <select name="effect" required
+                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="allow">Allow</option>
+                        <option value="deny">Deny</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex items-center">
+                <input type="checkbox" name="is_active" id="is_active" checked
+                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                <label for="is_active" class="ml-2 text-sm text-gray-700">Kích hoạt policy</label>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4 border-t">
+                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Hủy</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const API_BASE = '/api/admin/policies/';
+    // accessToken is already declared in base.html
+    let editingId = null;
+
+    if (!accessToken) {
+        document.getElementById('policies-list').innerHTML = `
+            <tr><td colspan="8" class="px-6 py-8 text-center">
+                <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
+                <a href="/auth/login/" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Đăng nhập</a>
+            </td></tr>`;
+    }
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+    };
+
+    async function loadPolicies() {
+        if (!accessToken) return;
+        try {
+            const response = await fetch(API_BASE, { headers });
+            if (response.status === 401) {
+                showAlert('Phiên đăng nhập hết hạn', 'error');
+                setTimeout(() => window.location.href = '/auth/login/', 2000);
+                return;
+            }
+            if (response.status === 403) {
+                document.getElementById('policies-list').innerHTML = `
+                    <tr><td colspan="8" class="px-6 py-8 text-center text-red-600">
+                        <p class="font-medium">Không có quyền truy cập</p>
+                        <p class="text-sm mt-2">Chỉ Super Admin mới có thể xem trang này</p>
+                    </td></tr>`;
+                return;
+            }
+            const data = await response.json();
+            const policies = data.results || data;
+            renderPolicies(policies);
+        } catch (error) {
+            showAlert('Lỗi tải dữ liệu: ' + error.message, 'error');
+        }
+    }
+
+    function renderPolicies(policies) {
+        const tbody = document.getElementById('policies-list');
+        if (policies.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-4 text-center text-gray-500">Chưa có chính sách nào</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = policies.map(p => `
+            <tr>
+                <td class="px-6 py-4">
+                    <div class="font-medium text-gray-900">${p.name}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <code class="text-xs bg-gray-100 px-2 py-1 rounded">${escapeHtml(p.subject_condition)}</code>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">${p.resource}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">${p.action}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs rounded ${p.effect === 'allow' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        ${p.effect}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500">${p.priority}</td>
+                <td class="px-6 py-4">
+                    <button onclick="toggleActive(${p.id})" class="px-2 py-1 text-xs rounded-full ${p.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">
+                        ${p.is_active ? 'Active' : 'Inactive'}
+                    </button>
+                </td>
+                <td class="px-6 py-4 text-right space-x-2">
+                    <button onclick="editPolicy(${p.id})" class="text-indigo-600 hover:text-indigo-900">Sửa</button>
+                    <button onclick="deletePolicy(${p.id})" class="text-red-600 hover:text-red-900">Xóa</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showAlert(message, type = 'success') {
+        const alert = document.getElementById('alert');
+        alert.className = `rounded-md p-4 ${type === 'error' ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'}`;
+        alert.innerHTML = message;
+        alert.classList.remove('hidden');
+        setTimeout(() => alert.classList.add('hidden'), 5000);
+    }
+
+    document.getElementById('add-btn').addEventListener('click', () => {
+        editingId = null;
+        document.getElementById('modal-title').textContent = 'Thêm chính sách';
+        document.getElementById('policy-form').reset();
+        document.getElementById('modal').classList.remove('hidden');
+    });
+
+    document.getElementById('cancel-btn').addEventListener('click', () => {
+        document.getElementById('modal').classList.add('hidden');
+    });
+
+    document.getElementById('reload-btn').addEventListener('click', async () => {
+        try {
+            const response = await fetch(`${API_BASE}reload/`, { method: 'POST', headers });
+            if (response.ok) {
+                showAlert('Đã reload Casbin policies');
+            } else {
+                showAlert('Lỗi reload', 'error');
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    });
+
+    async function editPolicy(id) {
+        try {
+            const response = await fetch(`${API_BASE}${id}/`, { headers });
+            const policy = await response.json();
+            editingId = id;
+            document.getElementById('modal-title').textContent = 'Sửa chính sách';
+            const form = document.getElementById('policy-form');
+            form.name.value = policy.name;
+            form.description.value = policy.description || '';
+            form.subject_condition.value = policy.subject_condition;
+            form.resource.value = policy.resource;
+            form.action.value = policy.action;
+            form.effect.value = policy.effect;
+            form.priority.value = policy.priority;
+            form.is_active.checked = policy.is_active;
+            document.getElementById('modal').classList.remove('hidden');
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    }
+
+    async function deletePolicy(id) {
+        if (!confirm('Xóa chính sách này?')) return;
+        try {
+            const response = await fetch(`${API_BASE}${id}/`, {
+                method: 'DELETE', headers
+            });
+            if (response.ok) {
+                showAlert('Đã xóa');
+                loadPolicies();
+            } else {
+                showAlert('Lỗi xóa', 'error');
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    }
+
+    async function toggleActive(id) {
+        try {
+            const response = await fetch(`${API_BASE}${id}/toggle_active/`, {
+                method: 'POST', headers
+            });
+            if (response.ok) {
+                loadPolicies();
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    }
+
+    document.getElementById('policy-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const data = {
+            name: form.name.value,
+            description: form.description.value,
+            subject_condition: form.subject_condition.value,
+            resource: form.resource.value,
+            action: form.action.value,
+            effect: form.effect.value,
+            priority: parseInt(form.priority.value),
+            is_active: form.is_active.checked,
+        };
+
+        try {
+            const url = editingId ? `${API_BASE}${editingId}/` : API_BASE;
+            const method = editingId ? 'PUT' : 'POST';
+            const response = await fetch(url, {
+                method, headers,
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                showAlert(editingId ? 'Đã cập nhật' : 'Đã tạo');
+                document.getElementById('modal').classList.add('hidden');
+                loadPolicies();
+            } else {
+                const err = await response.json();
+                showAlert(JSON.stringify(err), 'error');
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    });
+
+    loadPolicies();
+</script>
+{% endblock %}

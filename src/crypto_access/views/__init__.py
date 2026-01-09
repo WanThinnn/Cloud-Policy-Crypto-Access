@@ -36,6 +36,12 @@ from .attributes import (
     list_users_with_attributes,
 )
 
+# Import policy management views
+from .policy import (
+    AccessPolicyViewSet,
+    policies_page,
+)
+
 __all__ = [
     # Base views
     'index',
@@ -68,5 +74,9 @@ __all__ = [
     'bulk_assign_user_attributes',
     'delete_user_attribute',
     'list_users_with_attributes',
+    
+    # Policy management views
+    'AccessPolicyViewSet',
+    'policies_page',
 ]
 

@@ -33,6 +33,12 @@ from .attributes import (
     UserWithAttributesSerializer,
 )
 
+# ABAC Policy serializers
+from .policy import (
+    AccessPolicySerializer,
+    AccessPolicyListSerializer,
+)
+
 __all__ = [
     # Base
     'UserSerializer',
@@ -59,5 +65,9 @@ __all__ = [
     'UserAttributeAssignSerializer',
     'UserAttributeBulkAssignSerializer',
     'UserWithAttributesSerializer',
+    
+    # ABAC Policies
+    'AccessPolicySerializer',
+    'AccessPolicyListSerializer',
 ]
 
