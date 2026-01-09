@@ -353,3 +353,29 @@ MigrationBackup/
 # Environment variables
 env/
 app/backend/used-for-reference/
+
+
+# --- Build Artifacts ---
+build/
+dist/
+*.spec
+
+# --- Security ---
+certs/
+secrets/
+.env
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual Environments ---
+venv/
+.venv/
+env/
+
+# --- IDE / Editor ---
+.vscode/
+
+tmp/
