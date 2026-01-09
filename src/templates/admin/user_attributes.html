@@ -118,8 +118,13 @@
     let selectedUserId = null;
     let attributeDefinitions = [];
 
+    // Check auth - show message if not logged in
+    const userSelect = document.getElementById('user-select');
     if (!accessToken) {
-        window.location.href = '/auth/login/';
+        userSelect.innerHTML = '<option value="">Vui lòng đăng nhập để sử dụng</option>';
+        userSelect.disabled = true;
+        document.getElementById('load-btn').disabled = true;
+        showAlert('Bạn cần đăng nhập để xem trang này. <a href="/auth/login/" class="underline font-medium">Đăng nhập</a>', 'error');
     }
 
     const headers = {
@@ -129,6 +134,7 @@
 
     // Load users and attribute definitions
     async function init() {
+        if (!accessToken) return;
         await loadUsers();
         await loadAttributeDefinitions();
     }
@@ -137,7 +143,12 @@
         try {
             const response = await fetch(`${API_BASE}users-with-attributes/`, { headers });
             if (response.status === 401) {
-                window.location.href = '/auth/login/';
+                showAlert('Phiên đăng nhập hết hạn', 'error');
+                setTimeout(() => window.location.href = '/auth/login/', 2000);
+                return;
+            }
+            if (response.status === 403) {
+                showAlert('Không có quyền truy cập. Chỉ Super Admin mới có thể xem trang này.', 'error');
                 return;
             }
             const data = await response.json();

@@ -91,9 +91,13 @@
     const accessToken = localStorage.getItem('access_token');
     let editingId = null;
 
-    // Check auth
+    // Check auth - show message instead of immediate redirect
     if (!accessToken) {
-        window.location.href = '/auth/login/';
+        document.getElementById('user-types-list').innerHTML = `
+            <tr><td colspan="6" class="px-6 py-8 text-center">
+                <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
+                <a href="/auth/login/" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Đăng nhập</a>
+            </td></tr>`;
     }
 
     // Fetch headers
@@ -104,10 +108,20 @@
 
     // Load user types
     async function loadUserTypes() {
+        if (!accessToken) return;
         try {
             const response = await fetch(API_BASE, { headers });
             if (response.status === 401) {
-                window.location.href = '/auth/login/';
+                showAlert('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', 'error');
+                setTimeout(() => window.location.href = '/auth/login/', 2000);
+                return;
+            }
+            if (response.status === 403) {
+                document.getElementById('user-types-list').innerHTML = `
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-red-600">
+                        <p class="font-medium">Không có quyền truy cập</p>
+                        <p class="text-sm mt-2">Chỉ Super Admin mới có thể xem trang này</p>
+                    </td></tr>`;
                 return;
             }
             const data = await response.json();
