@@ -1,10 +1,10 @@
 """
-Serializers for crypto_access app.
+Base serializers for crypto_access app.
 """
 
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile
+from ..models import UserProfile
 
 
 class UserSerializer(serializers.ModelSerializer):

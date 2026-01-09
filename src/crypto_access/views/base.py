@@ -1,5 +1,5 @@
 """
-Views for crypto_access app.
+Base views for crypto_access app.
 """
 
 from django.http import JsonResponse

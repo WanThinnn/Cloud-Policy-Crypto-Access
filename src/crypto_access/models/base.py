@@ -1,5 +1,5 @@
 """
-Models for crypto_access app.
+Base models for crypto_access app.
 """
 
 from django.db import models
@@ -30,6 +30,3 @@ class UserProfile(BaseModel):
         db_table = 'crypto_user_profiles'
         verbose_name = 'User Profile'
         verbose_name_plural = 'User Profiles'
-
-
-# Add your models here

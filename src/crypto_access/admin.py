@@ -3,7 +3,7 @@ Admin configuration for crypto_access app.
 """
 
 from django.contrib import admin
-from .models import UserProfile
+from .models import UserProfile  # Works because models/__init__.py exports it
 
 
 @admin.register(UserProfile)

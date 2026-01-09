@@ -24,6 +24,10 @@ cryptography==44.0.0
 # Environment variables
 python-dotenv==1.0.1
 
+# Supabase Storage
+supabase==2.10.0
+storage3==0.8.1
+
 # WSGI Server (for production)
 gunicorn==23.0.0
 
