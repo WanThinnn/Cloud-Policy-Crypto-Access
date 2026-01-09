@@ -21,6 +21,7 @@ django-redis==5.4.0
 
 # Security
 cryptography==44.0.0
+argon2-cffi==23.1.0
 
 # Environment variables
 python-dotenv==1.0.1

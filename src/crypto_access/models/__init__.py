@@ -8,6 +8,9 @@ from .base import BaseModel, UserProfile
 # Storage models
 from .storage import StorageBucket, UploadedFile
 
+# ABAC Attribute models
+from .attributes import UserType, AttributeDefinition, UserAttribute
+
 __all__ = [
     # Base
     'BaseModel',
@@ -16,4 +19,10 @@ __all__ = [
     # Storage
     'StorageBucket',
     'UploadedFile',
+    
+    # ABAC Attributes
+    'UserType',
+    'AttributeDefinition',
+    'UserAttribute',
 ]
+

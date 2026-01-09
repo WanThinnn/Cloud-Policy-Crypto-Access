@@ -5,6 +5,7 @@ Base models for crypto_access app.
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class BaseModel(models.Model):
@@ -22,6 +23,7 @@ class UserProfile(BaseModel):
     References user_attributes (BM4) for ABAC attributes
     """
     
+    # Legacy choices - kept for backward compatibility during migration
     USER_TYPE_CHOICES = [
         ('super_admin', 'Super Admin'),
         ('admin', 'Admin'),
@@ -43,12 +45,25 @@ class UserProfile(BaseModel):
     
     # BM1 fields
     full_name = models.CharField(max_length=255, default='', verbose_name="Họ và tên")
+    
+    # New: ForeignKey to UserType model (flexible, configurable)
+    user_type_ref = models.ForeignKey(
+        'UserType',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users',
+        verbose_name="Loại người dùng"
+    )
+    
+    # Legacy field - kept for backward compatibility
     user_type = models.CharField(
         max_length=20, 
         choices=USER_TYPE_CHOICES, 
         default='data_user',
-        verbose_name="Loại người dùng"
+        verbose_name="Loại người dùng (legacy)"
     )
+    
     account_status = models.CharField(
         max_length=20,
         choices=ACCOUNT_STATUS_CHOICES,
@@ -86,15 +101,35 @@ class UserProfile(BaseModel):
     def __str__(self):
         return f"{self.full_name} ({self.user.username})"
     
+    def get_user_type_code(self):
+        """Get user type code (from new model or legacy field)"""
+        if self.user_type_ref:
+            return self.user_type_ref.code
+        return self.user_type
+    
     def is_admin(self):
-        return self.user_type in ['super_admin', 'admin']
+        return self.get_user_type_code() in ['super_admin', 'admin']
     
     def is_super_admin(self):
-        return self.user_type == 'super_admin'
+        return self.get_user_type_code() == 'super_admin'
     
     def can_manage_users(self):
         """Check if user can manage other users"""
-        return self.user_type in ['super_admin', 'admin']
+        return self.get_user_type_code() in ['super_admin', 'admin']
+    
+    def has_permission(self, permission):
+        """Check if user has a specific permission via UserType"""
+        if self.user_type_ref:
+            return self.user_type_ref.has_permission(permission)
+        # Fallback for legacy: super_admin has all permissions
+        if self.user_type == 'super_admin':
+            return True
+        return False
+    
+    def get_abac_attributes(self):
+        """Get all ABAC attributes for this user"""
+        from .attributes import UserAttribute
+        return UserAttribute.get_user_attributes(self.user)
     
     def is_account_active(self):
         """Check if account is active and not expired"""
