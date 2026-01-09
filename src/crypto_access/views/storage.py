@@ -18,7 +18,7 @@ from ..serializers import (
     FileUploadSerializer,
     SignedUrlRequestSerializer
 )
-from ..storage import get_storage
+from ..services.storage_service import get_storage_service
 
 
 class StorageBucketViewSet(viewsets.ModelViewSet):
@@ -33,7 +33,7 @@ class StorageBucketViewSet(viewsets.ModelViewSet):
     def create_in_supabase(self, request, pk=None):
         """Create bucket in Supabase Storage"""
         bucket = self.get_object()
-        storage = get_storage()
+        storage = get_storage_service()
         
         try:
             result = storage.create_bucket(
@@ -55,7 +55,7 @@ class StorageBucketViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def list_supabase_buckets(self, request):
         """List all buckets from Supabase"""
-        storage = get_storage()
+        storage = get_storage_service()
         try:
             buckets = storage.list_buckets()
             return Response({'buckets': buckets})
@@ -138,7 +138,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             file_path = f"{timezone.now().strftime('%Y/%m/%d')}/{unique_name}"
         
         # Upload to Supabase
-        storage = get_storage()
+        storage = get_storage_service()
         try:
             file_data = file.read()
             upload_result = storage.upload_file(
@@ -189,7 +189,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     def download(self, request, pk=None):
         """Download file from Supabase Storage"""
         uploaded_file = self.get_object()
-        storage = get_storage()
+        storage = get_storage_service()
         
         try:
             file_data = storage.download_file(
@@ -219,7 +219,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             )
         
         expires_in = request.data.get('expires_in', 3600)
-        storage = get_storage()
+        storage = get_storage_service()
         
         try:
             signed_url = storage.create_signed_url(
@@ -249,7 +249,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     def delete_from_storage(self, request, pk=None):
         """Delete file from both Supabase Storage and database"""
         uploaded_file = self.get_object()
-        storage = get_storage()
+        storage = get_storage_service()
         
         try:
             # Delete from Supabase

@@ -4,7 +4,7 @@ Usage: python manage.py init_storage
 """
 from django.core.management.base import BaseCommand
 from crypto_access.models_storage import StorageBucket
-from crypto_access.storage import get_storage
+from crypto_access.services.storage_service import get_storage_service
 
 
 class Command(BaseCommand):
@@ -58,7 +58,7 @@ class Command(BaseCommand):
             },
         ]
         
-        storage = get_storage()
+        storage = get_storage_service()
         create_in_supabase = options['create_supabase']
         
         for config in buckets_config:
