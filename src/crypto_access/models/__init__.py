@@ -11,6 +11,9 @@ from .storage import StorageBucket, UploadedFile
 # ABAC Attribute models
 from .attributes import UserType, AttributeDefinition, UserAttribute
 
+# ABAC Policy models
+from .policy import AccessPolicy
+
 __all__ = [
     # Base
     'BaseModel',
@@ -24,5 +27,8 @@ __all__ = [
     'UserType',
     'AttributeDefinition',
     'UserAttribute',
+    
+    # ABAC Policies
+    'AccessPolicy',
 ]
 
