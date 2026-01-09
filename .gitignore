@@ -6,9 +6,22 @@ __pycache__/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-/media
-/staticfiles
-/logs/*.log
+media/
+staticfiles/
+static/admin/
+static/rest_framework/
+logs/*.log
+
+# Tailwind CSS / django-tailwind
+node_modules/
+package-lock.json
+src/theme/static/css/dist/
+src/theme/static_src/node_modules/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+src/staticfiles/*
 
 # Environment variables
 .env
