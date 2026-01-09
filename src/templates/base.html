@@ -14,55 +14,127 @@
         .fade-in {
             animation: fadeIn 0.3s ease-in;
         }
+        /* Dropdown menu */
+        .dropdown:hover .dropdown-menu { display: block; }
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen flex flex-col">
     <!-- Header -->
-    <nav class="bg-white shadow-sm">
+    <nav class="bg-slate-800 shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
+                <!-- Logo -->
                 <div class="flex items-center">
                     <a href="/" class="flex items-center">
-                        <svg class="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-8 w-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                         </svg>
-                        <span class="ml-2 text-xl font-bold text-gray-900">Crypto Access</span>
+                        <span class="ml-2 text-xl font-bold text-white">Crypto Access</span>
                     </a>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <span id="user-info" class="hidden text-sm text-gray-700"></span>
-                    <button id="logout-btn" class="hidden px-4 py-2 text-sm text-red-600 hover:text-red-700">
-                        Đăng xuất
+                
+                <!-- Navigation Links -->
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="/" class="text-gray-300 hover:text-white transition">Trang chủ</a>
+                    
+                    <!-- Admin Dropdown (shown when logged in as admin) -->
+                    <div id="admin-menu" class="hidden relative dropdown">
+                        <button class="text-gray-300 hover:text-white transition flex items-center">
+                            Quản trị
+                            <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div class="dropdown-menu hidden absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50">
+                            <a href="/api/admin/pages/user-types/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                👤 Loại người dùng
+                            </a>
+                            <a href="/api/admin/pages/attributes/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                📋 Lược đồ thuộc tính
+                            </a>
+                            <a href="/api/admin/pages/user-attributes/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                🏷️ Thuộc tính người dùng
+                            </a>
+                            <hr class="my-1">
+                            <a href="/admin/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                ⚙️ Django Admin
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Auth Links (shown when not logged in) -->
+                    <div id="auth-links">
+                        <a href="/auth/login/" class="text-gray-300 hover:text-white transition">Đăng nhập</a>
+                        <a href="/auth/register/" class="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition">Đăng ký</a>
+                    </div>
+                    
+                    <!-- User Info (shown when logged in) -->
+                    <div id="user-section" class="hidden flex items-center space-x-4">
+                        <span id="user-info" class="text-sm text-gray-300"></span>
+                        <button id="logout-btn" class="text-red-400 hover:text-red-300 text-sm transition">
+                            Đăng xuất
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-btn" class="text-gray-300 hover:text-white">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
                     </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-slate-700">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="/" class="block px-3 py-2 text-white hover:bg-slate-600 rounded">Trang chủ</a>
+                <div id="mobile-admin-menu" class="hidden">
+                    <span class="block px-3 py-2 text-gray-400 text-sm">Quản trị:</span>
+                    <a href="/api/admin/pages/user-types/" class="block px-6 py-2 text-white hover:bg-slate-600 rounded">Loại người dùng</a>
+                    <a href="/api/admin/pages/attributes/" class="block px-6 py-2 text-white hover:bg-slate-600 rounded">Lược đồ thuộc tính</a>
+                    <a href="/api/admin/pages/user-attributes/" class="block px-6 py-2 text-white hover:bg-slate-600 rounded">Thuộc tính người dùng</a>
                 </div>
             </div>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {% block content %}{% endblock %}
+    <main class="flex-grow">
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            {% block content %}{% endblock %}
+        </div>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t mt-12">
-        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <p class="text-center text-sm text-gray-500">
+    <footer class="bg-slate-800 text-white mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-sm text-gray-400">
                 © 2026 Crypto Access - CP-ABE Encryption & ABAC Access Control
             </p>
         </div>
     </footer>
 
     <script>
-        // Check authentication
+        // Authentication state
         const accessToken = localStorage.getItem('access_token');
         const refreshToken = localStorage.getItem('refresh_token');
         const username = localStorage.getItem('username');
         
+        // Update UI based on auth state
         if (accessToken && username) {
+            // User is logged in
+            document.getElementById('auth-links').classList.add('hidden');
+            document.getElementById('user-section').classList.remove('hidden');
             document.getElementById('user-info').textContent = `Xin chào, ${username}`;
-            document.getElementById('user-info').classList.remove('hidden');
-            document.getElementById('logout-btn').classList.remove('hidden');
+            
+            // Show admin menu (for now, show to all logged-in users - later filter by role)
+            document.getElementById('admin-menu').classList.remove('hidden');
+            document.getElementById('mobile-admin-menu').classList.remove('hidden');
         }
 
         // Logout handler
@@ -82,6 +154,11 @@
                 localStorage.clear();
                 window.location.href = '/auth/login/';
             }
+        });
+        
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
         });
     </script>
 
