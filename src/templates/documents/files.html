@@ -1,377 +1,220 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block title %}Quản lý Tài liệu - Document Management{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center">
+    <!-- Header với Search và View Toggle -->
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Quản lý Tài liệu</h1>
             <p class="mt-1 text-sm text-gray-600">Upload, quản lý và chia sẻ tài liệu với kiểm soát truy cập ABAC</p>
         </div>
-        <button id="upload-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
-            Upload File
-        </button>
+        <div class="flex items-center gap-2">
+            <!-- Search Box -->
+            <div class="relative">
+                <input type="text" id="search-input" placeholder="Tìm file..." 
+                    class="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-64">
+                <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+            <!-- View Toggle -->
+            <div class="flex border border-gray-300 rounded-md">
+                <button id="grid-view-btn" class="px-3 py-2 bg-indigo-600 text-white rounded-l-md hover:bg-indigo-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                    </svg>
+                </button>
+                <button id="list-view-btn" class="px-3 py-2 text-gray-700 bg-white rounded-r-md hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+            <!-- Upload Button -->
+            <button id="upload-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                Upload
+            </button>
+        </div>
     </div>
 
     <!-- Alert -->
-    <div id="alert" class="hidden rounded-md p-4"></div>
+    <div id="alert" class="hidden rounded-md p-4 relative">
+        <button onclick="document.getElementById('alert').classList.add('hidden')" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        <span id="alert-message"></span>
+    </div>
 
-    <!-- Folder Navigation -->
+    <!-- Bulk Actions Bar -->
+    <div id="bulk-actions-bar" class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <span class="text-sm font-medium text-indigo-900"><span id="selected-count">0</span> file đã chọn</span>
+            <button onclick="clearSelection()" class="text-sm text-indigo-600 hover:text-indigo-800">Bỏ chọn</button>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="bulkDownload()" class="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">
+                Download
+            </button>
+            <button onclick="bulkDelete()" class="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700">
+                Xóa
+            </button>
+        </div>
+    </div>
+
+    <!-- Breadcrumb Navigation -->
     <div class="bg-white shadow rounded-lg p-4">
-        <div class="flex items-center space-x-2 text-sm">
-            <button onclick="loadFolder('')" class="text-indigo-600 hover:text-indigo-800">🏠 Root</button>
+        <div class="flex items-center gap-2 text-sm">
+            <button onclick="loadFolder('')" class="text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                Root
+            </button>
             <span id="breadcrumb"></span>
         </div>
     </div>
 
-    <!-- Files Grid -->
+    <!-- Drag & Drop Zone -->
+    <div id="drop-zone" class="hidden border-4 border-dashed border-indigo-300 bg-indigo-50 rounded-lg p-12 text-center">
+        <svg class="mx-auto h-16 w-16 text-indigo-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        <p class="text-lg font-medium text-indigo-900">Thả files vào đây để upload</p>
+        <p class="text-sm text-indigo-600 mt-2">hoặc click để chọn files</p>
+    </div>
+
+    <!-- Files Container -->
     <div class="bg-white shadow rounded-lg">
         <div class="p-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
-                <span class="text-sm font-medium text-gray-700">Thư mục hiện tại: <span id="current-path" class="text-indigo-600">/</span></span>
-                <div class="flex space-x-2">
-                    <button onclick="createFolder()" class="text-sm text-gray-600 hover:text-gray-800 flex items-center">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-                        </svg>
-                        Tạo thư mục
-                    </button>
-                </div>
+                <span class="text-sm font-medium text-gray-700">
+                    Thư mục: <span id="current-path" class="text-indigo-600">/</span>
+                </span>
+                <button onclick="createFolder()" class="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    </svg>
+                    Tạo thư mục
+                </button>
             </div>
         </div>
         
-        <div id="files-list" class="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <!-- Grid View -->
+        <div id="files-grid" class="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
             <p class="col-span-full text-center text-gray-500">Đang tải...</p>
         </div>
-    </div>
 
-    <!-- File Details Panel -->
-    <div id="file-details" class="hidden bg-white shadow rounded-lg p-6">
-        <h3 class="text-lg font-medium mb-4">Chi tiết tài liệu</h3>
-        <div id="file-info"></div>
+        <!-- List View -->
+        <div id="files-list" class="hidden divide-y">
+            <!-- List items here -->
+        </div>
     </div>
 </div>
 
 <!-- Upload Modal -->
 <div id="upload-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+    <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold mb-4">Upload Tài liệu</h3>
         <form id="upload-form" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700">Chọn file</label>
-                <input type="file" name="file" required accept=".md,.txt,.pdf,.doc,.docx"
+                <input type="file" id="file-input" name="file" required accept=".md,.txt,.pdf,.doc,.docx,.jpg,.png,.gif"
                     class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                <p class="mt-1 text-xs text-gray-500">Hỗ trợ: .md, .txt, .pdf, .doc, .docx, images</p>
             </div>
+            
+            <!-- Progress Bar -->
+            <div id="upload-progress-container" class="hidden">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="upload-progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all" style="width: 0%"></div>
+                </div>
+                <p class="text-xs text-gray-600 mt-1"><span id="upload-progress-text">0%</span></p>
+            </div>
+
             <div>
                 <label class="block text-sm font-medium text-gray-700">Thư mục đích</label>
-                <select name="folder" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
-                    <option value="public">📁 public/</option>
-                    <option value="it">📁 it/</option>
-                    <option value="hr">📁 hr/</option>
-                    <option value="finance">📁 finance/</option>
-                    <option value="classified">📁 classified/</option>
+                <select id="folder-select" name="folder" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    <option value="">Đang tải...</option>
                 </select>
+                <button type="button" onclick="refreshFolders()" class="text-xs text-indigo-600 hover:text-indigo-800 mt-1">
+                    🔄 Làm mới danh sách
+                </button>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Classification</label>
-                <select name="classification" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
-                    <option value="public">Public</option>
-                    <option value="confidential">Confidential</option>
-                    <option value="secret">Secret</option>
-                    <option value="top_secret">Top Secret</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Access Policy (ABAC)</label>
-                <input type="text" name="policy" placeholder="department == 'it' AND role == 'manager'"
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 font-mono text-sm">
-                <p class="mt-1 text-xs text-gray-500">Ví dụ: department == 'it' AND clearance_level >= 'secret'</p>
-            </div>
-            <div class="flex justify-end space-x-3 pt-4 border-t">
-                <button type="button" id="cancel-upload" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Hủy</button>
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Upload</button>
+
+            <div class="flex justify-end gap-3 pt-4 border-t">
+                <button type="button" id="cancel-upload" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                    Hủy
+                </button>
+                <button type="submit" id="submit-upload" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                    Upload
+                </button>
             </div>
         </form>
     </div>
 </div>
+
+<!-- File Preview Modal -->
+<div id="preview-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between p-4 border-b">
+            <h3 class="text-lg font-semibold" id="preview-title">Preview</h3>
+            <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div id="preview-content" class="flex-1 overflow-auto p-6">
+            <!-- Content here -->
+        </div>
+        <div class="flex justify-between items-center p-4 border-t bg-gray-50">
+            <div class="flex gap-2">
+                <button onclick="downloadFromPreview()" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Download
+                </button>
+            </div>
+            <button onclick="closePreview()" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">
+                Đóng
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Context Menu -->
+<div id="context-menu" class="hidden fixed bg-white shadow-lg rounded-lg py-2 z-50 min-w-[180px] border">
+    <button onclick="contextAction('preview')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+        </svg>
+        Xem trước
+    </button>
+    <button onclick="contextAction('download')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        Download
+    </button>
+    <hr class="my-1">
+    <button onclick="contextAction('delete')" class="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+        Xóa
+    </button>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    const API_BASE = '/api/storage/';
-    // accessToken from base.html
-    let currentPath = '';
-
-    if (!accessToken) {
-        document.getElementById('files-list').innerHTML = `
-            <div class="col-span-full text-center py-8">
-                <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
-                <a href="/auth/login/" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Đăng nhập</a>
-            </div>`;
-    }
-
-    const headers = {
-        'Authorization': `Bearer ${accessToken}`
-    };
-
-    async function loadFolder(path = '') {
-        currentPath = path;
-        document.getElementById('current-path').textContent = '/' + (path || '');
-        updateBreadcrumb(path);
-        
-        try {
-            // Use browse endpoint to list from Supabase directly
-            const response = await fetch(`${API_BASE}files/browse/?path=${encodeURIComponent(path)}`, { headers });
-            if (!response.ok) {
-                throw new Error('Failed to load files');
-            }
-            const data = await response.json();
-            renderFiles(data.files || []);
-        } catch (error) {
-            console.error('Error loading files:', error);
-            document.getElementById('files-list').innerHTML = `
-                <div class="col-span-full text-center text-gray-500 py-8">
-                    <p>Chưa có file nào hoặc không có quyền truy cập</p>
-                    <p class="text-sm mt-2">Upload file đầu tiên của bạn!</p>
-                </div>`;
-        }
-    }
-
-    function updateBreadcrumb(path) {
-        const parts = path.split('/').filter(p => p);
-        let html = '';
-        let cumPath = '';
-        parts.forEach((part, idx) => {
-            cumPath += (idx > 0 ? '/' : '') + part;
-            const p = cumPath;
-            html += ` / <button onclick="loadFolder('${p}')" class="text-indigo-600 hover:text-indigo-800">${part}</button>`;
-        });
-        document.getElementById('breadcrumb').innerHTML = html;
-    }
-
-    function renderFiles(files) {
-        const container = document.getElementById('files-list');
-        if (files.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-full text-center text-gray-500 py-8">
-                    <p>Thư mục trống</p>
-                </div>`;
-            return;
-        }
-
-        container.innerHTML = files.map(file => {
-            const isFolder = file.type === 'folder' || file.name.endsWith('/');
-            const icon = isFolder ? '📁' : getFileIcon(file.name);
-            const name = file.name.replace(/\/$/, '');
-            const filePath = file.path || name;
-            
-            return `
-                <div onclick="${isFolder ? `loadFolder('${filePath}')` : `showFileDetails('${filePath}')`}" 
-                    class="cursor-pointer p-4 border rounded-lg hover:bg-gray-50 transition text-center">
-                    <div class="text-3xl mb-2">${icon}</div>
-                    <p class="text-sm font-medium truncate" title="${name}">${name}</p>
-                    ${file.size ? `<p class="text-xs text-gray-500">${formatSize(file.size)}</p>` : ''}
-                </div>
-            `;
-        }).join('');
-    }
-
-    function getFileIcon(name) {
-        const ext = name.split('.').pop().toLowerCase();
-        const icons = {
-            'md': '📝',
-            'txt': '📄',
-            'pdf': '📕',
-            'doc': '📘',
-            'docx': '📘',
-            'xls': '📗',
-            'xlsx': '📗',
-            'jpg': '🖼️',
-            'png': '🖼️',
-            'zip': '📦'
-        };
-        return icons[ext] || '📄';
-    }
-
-    function getClassificationColor(cls) {
-        const colors = {
-            'public': 'bg-green-100 text-green-800',
-            'confidential': 'bg-yellow-100 text-yellow-800',
-            'secret': 'bg-orange-100 text-orange-800',
-            'top_secret': 'bg-red-100 text-red-800'
-        };
-        return colors[cls] || 'bg-gray-100 text-gray-800';
-    }
-
-    function formatSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    }
-
-    async function showFileDetails(filePath) {
-        // Show file details modal
-        document.getElementById('file-details').classList.remove('hidden');
-        const fileName = filePath.split('/').pop();
-        
-        document.getElementById('file-info').innerHTML = `
-            <div class="space-y-3">
-                <div><span class="text-gray-500 font-medium">Tên:</span> ${fileName}</div>
-                <div><span class="text-gray-500 font-medium">Đường dẫn:</span> ${filePath}</div>
-            </div>
-            <div class="mt-4 flex space-x-2">
-                <button onclick="downloadFile('${filePath}')" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Download</button>
-                <button onclick="deleteFileByPath('${filePath}')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Xóa</button>
-                <button onclick="document.getElementById('file-details').classList.add('hidden')" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Đóng</button>
-            </div>
-        `;
-    }
-
-    async function downloadFile(filePath) {
-        try {
-            showAlert('Đang tải file...', 'info');
-            const url = `${API_BASE}files/download_by_path/?path=${encodeURIComponent(filePath)}`;
-            console.log('🔍 Download URL:', url);
-            console.log('🔍 Full request path would be:', new URL(url, window.location.origin).pathname);
-            
-            const response = await fetch(url, { headers });
-            
-            console.log('📊 Download response status:', response.status);
-            console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
-            
-            // Check for ABAC denial (403 Forbidden)
-            if (response.status === 403) {
-                const error = await response.json();
-                showAlert('🚫 ' + (error.error || 'Bạn không có quyền download file này'), 'error');
-                console.error('ABAC denied:', error);
-                return;
-            }
-            
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({ error: response.statusText }));
-                showAlert('Lỗi: ' + (error.error || error.detail || response.statusText), 'error');
-                return;
-            }
-            
-            // Get filename from Content-Disposition header or use path
-            const contentDisposition = response.headers.get('Content-Disposition');
-            let filename = filePath.split('/').pop();
-            if (contentDisposition) {
-                const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-                if (matches && matches[1]) {
-                    filename = matches[1].replace(/['"]/g, '');
-                }
-            }
-            
-            // Convert to blob and download
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(downloadUrl);
-            
-            showAlert('✅ Đã tải file thành công!', 'success');
-        } catch (error) {
-            console.error('Download error:', error);
-            showAlert('Lỗi tải file: ' + error.message, 'error');
-        }
-    }
-    
-    async function deleteFileByPath(filePath) {
-        if (!confirm('Xóa file này?')) return;
-        showAlert('Chức năng xóa sẽ được implement đầy đủ sau', 'info');
-    }
-
-    async function deleteFile(fileId) {
-        if (!confirm('Xóa file này?')) return;
-        try {
-            await fetch(`${API_BASE}files/${fileId}/`, { method: 'DELETE', headers });
-            showAlert('Đã xóa file');
-            loadFolder(currentPath);
-            document.getElementById('file-details').classList.add('hidden');
-        } catch (error) {
-            showAlert('Lỗi xóa file', 'error');
-        }
-    }
-
-    function createFolder() {
-        const name = prompt('Tên thư mục mới:');
-        if (!name) return;
-        // Folder creation would be handled by storage API
-        showAlert('Chức năng tạo thư mục sẽ được implement sau', 'info');
-    }
-
-    function showAlert(message, type = 'success') {
-        const alert = document.getElementById('alert');
-        const colors = {
-            success: 'bg-green-50 text-green-800',
-            error: 'bg-red-50 text-red-800',
-            info: 'bg-blue-50 text-blue-800'
-        };
-        alert.className = `rounded-md p-4 ${colors[type]}`;
-        alert.innerHTML = message;
-        alert.classList.remove('hidden');
-        setTimeout(() => alert.classList.add('hidden'), 5000);
-    }
-
-    // Upload modal
-    document.getElementById('upload-btn').addEventListener('click', () => {
-        document.getElementById('upload-modal').classList.remove('hidden');
-    });
-
-    document.getElementById('cancel-upload').addEventListener('click', () => {
-        document.getElementById('upload-modal').classList.add('hidden');
-    });
-
-    document.getElementById('upload-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const formData = new FormData(form);
-        
-        try {
-            const response = await fetch(`${API_BASE}files/upload/`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}` },
-                body: formData
-            });
-            
-            console.log('Upload response status:', response.status);
-            
-            // Check for ABAC denial
-            if (response.status === 403) {
-                const err = await response.json();
-                showAlert('🚫 ' + (err.error || 'Bạn không có quyền upload file'), 'error');
-                console.error('ABAC denied upload:', err);
-                return;
-            }
-            
-            if (response.ok) {
-                showAlert('✅ Upload thành công!');
-                document.getElementById('upload-modal').classList.add('hidden');
-                form.reset();
-                loadFolder(currentPath);
-            } else {
-                const err = await response.json().catch(() => ({ error: 'Upload thất bại' }));
-                showAlert(err.error || err.detail || 'Upload thất bại', 'error');
-            }
-        } catch (error) {
-            console.error('Upload error:', error);
-            showAlert('Lỗi: ' + error.message, 'error');
-        }
-    });
-
-    // Initial load
-    if (accessToken) {
-        loadFolder('');
-    }
-</script>
+<script src="{% static 'js/files-manager.js' %}"></script>
 {% endblock %}
