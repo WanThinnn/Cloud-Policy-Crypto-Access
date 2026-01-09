@@ -51,6 +51,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # ABAC Middleware for access control
+    'crypto_access.middleware.abac_middleware.ABACContextMiddleware',
+    'crypto_access.middleware.abac_middleware.ABACMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -217,4 +220,58 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+]
+
+# ABAC Protected Routes Configuration
+ABAC_PROTECTED_ROUTES = [
+    # Specific patterns must come FIRST (before generic /api/storage/files/)
+    {
+        'pattern': r'^/api/storage/files/upload/',
+        'resource': 'document',
+        'methods': {
+            'POST': 'upload',
+        }
+    },
+    {
+        'pattern': r'^/api/storage/files/browse/',
+        'resource': 'document',
+        'methods': {
+            'GET': 'read',  # Browse requires 'read' permission
+        }
+    },
+    {
+        'pattern': r'^/api/storage/files/download_by_path/',
+        'resource': 'document',
+        'methods': {
+            'GET': 'download',
+        }
+    },
+    {
+        'pattern': r'^/api/storage/files/\d+/download/',
+        'resource': 'document',
+        'methods': {
+            'GET': 'download',
+        }
+    },
+    # Generic pattern LAST as fallback
+    {
+        'pattern': r'^/api/storage/files/\d+/',
+        'resource': 'document',
+        'methods': {
+            'GET': 'read',
+            'PUT': 'update',
+            'PATCH': 'update',
+            'DELETE': 'delete',
+        }
+    },
+    {
+        'pattern': r'^/api/admin/',
+        'resource': 'policy',
+        'methods': {
+            'GET': 'read',
+            'POST': 'manage',
+            'PUT': 'manage',
+            'DELETE': 'manage',
+        }
+    },
 ]
