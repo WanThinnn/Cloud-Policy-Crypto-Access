@@ -2,24 +2,39 @@
 Development settings - suitable for local development.
 """
 
+import os
+import dj_database_url
 from .base import *
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-dev-key-change-this-in-production'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-this-in-production')
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
 
 
-# Database - SQLite for development
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Database - Use Supabase PostgreSQL if DATABASE_URL is set, otherwise SQLite
+database_url = os.environ.get('DATABASE_URL')
+
+if database_url:
+    # Parse Supabase connection string
+    DATABASES = {
+        'default': dj_database_url.parse(
+            database_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    # Fallback to SQLite for local development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # CORS settings for development

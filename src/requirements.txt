@@ -44,3 +44,5 @@ isort==5.13.2
 # Development
 django-debug-toolbar==4.4.6
 ipython==8.31.0
+
+dj-database-url==2.1.0

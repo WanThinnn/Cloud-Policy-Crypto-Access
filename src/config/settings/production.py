@@ -3,6 +3,7 @@ Production settings - secure configuration for deployment.
 """
 
 import os
+import dj_database_url
 from .base import *
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -19,20 +20,18 @@ if not ALLOWED_HOSTS or ALLOWED_HOSTS == ['']:
     raise ValueError("DJANGO_ALLOWED_HOSTS environment variable is not set!")
 
 
-# Database - PostgreSQL for production
+# Database - Parse DATABASE_URL for production
+database_url = os.environ.get('DATABASE_URL')
+if not database_url:
+    raise ValueError("DATABASE_URL environment variable is not set!")
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 600,
-        'OPTIONS': {
-            'connect_timeout': 10,
-        },
-    }
+    'default': dj_database_url.parse(
+        database_url,
+        conn_max_age=600,
+        conn_health_checks=True,
+        ssl_require=True,  # Supabase requires SSL
+    )
 }
 
 
