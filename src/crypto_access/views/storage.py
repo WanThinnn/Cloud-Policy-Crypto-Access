@@ -100,6 +100,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     def upload(self, request):
         """
         Upload file to Supabase Storage
+        Protected by ABAC middleware - requires 'upload' permission on 'document'
         
         POST /api/files/upload/
         Content-Type: multipart/form-data
@@ -339,6 +340,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         """
         Download file by path from Supabase
         GET /api/storage/files/download_by_path/?path=public/company-policy.md
+        Protected by ABAC middleware - requires 'download' permission on 'document'
         """
         storage = get_storage_service()
         bucket_name = request.query_params.get('bucket', 'documents')

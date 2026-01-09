@@ -49,9 +49,11 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # JWT Middleware - Process JWT tokens before ABAC
+    'crypto_access.middleware.jwt_middleware.JWTAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # ABAC Middleware for access control
+    # ABAC Middleware for access control - Must be AFTER JWT middleware
     'crypto_access.middleware.abac_middleware.ABACContextMiddleware',
     'crypto_access.middleware.abac_middleware.ABACMiddleware',
 ]
