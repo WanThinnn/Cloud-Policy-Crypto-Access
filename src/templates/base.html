@@ -26,6 +26,7 @@
                 <!-- Navigation Links -->
                 <div class="hidden md:flex items-center space-x-6">
                     <a href="/" class="text-gray-300 hover:text-white transition">Trang chủ</a>
+                    <a href="/manage/files/" class="text-gray-300 hover:text-white transition">Tài liệu</a>
                     
                     <!-- Admin Dropdown (shown when logged in as admin) -->
                     <div id="admin-menu" class="hidden relative">
@@ -36,6 +37,10 @@
                             </svg>
                         </button>
                         <div id="admin-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 transition-opacity duration-200">
+                            <a href="/manage/files/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                📄 Quản lý tài liệu
+                            </a>
+                            <hr class="my-1">
                             <a href="/manage/user-types/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 👤 Loại người dùng
                             </a>

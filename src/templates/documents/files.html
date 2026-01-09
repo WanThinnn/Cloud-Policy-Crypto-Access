@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Tài liệu - Document Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Quản lý Tài liệu</h1>
+            <p class="mt-1 text-sm text-gray-600">Upload, quản lý và chia sẻ tài liệu với kiểm soát truy cập ABAC</p>
+        </div>
+        <button id="upload-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            Upload File
+        </button>
+    </div>
+
+    <!-- Alert -->
+    <div id="alert" class="hidden rounded-md p-4"></div>
+
+    <!-- Folder Navigation -->
+    <div class="bg-white shadow rounded-lg p-4">
+        <div class="flex items-center space-x-2 text-sm">
+            <button onclick="loadFolder('')" class="text-indigo-600 hover:text-indigo-800">🏠 Root</button>
+            <span id="breadcrumb"></span>
+        </div>
+    </div>
+
+    <!-- Files Grid -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-gray-700">Thư mục hiện tại: <span id="current-path" class="text-indigo-600">/</span></span>
+                <div class="flex space-x-2">
+                    <button onclick="createFolder()" class="text-sm text-gray-600 hover:text-gray-800 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                        </svg>
+                        Tạo thư mục
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="files-list" class="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <p class="col-span-full text-center text-gray-500">Đang tải...</p>
+        </div>
+    </div>
+
+    <!-- File Details Panel -->
+    <div id="file-details" class="hidden bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium mb-4">Chi tiết tài liệu</h3>
+        <div id="file-info"></div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="upload-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+        <h3 class="text-lg font-semibold mb-4">Upload Tài liệu</h3>
+        <form id="upload-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Chọn file</label>
+                <input type="file" name="file" required accept=".md,.txt,.pdf,.doc,.docx"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Thư mục đích</label>
+                <select name="folder" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    <option value="public">📁 public/</option>
+                    <option value="it">📁 it/</option>
+                    <option value="hr">📁 hr/</option>
+                    <option value="finance">📁 finance/</option>
+                    <option value="classified">📁 classified/</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Classification</label>
+                <select name="classification" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2">
+                    <option value="public">Public</option>
+                    <option value="confidential">Confidential</option>
+                    <option value="secret">Secret</option>
+                    <option value="top_secret">Top Secret</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Access Policy (ABAC)</label>
+                <input type="text" name="policy" placeholder="department == 'it' AND role == 'manager'"
+                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 font-mono text-sm">
+                <p class="mt-1 text-xs text-gray-500">Ví dụ: department == 'it' AND clearance_level >= 'secret'</p>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4 border-t">
+                <button type="button" id="cancel-upload" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Hủy</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const API_BASE = '/api/storage/';
+    // accessToken from base.html
+    let currentPath = '';
+
+    if (!accessToken) {
+        document.getElementById('files-list').innerHTML = `
+            <div class="col-span-full text-center py-8">
+                <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
+                <a href="/auth/login/" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Đăng nhập</a>
+            </div>`;
+    }
+
+    const headers = {
+        'Authorization': `Bearer ${accessToken}`
+    };
+
+    async function loadFolder(path = '') {
+        currentPath = path;
+        document.getElementById('current-path').textContent = '/' + (path || '');
+        updateBreadcrumb(path);
+        
+        try {
+            const response = await fetch(`${API_BASE}files/?path=${encodeURIComponent(path)}`, { headers });
+            if (!response.ok) {
+                throw new Error('Failed to load files');
+            }
+            const data = await response.json();
+            renderFiles(data.files || data.results || data || []);
+        } catch (error) {
+            console.error('Error loading files:', error);
+            document.getElementById('files-list').innerHTML = `
+                <div class="col-span-full text-center text-gray-500 py-8">
+                    <p>Chưa có file nào hoặc không có quyền truy cập</p>
+                    <p class="text-sm mt-2">Upload file đầu tiên của bạn!</p>
+                </div>`;
+        }
+    }
+
+    function updateBreadcrumb(path) {
+        const parts = path.split('/').filter(p => p);
+        let html = '';
+        let cumPath = '';
+        parts.forEach((part, idx) => {
+            cumPath += (idx > 0 ? '/' : '') + part;
+            const p = cumPath;
+            html += ` / <button onclick="loadFolder('${p}')" class="text-indigo-600 hover:text-indigo-800">${part}</button>`;
+        });
+        document.getElementById('breadcrumb').innerHTML = html;
+    }
+
+    function renderFiles(files) {
+        const container = document.getElementById('files-list');
+        if (files.length === 0) {
+            container.innerHTML = `
+                <div class="col-span-full text-center text-gray-500 py-8">
+                    <p>Thư mục trống</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = files.map(file => {
+            const isFolder = file.type === 'folder' || file.name.endsWith('/');
+            const icon = isFolder ? '📁' : getFileIcon(file.name);
+            const name = file.name.replace(/\/$/, '');
+            
+            return `
+                <div onclick="${isFolder ? `loadFolder('${currentPath ? currentPath + '/' : ''}${name}')` : `showFileDetails('${file.id || file.name}')`}" 
+                    class="cursor-pointer p-4 border rounded-lg hover:bg-gray-50 transition text-center">
+                    <div class="text-3xl mb-2">${icon}</div>
+                    <p class="text-sm font-medium truncate" title="${name}">${name}</p>
+                    ${file.size ? `<p class="text-xs text-gray-500">${formatSize(file.size)}</p>` : ''}
+                    ${file.classification ? `<span class="inline-block mt-1 px-2 py-0.5 text-xs rounded ${getClassificationColor(file.classification)}">${file.classification}</span>` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function getFileIcon(name) {
+        const ext = name.split('.').pop().toLowerCase();
+        const icons = {
+            'md': '📝',
+            'txt': '📄',
+            'pdf': '📕',
+            'doc': '📘',
+            'docx': '📘',
+            'xls': '📗',
+            'xlsx': '📗',
+            'jpg': '🖼️',
+            'png': '🖼️',
+            'zip': '📦'
+        };
+        return icons[ext] || '📄';
+    }
+
+    function getClassificationColor(cls) {
+        const colors = {
+            'public': 'bg-green-100 text-green-800',
+            'confidential': 'bg-yellow-100 text-yellow-800',
+            'secret': 'bg-orange-100 text-orange-800',
+            'top_secret': 'bg-red-100 text-red-800'
+        };
+        return colors[cls] || 'bg-gray-100 text-gray-800';
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    async function showFileDetails(fileId) {
+        try {
+            const response = await fetch(`${API_BASE}files/${fileId}/`, { headers });
+            const file = await response.json();
+            
+            document.getElementById('file-details').classList.remove('hidden');
+            document.getElementById('file-info').innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div><span class="text-gray-500">Tên:</span> ${file.name}</div>
+                    <div><span class="text-gray-500">Kích thước:</span> ${formatSize(file.size)}</div>
+                    <div><span class="text-gray-500">Classification:</span> <span class="${getClassificationColor(file.classification)} px-2 py-1 rounded">${file.classification}</span></div>
+                    <div><span class="text-gray-500">Ngày tạo:</span> ${new Date(file.created_at).toLocaleString('vi-VN')}</div>
+                </div>
+                <div class="mt-4 flex space-x-2">
+                    <button onclick="downloadFile('${fileId}')" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Download</button>
+                    <button onclick="deleteFile('${fileId}')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Xóa</button>
+                </div>
+            `;
+        } catch (error) {
+            showAlert('Không thể xem chi tiết file', 'error');
+        }
+    }
+
+    async function downloadFile(fileId) {
+        window.open(`${API_BASE}files/${fileId}/download/`, '_blank');
+    }
+
+    async function deleteFile(fileId) {
+        if (!confirm('Xóa file này?')) return;
+        try {
+            await fetch(`${API_BASE}files/${fileId}/`, { method: 'DELETE', headers });
+            showAlert('Đã xóa file');
+            loadFolder(currentPath);
+            document.getElementById('file-details').classList.add('hidden');
+        } catch (error) {
+            showAlert('Lỗi xóa file', 'error');
+        }
+    }
+
+    function createFolder() {
+        const name = prompt('Tên thư mục mới:');
+        if (!name) return;
+        // Folder creation would be handled by storage API
+        showAlert('Chức năng tạo thư mục sẽ được implement sau', 'info');
+    }
+
+    function showAlert(message, type = 'success') {
+        const alert = document.getElementById('alert');
+        const colors = {
+            success: 'bg-green-50 text-green-800',
+            error: 'bg-red-50 text-red-800',
+            info: 'bg-blue-50 text-blue-800'
+        };
+        alert.className = `rounded-md p-4 ${colors[type]}`;
+        alert.innerHTML = message;
+        alert.classList.remove('hidden');
+        setTimeout(() => alert.classList.add('hidden'), 5000);
+    }
+
+    // Upload modal
+    document.getElementById('upload-btn').addEventListener('click', () => {
+        document.getElementById('upload-modal').classList.remove('hidden');
+    });
+
+    document.getElementById('cancel-upload').addEventListener('click', () => {
+        document.getElementById('upload-modal').classList.add('hidden');
+    });
+
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        
+        try {
+            const response = await fetch(`${API_BASE}files/upload/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+                body: formData
+            });
+            
+            if (response.ok) {
+                showAlert('Upload thành công!');
+                document.getElementById('upload-modal').classList.add('hidden');
+                form.reset();
+                loadFolder(currentPath);
+            } else {
+                const err = await response.json();
+                showAlert(err.error || 'Upload thất bại', 'error');
+            }
+        } catch (error) {
+            showAlert('Lỗi: ' + error.message, 'error');
+        }
+    });
+
+    // Initial load
+    if (accessToken) {
+        loadFolder('');
+    }
+</script>
+{% endblock %}
