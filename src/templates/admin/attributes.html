@@ -109,7 +109,7 @@
 {% block extra_js %}
 <script>
     const API_BASE = '/api/admin/attributes/';
-    const accessToken = localStorage.getItem('access_token');
+    // accessToken is already declared in base.html
     let editingId = null;
 
     if (!accessToken) {
@@ -148,7 +148,9 @@
                 return;
             }
             const data = await response.json();
-            renderAttributes(data);
+            // Handle paginated response
+            const attributes = data.results || data;
+            renderAttributes(attributes);
         } catch (error) {
             showAlert('Lỗi tải dữ liệu: ' + error.message, 'error');
         }

@@ -88,7 +88,7 @@
 {% block extra_js %}
 <script>
     const API_BASE = '/api/admin/user-types/';
-    const accessToken = localStorage.getItem('access_token');
+    // accessToken is already declared in base.html
     let editingId = null;
 
     // Check auth - show message instead of immediate redirect
@@ -108,15 +108,19 @@
 
     // Load user types
     async function loadUserTypes() {
+        console.log('loadUserTypes called, accessToken:', accessToken ? 'exists' : 'null');
         if (!accessToken) return;
         try {
+            console.log('Fetching from:', API_BASE);
             const response = await fetch(API_BASE, { headers });
+            console.log('Response status:', response.status);
             if (response.status === 401) {
                 showAlert('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', 'error');
                 setTimeout(() => window.location.href = '/auth/login/', 2000);
                 return;
             }
             if (response.status === 403) {
+                console.log('403 Forbidden response');
                 document.getElementById('user-types-list').innerHTML = `
                     <tr><td colspan="6" class="px-6 py-8 text-center text-red-600">
                         <p class="font-medium">Không có quyền truy cập</p>
@@ -125,8 +129,13 @@
                 return;
             }
             const data = await response.json();
-            renderUserTypes(data);
+            console.log('API response data:', data);
+            // Handle paginated response (DRF returns {count, results:[]})
+            const userTypes = data.results || data;
+            console.log('userTypes to render:', userTypes);
+            renderUserTypes(userTypes);
         } catch (error) {
+            console.error('Error in loadUserTypes:', error);
             showAlert('Lỗi tải dữ liệu: ' + error.message, 'error');
         }
     }

@@ -114,7 +114,7 @@
 {% block extra_js %}
 <script>
     const API_BASE = '/api/admin/';
-    const accessToken = localStorage.getItem('access_token');
+    // accessToken is already declared in base.html
     let selectedUserId = null;
     let attributeDefinitions = [];
 
@@ -152,9 +152,11 @@
                 return;
             }
             const data = await response.json();
+            // Handle paginated response
+            const users = data.users || data.results || data;
             const select = document.getElementById('user-select');
             select.innerHTML = '<option value="">-- Chọn người dùng --</option>' +
-                data.users.map(u => `<option value="${u.id}">${u.username} - ${u.full_name || u.email}</option>`).join('');
+                users.map(u => `<option value="${u.id}">${u.username} - ${u.full_name || u.email}</option>`).join('');
         } catch (error) {
             showAlert('Lỗi tải danh sách người dùng: ' + error.message, 'error');
         }
@@ -164,7 +166,8 @@
         try {
             const response = await fetch(`${API_BASE}attributes/`, { headers });
             const data = await response.json();
-            attributeDefinitions = data;
+            // Handle paginated response
+            attributeDefinitions = data.results || data;
             
             const select = document.getElementById('attribute-select');
             select.innerHTML = '<option value="">-- Chọn thuộc tính --</option>' +
