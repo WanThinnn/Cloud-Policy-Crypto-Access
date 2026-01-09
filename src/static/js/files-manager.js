@@ -99,7 +99,7 @@
 
     async function loadFolder(path = '') {
         currentPath = path;
-        document.getElementById('current-path').textContent = '/' + (path || '');
+        // document.getElementById('current-path').textContent = '/' + (path || '');
         updateBreadcrumb(path);
 
         try {
@@ -135,11 +135,24 @@
         let html = '';
         let cumPath = '';
 
+        if (parts.length === 0) {
+            document.getElementById('breadcrumb').innerHTML = '<span class="text-gray-400 italic">/</span>';
+            return;
+        }
+
         parts.forEach((part, idx) => {
             cumPath += (idx > 0 ? '/' : '') + part;
             const p = cumPath;
-            html += ` <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
-            <button onclick="loadFolder('${p}')" class="text-indigo-600 hover:text-indigo-800">${part}</button>`;
+            const isLast = idx === parts.length - 1;
+
+            html += `
+            <svg class="w-4 h-4 text-gray-400 mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <button onclick="loadFolder('${p}')" 
+                class="${isLast ? 'font-bold text-gray-900 pointer-events-none' : 'text-gray-500 hover:text-indigo-600 hover:underline transition-colors'}">
+                ${part}
+            </button>`;
         });
 
         document.getElementById('breadcrumb').innerHTML = html;
@@ -150,9 +163,16 @@
     function renderFiles(files) {
         if (files.length === 0) {
             document.getElementById('files-grid').innerHTML = `
-            <div class="col-span-full text-center text-gray-500 py-8">
-                <p>Thư mục trống</p>
+            <div class="col-span-full flex flex-col items-center justify-center py-24 text-gray-500">
+                <div class="bg-gray-50 p-6 rounded-full mb-4">
+                    <svg class="h-16 w-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    </svg>
+                </div>
+                <p class="text-xl font-medium text-gray-600">Thư mục trống</p>
+                <p class="text-sm mt-2 text-gray-400">Hãy upload tài liệu mới để bắt đầu</p>
             </div>`;
+            document.getElementById('files-list').innerHTML = document.getElementById('files-grid').innerHTML;
             return;
         }
 
@@ -169,77 +189,54 @@
             const isFolder = file.type === 'folder' || file.name.endsWith('/');
             const icon = isFolder ? getFolderIcon() : getFileIcon(file.name);
             const name = file.name.replace(/\/$/, '');
-            // Fix: Use correct path construction
-            let filePath;
-            if (isFolder) {
-                // For folders, construct the full path
-                filePath = currentPath ? `${currentPath}/${name}` : name;
-            } else {
-                // For files, use the provided path or construct it
-                filePath = file.path || (currentPath ? `${currentPath}/${name}` : name);
-            }
+            let filePath = isFolder ? (currentPath ? `${currentPath}/${name}` : name) : (file.path || (currentPath ? `${currentPath}/${name}` : name));
+            const isSelected = selectedFiles.has(filePath);
 
             return `
-            <div class="file-item group relative p-6 bg-white border-2 rounded-xl hover:border-indigo-400 hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer ${selectedFiles.has(filePath) ? 'border-indigo-500 bg-indigo-50 shadow-md' : 'border-gray-200'}"
-                data-path="${filePath}"
-                data-type="${isFolder ? 'folder' : 'file'}"
-                onclick="handleFileClick('${filePath}', ${isFolder}, event)"
+            <div class="file-item group relative flex flex-col p-4 bg-white border border-gray-100 rounded-2xl transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-indigo-200 cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/50' : ''}"
+                ondblclick="handleFileClick('${filePath}', ${isFolder}, event)"
+                onclick="toggleSelection('${filePath}', true)"
                 oncontextmenu="showContextMenu(event, '${filePath}', ${isFolder})">
                 
-                <!-- Checkbox for bulk selection -->
-                ${!isFolder ? `
-                <div class="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <input type="checkbox" 
-                        class="file-checkbox w-5 h-5 text-indigo-600 rounded border-2 border-gray-300 focus:ring-2 focus:ring-indigo-500"
-                        onchange="toggleSelection('${filePath}')"
-                        onclick="event.stopPropagation()"
-                        ${selectedFiles.has(filePath) ? 'checked' : ''}>
-                </div>` : ''}
-                
-                <!-- Folder Badge -->
-                ${isFolder ? `
-                <div class="absolute top-3 right-3 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full">
-                    Thư mục
-                </div>` : ''}
-                
-                <!-- File Icon -->
-                <div class="text-6xl mb-4 text-center flex items-center justify-center h-20">${icon}</div>
-                
-                <!-- File Name -->
-                <p class="text-sm font-semibold text-gray-900 truncate text-center mb-2 px-2" title="${name}">${name}</p>
-                
-                <!-- File Info -->
-                <div class="text-center space-y-1">
-                    ${file.size ? `<p class="text-xs text-gray-500"><span class="font-medium">Kích thước:</span> ${formatSize(file.size)}</p>` : ''}
-                    ${isFolder ? `<p class="text-xs text-yellow-600 font-medium">📁 Click để mở</p>` : ''}
+                <!-- Selection Checkbox -->
+                <div class="absolute top-4 left-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity ${isSelected ? 'opacity-100' : ''}">
+                   <div class="checkbox-wrapper relative w-5 h-5">
+                       <input type="checkbox" 
+                           class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                           onchange="toggleSelection('${filePath}')"
+                           onclick="event.stopPropagation()"
+                           ${isSelected ? 'checked' : ''}>
+                   </div>
                 </div>
                 
-                <!-- Quick Actions (visible on hover) -->
-                ${!isFolder ? `
-                <div class="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all flex gap-2">
-                    <button onclick="previewFile('${filePath}', event)" 
-                        class="p-2 bg-indigo-600 text-white rounded-lg shadow-lg hover:bg-indigo-700 transform hover:scale-110 transition-all" 
-                        title="Xem trước">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
-                    </button>
-                    <button onclick="downloadFile('${filePath}', event)" 
-                        class="p-2 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700 transform hover:scale-110 transition-all" 
-                        title="Download">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                        </svg>
-                    </button>
-                </div>` : `
-                <div class="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all">
-                    <div class="p-2 bg-yellow-500 text-white rounded-lg shadow-lg">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
+                <!-- Icon Area -->
+                <div class="h-32 mb-4 rounded-xl bg-gray-50/80 group-hover:bg-indigo-50/30 flex items-center justify-center transition-colors relative overflow-hidden">
+                    <div class="transform transition-transform duration-300 group-hover:scale-110 drop-shadow-sm w-16 h-16">
+                        ${icon}
                     </div>
-                </div>`}
+                    
+                    <!-- Hover Actions Overlay -->
+                    ${!isFolder ? `
+                    <div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button onclick="previewFile('${filePath}', event)" 
+                            class="p-2 bg-white text-gray-700 rounded-full hover:text-indigo-600 hover:scale-110 transition-transform shadow-lg" title="Xem trước">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        </button>
+                        <button onclick="downloadFile('${filePath}', event)" 
+                            class="p-2 bg-white text-gray-700 rounded-full hover:text-green-600 hover:scale-110 transition-transform shadow-lg" title="Download">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        </button>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <!-- Info Area -->
+                <div class="text-center">
+                    <h3 class="text-sm font-semibold text-gray-700 truncate px-2 mb-1 group-hover:text-indigo-700 transition-colors" title="${name}">${name}</h3>
+                    <p class="text-xs text-gray-400">
+                        ${file.size ? formatSize(file.size) : (isFolder ? `${file.items || 0} items` : '')}
+                    </p>
+                </div>
             </div>
         `;
         }).join('');
@@ -250,54 +247,65 @@
         container.classList.remove('hidden');
         document.getElementById('files-grid').classList.add('hidden');
 
-        container.innerHTML = files.map(file => {
+        // Header Row
+        const header = `
+        <div class="flex items-center px-6 py-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <div class="w-8 ml-2">#</div>
+            <div class="flex-1">Tên</div>
+            <div class="w-32">Kích thước</div>
+            <div class="w-32">Loại</div>
+            <div class="w-24 text-right">Hành động</div>
+        </div>
+    `;
+
+        container.innerHTML = header + files.map(file => {
             const isFolder = file.type === 'folder' || file.name.endsWith('/');
             const icon = isFolder ? getFolderIcon() : getFileIcon(file.name);
             const name = file.name.replace(/\/$/, '');
-            // Fix: Use correct path construction
-            let filePath;
-            if (isFolder) {
-                filePath = currentPath ? `${currentPath}/${name}` : name;
-            } else {
-                filePath = file.path || (currentPath ? `${currentPath}/${name}` : name);
-            }
+            let filePath = isFolder ? (currentPath ? `${currentPath}/${name}` : name) : (file.path || (currentPath ? `${currentPath}/${name}` : name));
+            const isSelected = selectedFiles.has(filePath);
 
             return `
-            <div class="file-item flex items-center justify-between p-3 hover:bg-gray-50 cursor-pointer ${selectedFiles.has(filePath) ? 'bg-indigo-50' : ''}"
-                data-path="${filePath}"
-                onclick="handleFileClick('${filePath}', ${isFolder}, event)"
+            <div class="file-item group flex items-center px-6 py-4 hover:bg-indigo-50/30 transition-colors border-b border-gray-100 last:border-0 cursor-pointer ${isSelected ? 'bg-indigo-50/60' : ''}"
+                ondblclick="handleFileClick('${filePath}', ${isFolder}, event)"
+                onclick="toggleSelection('${filePath}', true)"
                 oncontextmenu="showContextMenu(event, '${filePath}', ${isFolder})">
                 
-                <div class="flex items-center gap-3 flex-1">
-                    ${!isFolder ? `
+                <div class="w-8 flex items-center justify-center mr-2">
                     <input type="checkbox" 
-                        class="file-checkbox w-4 h-4 text-indigo-600 rounded"
+                        class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 opacity-0 group-hover:opacity-100 ${isSelected ? 'opacity-100' : ''}"
                         onchange="toggleSelection('${filePath}')"
                         onclick="event.stopPropagation()"
-                        ${selectedFiles.has(filePath) ? 'checked' : ''}>
-                    ` : ''}
-                    <span class="text-2xl">${icon}</span>
-                    <span class="font-medium text-gray-900">${name}</span>
+                        ${isSelected ? 'checked' : ''}>
                 </div>
                 
-                <div class="flex items-center gap-4">
-                    ${file.size ? `<span class="text-sm text-gray-500">${formatSize(file.size)}</span>` : ''}
+                <div class="flex-1 flex items-center gap-4">
+                    <div class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-lg text-gray-500">
+                        <div class="w-6 h-6">${icon}</div>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-900 group-hover:text-indigo-700 transition-colors">${name}</p>
+                        ${isFolder ? '<p class="text-xs text-gray-500">Thư mục</p>' : ''}
+                    </div>
+                </div>
+                
+                <div class="w-32 text-sm text-gray-500 font-mono">
+                    ${file.size ? formatSize(file.size) : '-'}
+                </div>
+                
+                <div class="w-32 text-sm text-gray-500">
+                    ${isFolder ? 'Folder' : name.split('.').pop().toUpperCase()}
+                </div>
+                
+                <div class="w-24 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     ${!isFolder ? `
-                    <div class="flex gap-1">
-                        <button onclick="previewFile('${filePath}', event)" 
-                            class="p-2 hover:bg-gray-100 rounded" title="Xem trước">
-                            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                            </svg>
+                        <button onclick="previewFile('${filePath}', event)" class="p-1.5 text-gray-500 hover:text-indigo-600 bg-white hover:bg-gray-100 rounded-lg shadow-sm border border-gray-200" title="Xem">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         </button>
-                        <button onclick="downloadFile('${filePath}', event)" 
-                            class="p-2 hover:bg-gray-100 rounded" title="Download">
-                            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                            </svg>
+                        <button onclick="downloadFile('${filePath}', event)" class="p-1.5 text-gray-500 hover:text-green-600 bg-white hover:bg-gray-100 rounded-lg shadow-sm border border-gray-200" title="Download">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                         </button>
-                    </div>` : ''}
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -359,17 +367,21 @@
         currentView = view;
 
         if (view === 'grid') {
-            document.getElementById('grid-view-btn').classList.add('bg-indigo-600', 'text-white');
-            document.getElementById('grid-view-btn').classList.remove('bg-white', 'text-gray-700');
-            document.getElementById('list-view-btn').classList.remove('bg-indigo-600', 'text-white');
-            document.getElementById('list-view-btn').classList.add('bg-white', 'text-gray-700');
+            document.getElementById('grid-view-btn').classList.add('bg-white', 'shadow-sm', 'text-indigo-600');
+            document.getElementById('grid-view-btn').classList.remove('text-gray-500');
+            document.getElementById('list-view-btn').classList.remove('bg-white', 'shadow-sm', 'text-indigo-600');
+            document.getElementById('list-view-btn').classList.add('text-gray-500');
+
             document.getElementById('files-grid').classList.remove('hidden');
             document.getElementById('files-list').classList.add('hidden');
         } else {
-            document.getElementById('list-view-btn').classList.add('bg-indigo-600', 'text-white');
-            document.getElementById('list-view-btn').classList.remove('bg-white', 'text-gray-700');
-            document.getElementById('grid-view-btn').classList.remove('bg-indigo-600', 'text-white');
-            document.getElementById('grid-view-btn').classList.add('bg-white', 'text-gray-700');
+            document.getElementById('list-view-btn').classList.add('bg-white', 'shadow-sm', 'text-indigo-600');
+            document.getElementById('list-view-btn').classList.remove('text-gray-500');
+            document.getElementById('grid-view-btn').classList.remove('bg-white', 'shadow-sm', 'text-indigo-600');
+            document.getElementById('grid-view-btn').classList.add('text-gray-500');
+
+            document.getElementById('files-list').classList.remove('hidden');
+            document.getElementById('files-grid').classList.add('hidden');
         }
 
         renderFiles(allFiles);

@@ -20,125 +20,144 @@
 
 <div class="space-y-6 bg-gradient-to-br from-gray-50 to-indigo-50 min-h-screen p-6">
     <!-- Header với Search và View Toggle -->
-    <div class="bg-white rounded-xl shadow-lg p-6">
-        <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                    <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                    </svg>
+                <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                    <div class="p-2 bg-indigo-100 rounded-lg">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                    </div>
                     Quản lý Tài liệu
                 </h1>
-                <p class="mt-2 text-sm text-gray-600">Upload, quản lý và chia sẻ tài liệu với kiểm soát truy cập ABAC</p>
+                <p class="mt-1 text-sm text-gray-500 ml-12">Hệ thống quản lý tài liệu bảo mật với ABAC</p>
             </div>
-            <div class="flex items-center gap-3"
-            <!-- Search Box -->
-            <div class="relative">
-                <input type="text" id="search-input" placeholder="Tìm file..." 
-                    class="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-64">
-                <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-            </div>
-            <!-- View Toggle -->
-            <div class="flex border border-gray-300 rounded-md">
-                <button id="grid-view-btn" class="px-3 py-2 bg-indigo-600 text-white rounded-l-md hover:bg-indigo-700">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Search Box -->
+                <div class="relative group">
+                    <input type="text" id="search-input" placeholder="Tìm kiếm tài liệu..." 
+                        class="pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full sm:w-64 transition-all duration-200">
+                    <svg class="absolute left-3 top-3 h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
-                </button>
-                <button id="list-view-btn" class="px-3 py-2 text-gray-700 bg-white rounded-r-md hover:bg-gray-50">
+                </div>
+
+                <!-- View Toggle -->
+                <div class="flex p-1 bg-gray-100 rounded-xl">
+                    <button id="grid-view-btn" class="p-2 rounded-lg bg-white shadow-sm text-indigo-600 transition-all duration-200" title="Lưới">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                        </svg>
+                    </button>
+                    <button id="list-view-btn" class="p-2 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-white/50 transition-all duration-200" title="Danh sách">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Upload Button -->
+                <button id="upload-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-200 flex items-center gap-2 transition-all duration-200 hover:-translate-y-0.5">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                     </svg>
+                    <span class="font-medium">Upload File</span>
                 </button>
             </div>
-            <!-- Upload Button -->
-            <button id="upload-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                </svg>
-                Upload
-            </button>
         </div>
     </div>
 
     <!-- Alert -->
-    <div id="alert" class="hidden rounded-md p-4 relative">
-        <button onclick="document.getElementById('alert').classList.add('hidden')" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+    <div id="alert" class="hidden rounded-xl p-4 relative mb-6 shadow-sm">
+        <button onclick="document.getElementById('alert').classList.add('hidden')" class="absolute top-3 right-3 opacity-50 hover:opacity-100 transition-opacity">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
         </button>
-        <span id="alert-message"></span>
+        <div class="flex items-center gap-3">
+            <span id="alert-icon"></span>
+            <span id="alert-message" class="font-medium"></span>
+        </div>
     </div>
 
     <!-- Bulk Actions Bar -->
-    <div id="bulk-actions-bar" class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center justify-between">
+    <div id="bulk-actions-bar" class="hidden bg-indigo-600 text-white rounded-xl shadow-lg p-4 flex items-center justify-between mb-6 animate-fade-in-down">
         <div class="flex items-center gap-4">
-            <span class="text-sm font-medium text-indigo-900"><span id="selected-count">0</span> file đã chọn</span>
-            <button onclick="clearSelection()" class="text-sm text-indigo-600 hover:text-indigo-800">Bỏ chọn</button>
+            <div class="bg-white/20 p-2 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <span class="font-medium"><span id="selected-count" class="font-bold text-lg">0</span> file đã chọn</span>
+            <div class="h-6 w-px bg-white/30 mx-2"></div>
+            <button onclick="clearSelection()" class="text-sm text-indigo-100 hover:text-white hover:underline transition-colors">Bỏ chọn tất cả</button>
         </div>
-        <div class="flex gap-2">
-            <button onclick="bulkDownload()" class="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">
+        <div class="flex gap-3">
+            <button onclick="bulkDownload()" class="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-50 font-medium transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
                 Download
             </button>
-            <button onclick="bulkDelete()" class="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700">
+            <button onclick="bulkDelete()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
                 Xóa
             </button>
         </div>
     </div>
 
-    <!-- Breadcrumb Navigation -->
-    <div class="bg-white shadow-md rounded-xl p-5">
-        <div class="flex items-center gap-2 text-sm">
-            <button onclick="loadFolder('')" class="text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-2 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                </svg>
-                Root
-            </button>
-            <span id="breadcrumb" class="flex items-center gap-1"></span>
-        </div>
-    </div>
-
     <!-- Drag & Drop Zone -->
-    <div id="drop-zone" class="hidden border-4 border-dashed border-indigo-300 bg-indigo-50 rounded-lg p-12 text-center">
-        <svg class="mx-auto h-16 w-16 text-indigo-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-        </svg>
-        <p class="text-lg font-medium text-indigo-900">Thả files vào đây để upload</p>
-        <p class="text-sm text-indigo-600 mt-2">hoặc click để chọn files</p>
+    <div id="drop-zone" class="hidden border-2 border-dashed border-indigo-400 bg-indigo-50/80 backdrop-blur-sm rounded-2xl p-16 text-center mb-6 animate-pulse">
+        <div class="bg-indigo-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="h-10 w-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+        </div>
+        <p class="text-xl font-bold text-indigo-900">Thả files vào đây để upload</p>
+        <p class="text-indigo-600 mt-2">Hỗ trợ các định dạng file phổ biến</p>
     </div>
 
     <!-- Files Container -->
-    <div id="files-container" class="bg-white shadow-xl rounded-xl overflow-hidden">
-        <div class="p-5 border-b-2 border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                    </svg>
-                    <span class="text-sm font-semibold text-gray-700">
-                        Đang xem: <span id="current-path" class="text-indigo-600 font-bold">/</span>
-                    </span>
-                </div>
-                <button onclick="createFolder()" class="text-sm text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-lg flex items-center gap-2 transition-all">
+    <div id="files-container" class="bg-white shadow-sm border border-gray-100 rounded-2xl overflow-hidden min-h-[600px]">
+        <!-- Breadcrumb & Toolbar -->
+        <div class="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <!-- Breadcrumb -->
+            <div class="flex items-center bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
+                <button onclick="loadFolder('')" class="text-gray-500 hover:text-indigo-600 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                     </svg>
-                    <span class="font-medium">Tạo thư mục</span>
                 </button>
+                <div class="h-4 w-px bg-gray-300 mx-3"></div>
+                <div id="breadcrumb" class="flex items-center text-sm font-medium text-gray-700">
+                    <!-- JS will populate this -->
+                </div>
             </div>
+
+            <!-- Action Buttons -->
+            <button onclick="createFolder()" class="text-gray-600 hover:text-indigo-600 hover:bg-white bg-transparent px-4 py-2 rounded-xl flex items-center gap-2 transition-all border border-transparent hover:border-gray-200 hover:shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                </svg>
+                <span class="font-medium">Thư mục mới</span>
+            </button>
         </div>
         
         <!-- Grid View -->
-        <div id="files-grid" class="p-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            <p class="col-span-full text-center text-gray-500">Đang tải...</p>
+        <div id="files-grid" class="p-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+            <!-- Loading State -->
+            <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
+                <div class="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                <p class="font-medium">Đang tải tài liệu...</p>
+            </div>
         </div>
 
         <!-- List View -->
-        <div id="files-list" class="hidden divide-y">
+        <div id="files-list" class="hidden">
             <!-- List items here -->
         </div>
     </div>
