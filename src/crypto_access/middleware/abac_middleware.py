@@ -183,9 +183,31 @@ class ABACMiddleware:
                 # Check if user is owner of the file (owners can always access their own files)
                 is_owner = self._check_file_ownership(request, action)
                 
-                # Check ABAC permission (skip if owner)
-                if not is_owner and not casbin_service.check_access(request.user, resource, action):
-                    logger.error(f"[ABAC-DENY] Access DENIED - user:{request.user.username} resource:{resource} action:{action}")
+                # For file download/read actions, check file-specific policies
+                access_allowed = False
+                access_reason = ''
+                
+                if is_owner:
+                    access_allowed = True
+                    access_reason = 'owner_bypass'
+                elif action in ['download', 'read'] and request.GET.get('path'):
+                    # Check file-specific policy
+                    file_path = request.GET.get('path', '')
+                    bucket_name = request.GET.get('bucket', 'documents')
+                    
+                    file_allowed, file_reason = casbin_service.check_file_access_with_fallback(
+                        request.user, bucket_name, file_path, action
+                    )
+                    access_allowed = file_allowed
+                    access_reason = file_reason
+                    logger.info(f"[ABAC-FILE] File policy check: {file_path} -> {file_allowed} ({file_reason})")
+                else:
+                    # Use general ABAC check for non-file actions
+                    access_allowed = casbin_service.check_access(request.user, resource, action)
+                    access_reason = 'abac_allowed' if access_allowed else 'abac_denied'
+                
+                if not access_allowed:
+                    logger.error(f"[ABAC-DENY] Access DENIED ({access_reason}) - user:{request.user.username} resource:{resource} action:{action}")
                     
                     # Log denied access
                     self._log_access(
@@ -194,12 +216,13 @@ class ABACMiddleware:
                         action=action,
                         result='deny',
                         user_attributes=user_attributes,
-                        error_message=f'Access denied by ABAC policy for {resource}/{action}'
+                        error_message=f'Access denied: {access_reason}'
                     )
                     
                     return JsonResponse(
                         {
                             'error': 'Access denied by ABAC policy',
+                            'reason': access_reason,
                             'resource': resource,
                             'action': action,
                             'path': request.path,
@@ -208,8 +231,7 @@ class ABACMiddleware:
                         status=403
                     )
                 
-                allow_reason = 'owner_bypass' if is_owner else 'abac_allowed'
-                logger.warning(f"[ABAC-ALLOW] Access ALLOWED ({allow_reason}) - user:{request.user.username} resource:{resource} action:{action}")
+                logger.warning(f"[ABAC-ALLOW] Access ALLOWED ({access_reason}) - user:{request.user.username} resource:{resource} action:{action}")
                 
                 # Log allowed access with reason
                 self._log_access(
@@ -218,7 +240,7 @@ class ABACMiddleware:
                     action=action,
                     result='allow',
                     user_attributes=user_attributes,
-                    error_message=f'Allowed via {allow_reason}' if is_owner else None
+                    error_message=f'Allowed via {access_reason}'
                 )
         
         # Continue with request

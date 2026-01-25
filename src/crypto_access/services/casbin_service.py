@@ -34,13 +34,13 @@ from crypto_access.models import UserAttribute, AccessPolicy, UserType
 
 # Permission mapping: action → required permissions
 ACTION_PERMISSION_MAP = {
-    # File/Document actions
-    'read': ['file_read', 'file_view', 'file_read_limited', '*'],
+    # File/Document actions - READ and DOWNLOAD are SEPARATE
+    'read': ['file_read', 'file_view', 'file_read_limited', '*'],  # View only in browser
+    'download': ['file_download', '*'],  # Export file - requires explicit permission
     'write': ['file_create', 'file_write', '*'],
     'update': ['file_update', 'file_write', '*'],
     'delete': ['file_delete', '*'],
     'upload': ['file_upload', 'file_create', '*'],
-    'download': ['file_download', 'file_read', 'file_read_limited', '*'],
     
     # Encryption actions
     'encrypt': ['file_encrypt', 'key_manage', '*'],
@@ -362,6 +362,129 @@ class CasbinService:
             # User context
             'user_attributes': attrs,
         }
+
+
+    def check_file_access(self, user, bucket_name: str, file_path: str, action: str = 'read') -> Tuple[bool, str]:
+        """
+        Check if user has access to a specific file based on FileAccessPolicy.
+        This checks the file-specific policies (assigned when uploading) rather than global policies.
+        
+        Flow:
+        1. Get all policies assigned to this file (direct + inherited from folders)
+        2. If no policies assigned → allow (default open, rely on RBAC)
+        3. For each policy, evaluate if user matches the condition
+        4. Apply effect (allow/deny) based on priority
+        
+        Args:
+            user: Django User object
+            bucket_name: Bucket name
+            file_path: Path to the file
+            action: Action being performed (read, download, etc.)
+        
+        Returns:
+            Tuple[bool, str]: (is_allowed, reason)
+        """
+        from crypto_access.models import FileAccessPolicy
+        
+        # Get user attributes
+        user_attrs = self.get_user_attributes(user)
+        
+        # Superuser always has access
+        if user.is_superuser:
+            return True, "superuser_bypass"
+        
+        # Get all policies for this file
+        file_policies = FileAccessPolicy.get_policies_for_file(bucket_name, file_path)
+        
+        if not file_policies:
+            # No file-specific policies - use general ABAC
+            return True, "no_file_policy_default_allow"
+        
+        # Create namespace for condition evaluation
+        class AttrNamespace:
+            def __init__(self, attributes):
+                for k, v in attributes.items():
+                    setattr(self, k, v)
+            
+            def __getattr__(self, name):
+                return None
+        
+        r_sub = AttrNamespace(user_attrs)
+        
+        # Evaluate each policy in priority order
+        # Sort by priority (lower = higher priority)
+        sorted_policies = sorted(file_policies, key=lambda p: p.priority)
+        
+        for policy in sorted_policies:
+            # Check if action matches
+            # IMPORTANT: download does NOT inherit from read - they are separate permissions
+            # read policy covers: read, view
+            # download policy covers: download only
+            # '*' policy covers all
+            if action == 'download':
+                # Download requires explicit download policy or wildcard
+                if policy.action not in ['download', '*']:
+                    continue
+            else:
+                # Read/view can use read policy or wildcard
+                if policy.action not in [action, 'read', '*']:
+                    continue
+            
+            # Evaluate the subject condition
+            try:
+                # Build evaluation context
+                eval_context = {
+                    'r': type('Request', (), {'sub': r_sub})(),
+                    'True': True,
+                    'False': False,
+                    'true': True,
+                    'false': False,
+                }
+                
+                condition = policy.subject_condition
+                
+                # Evaluate the condition
+                result = eval(condition, {"__builtins__": {}}, eval_context)
+                
+                if result:
+                    # Condition matched - apply effect
+                    if policy.effect == 'allow':
+                        return True, f"file_policy_allowed:{policy.name}"
+                    else:
+                        return False, f"file_policy_denied:{policy.name}"
+                        
+            except Exception as e:
+                # Log error but continue to next policy
+                print(f"Error evaluating policy {policy.name}: {e}")
+                continue
+        
+        # No policy matched user's attributes - deny by default when file has policies
+        return False, "file_policy_no_match"
+    
+    def check_file_access_with_fallback(
+        self, 
+        user, 
+        bucket_name: str, 
+        file_path: str, 
+        action: str = 'read'
+    ) -> Tuple[bool, str]:
+        """
+        Combined check: File-specific policies + general RBAC/ABAC
+        
+        Flow:
+        1. First check RBAC (base permission)
+        2. Then check file-specific policies (if any)
+        3. If no file policies, fall back to general ABAC
+        """
+        # Step 1: RBAC check
+        rbac_allowed, rbac_reason = self._check_rbac(user, 'document', action)
+        if not rbac_allowed:
+            return False, rbac_reason
+        
+        # Step 2: Check file-specific policies
+        file_access, file_reason = self.check_file_access(user, bucket_name, file_path, action)
+        
+        return file_access, file_reason
 
 
 # Singleton instance
