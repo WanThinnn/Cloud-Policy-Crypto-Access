@@ -306,7 +306,7 @@ def get_policy_builder_attributes(request):
     Returns dynamic data from database instead of hardcoded values
     """
     # Get all active attribute definitions
-    attributes = AttributeDefinition.objects.filter(is_active=True).order_by('display_order', 'name')
+    attributes = AttributeDefinition.objects.filter(is_active=True).order_by('name')
     
     result = []
     for attr in attributes:
