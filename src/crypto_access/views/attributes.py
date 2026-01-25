@@ -294,3 +294,56 @@ def list_users_with_attributes(request):
     
     serializer = UserWithAttributesSerializer(users, many=True)
     return Response({'users': serializer.data})
+
+
+@csrf_exempt
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_policy_builder_attributes(request):
+    """
+    GET /api/attributes/policy-builder/
+    Get all attribute definitions with their possible values for Policy Builder UI
+    Returns dynamic data from database instead of hardcoded values
+    """
+    # Get all active attribute definitions
+    attributes = AttributeDefinition.objects.filter(is_active=True).order_by('display_order', 'name')
+    
+    result = []
+    for attr in attributes:
+        attr_data = {
+            'key': attr.name,
+            'label': attr.display_name or attr.name.replace('_', ' ').title(),
+            'data_type': attr.data_type,
+            'is_required': attr.is_required,
+        }
+        
+        # Get possible values based on data type
+        if attr.data_type == 'enum' and attr.allowed_values:
+            attr_data['values'] = attr.allowed_values
+        elif attr.data_type == 'boolean':
+            attr_data['values'] = ['true', 'false']
+        else:
+            # For string/number types, get distinct values from user attributes
+            distinct_values = UserAttribute.objects.filter(
+                attribute=attr,
+                status='active'
+            ).values_list('value', flat=True).distinct()
+            attr_data['values'] = list(distinct_values) if distinct_values else []
+        
+        result.append(attr_data)
+    
+    # Also include user_type from UserType model
+    user_types = UserType.objects.filter(is_active=True).values_list('code', flat=True)
+    if user_types:
+        # Check if user_type is already in result
+        has_user_type = any(a['key'] == 'user_type' for a in result)
+        if not has_user_type:
+            result.insert(0, {
+                'key': 'user_type',
+                'label': 'Loại người dùng',
+                'data_type': 'choice',
+                'values': list(user_types),
+                'is_required': True
+            })
+    
+    return Response(result)

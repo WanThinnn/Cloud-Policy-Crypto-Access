@@ -591,14 +591,15 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
         elif data.get('create_new_policy'):
-            # Create new policy for this file
+            # Create new policy for this file with all fields from Policy Builder
             policy = AccessPolicy.objects.create(
                 name=data['new_policy_name'],
                 description=data.get('new_policy_description', ''),
                 subject_condition=data['new_policy_subject_condition'],
-                resource='document',
-                action='*',  # All actions for document
+                resource=data.get('new_policy_resource', 'document'),
+                action=data.get('new_policy_action', 'read'),
                 effect=data['new_policy_effect'],
+                priority=data.get('new_policy_priority', 100),
                 created_by=request.user
             )
             logger.info(f"Created new policy '{policy.name}' for file assignment")

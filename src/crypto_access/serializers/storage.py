@@ -112,6 +112,9 @@ class AssignPolicyToFileSerializer(serializers.Serializer):
     new_policy_description = serializers.CharField(required=False, allow_blank=True)
     new_policy_subject_condition = serializers.CharField(required=False)
     new_policy_effect = serializers.ChoiceField(choices=['allow', 'deny'], required=False)
+    new_policy_priority = serializers.IntegerField(required=False, default=100)
+    new_policy_resource = serializers.CharField(required=False, default='document')
+    new_policy_action = serializers.CharField(required=False, default='read')
     
     # Direct user grants (optional)
     grant_user_ids = serializers.ListField(

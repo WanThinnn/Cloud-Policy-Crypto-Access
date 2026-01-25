@@ -342,14 +342,31 @@
     }
 
     // ========== POLICY BUILDER LOGIC ==========
-    const AVAILABLE_ATTRIBUTES = [
-        { key: 'user_type', label: 'Loại người dùng', values: ['admin', 'data_owner', 'employee', 'auditor', 'external_partner'] },
-        { key: 'department', label: 'Phòng ban', values: ['it', 'hr', 'finance', 'security', 'management', 'legal', 'operations'] },
-        { key: 'role', label: 'Vai trò', values: ['manager', 'staff', 'director', 'intern', 'contractor'] },
-        { key: 'clearance_level', label: 'Cấp độ bảo mật', values: ['public', 'internal', 'confidential', 'secret', 'top_secret'] },
-        { key: 'location', label: 'Vị trí', values: ['office', 'remote', 'branch'] },
-        { key: 'employment_status', label: 'Trạng thái', values: ['active', 'on_leave', 'probation', 'terminated'] },
-    ];
+    // Load attributes dynamically from database
+    let AVAILABLE_ATTRIBUTES = [];
+    let policyBuilderAttributesLoaded = false;
+
+    async function loadPolicyBuilderAttributes() {
+        if (policyBuilderAttributesLoaded && AVAILABLE_ATTRIBUTES.length > 0) {
+            return AVAILABLE_ATTRIBUTES;
+        }
+        
+        try {
+            const response = await fetch('/api/admin/policy-builder-attributes/', { headers });
+            if (response.ok) {
+                AVAILABLE_ATTRIBUTES = await response.json();
+                policyBuilderAttributesLoaded = true;
+                console.log('Loaded policy builder attributes:', AVAILABLE_ATTRIBUTES);
+            } else {
+                console.error('Failed to load policy builder attributes');
+                AVAILABLE_ATTRIBUTES = [];
+            }
+        } catch (error) {
+            console.error('Error loading policy builder attributes:', error);
+            AVAILABLE_ATTRIBUTES = [];
+        }
+        return AVAILABLE_ATTRIBUTES;
+    }
 
     const OPERATORS = [
         { key: '==', label: 'bằng' },
@@ -408,11 +425,14 @@
         
         const selectedAttr = AVAILABLE_ATTRIBUTES.find(a => a.key === attrSelect.value);
         const isMultiSelect = opSelect.value === 'in' || opSelect.value === 'not in';
+        
+        // Handle null/undefined values - use empty array as fallback
+        const attrValues = selectedAttr?.values || [];
 
         if (isMultiSelect) {
             valueContainer.innerHTML = `
                 <div class="flex flex-wrap gap-1">
-                    ${selectedAttr.values.map(v => `
+                    ${attrValues.map(v => `
                         <label class="inline-flex items-center bg-gray-100 rounded px-2 py-1 text-xs">
                             <input type="checkbox" class="value-checkbox mr-1" value="${v}">
                             ${v}
@@ -423,7 +443,7 @@
         } else {
             valueContainer.innerHTML = `
                 <select class="value-select border border-gray-300 rounded px-2 py-1 text-sm">
-                    ${selectedAttr.values.map(v => `<option value="${v}">${v}</option>`).join('')}
+                    ${attrValues.map(v => `<option value="${v}">${v}</option>`).join('')}
                 </select>
             `;
         }
@@ -618,19 +638,37 @@
     }
 
     // ========== EVENT LISTENERS ==========
-    document.getElementById('add-btn').addEventListener('click', () => {
+    document.getElementById('add-btn').addEventListener('click', async () => {
+        // Load attributes before opening modal
+        await loadPolicyBuilderAttributes();
+        
+        if (AVAILABLE_ATTRIBUTES.length === 0) {
+            showAlert('Không thể tải danh sách thuộc tính. Vui lòng sử dụng chế độ nâng cao.', 'error');
+            isAdvancedMode = true;
+        } else {
+            isAdvancedMode = false;
+        }
+        
         editingId = null;
-        isAdvancedMode = false;
         document.getElementById('modal-title').textContent = 'Thêm chính sách';
         document.getElementById('policy-form').reset();
-        document.getElementById('simple-mode').classList.remove('hidden');
-        document.getElementById('advanced-mode').classList.add('hidden');
-        document.getElementById('toggle-advanced').textContent = 'Chế độ nâng cao';
+        
+        if (isAdvancedMode) {
+            document.getElementById('simple-mode').classList.add('hidden');
+            document.getElementById('advanced-mode').classList.remove('hidden');
+            document.getElementById('toggle-advanced').textContent = 'Chế độ đơn giản';
+        } else {
+            document.getElementById('simple-mode').classList.remove('hidden');
+            document.getElementById('advanced-mode').classList.add('hidden');
+            document.getElementById('toggle-advanced').textContent = 'Chế độ nâng cao';
+        }
         
         // Initialize with one rule
         document.getElementById('condition-rules').innerHTML = '';
         ruleCounter = 0;
-        addRule();
+        if (!isAdvancedMode) {
+            addRule();
+        }
         
         document.getElementById('modal').classList.remove('hidden');
     });
@@ -660,6 +698,9 @@
     });
 
     async function editPolicy(id) {
+        // Load attributes before editing
+        await loadPolicyBuilderAttributes();
+        
         try {
             const response = await fetch(`${API_BASE}${id}/`, { headers });
             const policy = await response.json();

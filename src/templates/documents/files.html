@@ -222,27 +222,103 @@
                         Tạo policy mới cho file này
                     </button>
                     
-                    <div id="new-policy-form-upload" class="hidden mt-3 p-3 bg-gray-50 rounded-lg border space-y-3">
+                    <div id="new-policy-form-upload" class="hidden mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-sm font-medium text-blue-800">🔧 Tạo Policy mới</label>
+                            <button type="button" onclick="toggleUploadAdvancedMode()" id="upload-toggle-advanced" class="text-xs text-blue-600 hover:underline">
+                                Chế độ nâng cao
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600">Tên Policy *</label>
+                                <input type="text" id="upload-new-policy-name" placeholder="vd: hr_read_document" pattern="[a-z][a-z0-9_]*"
+                                    class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                                <p class="text-xs text-gray-400 mt-0.5">Chữ thường, số và gạch dưới</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600">Ưu tiên (1 = cao nhất)</label>
+                                <input type="number" id="upload-new-policy-priority" value="100" min="1" max="999"
+                                    class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                            </div>
+                        </div>
+                        
                         <div>
-                            <label class="block text-xs font-medium text-gray-600">Tên Policy</label>
-                            <input type="text" id="upload-new-policy-name" placeholder="VD: HR-Confidential"
+                            <label class="block text-xs font-medium text-gray-600">Mô tả</label>
+                            <input type="text" id="upload-new-policy-description" placeholder="Mô tả chính sách"
                                 class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
                         </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600">Điều kiện (Subject Condition)</label>
-                            <input type="text" id="upload-new-policy-condition" placeholder="VD: r.sub.department == 'hr'"
-                                class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm font-mono">
-                            <p class="text-xs text-gray-400 mt-1">Sử dụng r.sub.[attribute] để kiểm tra thuộc tính user</p>
+                        
+                        <!-- Simple Mode: Policy Builder -->
+                        <div id="upload-simple-mode" class="space-y-3">
+                            <p class="text-xs text-blue-700">Chọn điều kiện cho người dùng được áp dụng chính sách này:</p>
+                            
+                            <div id="upload-condition-rules" class="space-y-2">
+                                <!-- Rules will be added here -->
+                            </div>
+                            
+                            <button type="button" onclick="addUploadRule()" class="text-xs text-blue-600 hover:text-blue-800 flex items-center">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                Thêm điều kiện
+                            </button>
+                            
+                            <div class="text-xs text-gray-500">
+                                💡 <strong>Gợi ý:</strong> Chọn <span class="text-green-600 font-medium">VÀ</span> nếu cần thỏa tất cả điều kiện, 
+                                <span class="text-orange-600 font-medium">HOẶC</span> nếu chỉ cần 1 trong các điều kiện.
+                            </div>
+                            
+                            <div class="p-2 bg-white rounded border">
+                                <span class="text-xs text-gray-500">Xem trước câu điều kiện:</span>
+                                <div id="upload-condition-preview" class="font-mono text-xs text-green-700 mt-1">
+                                    (Chưa có điều kiện nào)
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex gap-4">
-                            <label class="flex items-center gap-1 text-xs cursor-pointer">
-                                <input type="radio" name="upload-policy-effect" value="allow" checked class="text-green-600">
-                                <span class="text-green-600">✓ Allow</span>
-                            </label>
-                            <label class="flex items-center gap-1 text-xs cursor-pointer">
-                                <input type="radio" name="upload-policy-effect" value="deny" class="text-red-600">
-                                <span class="text-red-600">✕ Deny</span>
-                            </label>
+                        
+                        <!-- Advanced Mode: Raw Expression -->
+                        <div id="upload-advanced-mode" class="hidden">
+                            <p class="text-xs text-blue-700 mb-2">Nhập biểu thức ABAC trực tiếp:</p>
+                            <textarea id="upload-new-policy-condition" rows="2"
+                                class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm font-mono"
+                                placeholder="r.sub.user_type == 'admin' and r.sub.department == 'it'"
+                                oninput="updateUploadPreviewFromAdvanced()"></textarea>
+                            <div class="mt-1 text-xs text-gray-500">
+                                <strong>Cú pháp:</strong> <code>r.sub.attribute == 'value'</code> | <code>and</code>, <code>or</code> để kết hợp
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="upload-policy-condition-final">
+                        
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600">Tài nguyên</label>
+                                <select id="upload-new-policy-resource" class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                                    <option value="document">📄 Tài liệu</option>
+                                    <option value="key">🔑 Khóa mã hóa</option>
+                                    <option value="*">⭐ Tất cả</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600">Hành động</label>
+                                <select id="upload-new-policy-action" class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                                    <option value="read">👁️ Xem</option>
+                                    <option value="write">✏️ Tạo mới</option>
+                                    <option value="update">📝 Cập nhật</option>
+                                    <option value="delete">🗑️ Xóa</option>
+                                    <option value="download">⬇️ Tải xuống</option>
+                                    <option value="*">⭐ Tất cả</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600">Hiệu lực</label>
+                                <select id="upload-new-policy-effect" class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                                    <option value="allow">✅ Cho phép</option>
+                                    <option value="deny">❌ Từ chối</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -375,44 +451,110 @@
             
             <!-- New Policy Tab -->
             <div id="panel-new" class="hidden space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tên Policy *</label>
-                    <input type="text" id="new-policy-name" 
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        placeholder="VD: HR-Read-Only">
+                <div class="flex justify-between items-center">
+                    <label class="block text-sm font-medium text-blue-800">🔧 Xây dựng điều kiện (Policy Builder)</label>
+                    <button type="button" onclick="toggleAssignAdvancedMode()" id="assign-toggle-advanced" class="text-xs text-blue-600 hover:underline">
+                        Chế độ nâng cao
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tên Policy *</label>
+                        <input type="text" id="new-policy-name" pattern="[a-z][a-z0-9_]*"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            placeholder="vd: hr_read_document">
+                        <p class="text-xs text-gray-500 mt-1">Chữ thường, số và gạch dưới</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ưu tiên (1 = cao nhất)</label>
+                        <input type="number" id="new-policy-priority" value="100" min="1" max="999"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
                     <input type="text" id="new-policy-description" 
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        placeholder="VD: Cho phép bộ phận HR đọc file">
+                        placeholder="Mô tả chính sách">
                 </div>
                 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Điều kiện truy cập (Subject Condition) *</label>
+                <!-- Simple Mode: Policy Builder -->
+                <div id="assign-simple-mode" class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                    <p class="text-sm text-blue-700">Chọn điều kiện cho người dùng được áp dụng chính sách này:</p>
+                    
+                    <div id="assign-condition-rules" class="space-y-2">
+                        <!-- Rules will be added here -->
+                    </div>
+                    
+                    <button type="button" onclick="addAssignRule()" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Thêm điều kiện
+                    </button>
+                    
+                    <div class="text-xs text-gray-500">
+                        💡 <strong>Gợi ý:</strong> Chọn <span class="text-green-600 font-medium">VÀ</span> nếu cần thỏa tất cả điều kiện, 
+                        <span class="text-orange-600 font-medium">HOẶC</span> nếu chỉ cần 1 trong các điều kiện.
+                    </div>
+                    
+                    <div class="p-2 bg-white rounded border">
+                        <span class="text-xs text-gray-500">Xem trước câu điều kiện:</span>
+                        <div id="assign-condition-preview" class="font-mono text-sm text-green-700 mt-1">
+                            (Chưa có điều kiện nào)
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Mode: Raw Expression -->
+                <div id="assign-advanced-mode" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p class="text-sm text-blue-700 mb-2">Nhập biểu thức ABAC trực tiếp:</p>
                     <textarea id="new-policy-condition" rows="3"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
-                        placeholder="VD: r.sub.department == 'hr'"></textarea>
-                    <p class="text-xs text-gray-500 mt-1">
-                        Sử dụng r.sub.[attribute] để truy cập thuộc tính người dùng. 
-                        VD: r.sub.department, r.sub.clearance_level, r.sub.user_type
-                    </p>
+                        placeholder="r.sub.user_type == 'admin' and r.sub.department == 'it'"
+                        oninput="updateAssignPreviewFromAdvanced()"></textarea>
+                    <div class="mt-2 text-xs text-gray-500">
+                        <strong>Cú pháp:</strong>
+                        <ul class="list-disc ml-4 mt-1">
+                            <li><code>r.sub.attribute == 'value'</code> - So sánh bằng</li>
+                            <li><code>r.sub.attribute in ['val1', 'val2']</code> - Thuộc danh sách</li>
+                            <li><code>and</code>, <code>or</code> - Kết hợp điều kiện</li>
+                        </ul>
+                    </div>
                 </div>
                 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Hiệu lực *</label>
-                    <div class="flex gap-4">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="policy-effect" value="allow" checked 
-                                class="text-indigo-600 focus:ring-indigo-500">
-                            <span class="text-green-600 font-medium">✓ Cho phép (Allow)</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="policy-effect" value="deny" 
-                                class="text-red-600 focus:ring-red-500">
-                            <span class="text-red-600 font-medium">✕ Từ chối (Deny)</span>
-                        </label>
+                <input type="hidden" id="assign-policy-condition-final">
+                
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tài nguyên</label>
+                        <select id="new-policy-resource" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="document">📄 Tài liệu</option>
+                            <option value="key">🔑 Khóa mã hóa</option>
+                            <option value="user">👤 Quản lý người dùng</option>
+                            <option value="policy">📋 Quản lý chính sách</option>
+                            <option value="*">⭐ Tất cả tài nguyên</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Hành động</label>
+                        <select id="new-policy-action" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="read">👁️ Xem (Read)</option>
+                            <option value="write">✏️ Tạo mới (Write)</option>
+                            <option value="update">📝 Cập nhật (Update)</option>
+                            <option value="delete">🗑️ Xóa (Delete)</option>
+                            <option value="download">⬇️ Tải xuống (Download)</option>
+                            <option value="*">⭐ Tất cả hành động</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Hiệu lực</label>
+                        <select id="new-policy-effect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="allow">✅ Cho phép (Allow)</option>
+                            <option value="deny">❌ Từ chối (Deny)</option>
+                        </select>
                     </div>
                 </div>
             </div>

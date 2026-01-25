@@ -26,6 +26,9 @@ urlpatterns = [
     # List users with attributes
     path('users-with-attributes/', attributes.list_users_with_attributes, name='list_users_with_attributes'),
     
+    # Policy builder attributes (dynamic from database)
+    path('policy-builder-attributes/', attributes.get_policy_builder_attributes, name='policy_builder_attributes'),
+    
     # Template pages (HTML)
     path('pages/user-types/', attributes.user_types_page, name='user_types_page'),
     path('pages/attributes/', attributes.attributes_page, name='attributes_page'),

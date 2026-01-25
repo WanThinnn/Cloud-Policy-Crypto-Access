@@ -24,43 +24,58 @@
                 </div>
                 
                 <!-- Navigation Links -->
-                <div class="hidden md:flex items-center space-x-6">
+                <div class="hidden md:flex items-center space-x-4">
                     <a href="/" class="text-gray-300 hover:text-white transition">Trang chủ</a>
-                    <a href="/manage/files/" class="text-gray-300 hover:text-white transition">Tài liệu</a>
-                    
+                    <a href="/manage/files/" class="text-gray-300 hover:text-white transition">
+                        Tài liệu
+                        </a>
                     <!-- Admin Dropdown (shown when logged in as admin) -->
-                    <div id="admin-menu" class="hidden relative">
-                        <button id="admin-dropdown-btn" class="text-gray-300 hover:text-white transition flex items-center">
-                            Quản trị
-                            <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        <div id="admin-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 transition-opacity duration-200">
-                            <a href="/manage/files/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                📄 Quản lý tài liệu
-                            </a>
-                            <hr class="my-1">
-                            <a href="/manage/users/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                👥 Quản lý người dùng
-                            </a>
-                            <a href="/manage/user-types/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                👤 Loại người dùng
-                            </a>
-                            <a href="/manage/attributes/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                📋 Lược đồ thuộc tính
-                            </a>
-                            <a href="/manage/user-attributes/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                🏷️ Thuộc tính người dùng
-                            </a>
-                            <a href="/manage/policies/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                🔐 Chính sách truy cập
-                            </a>
-                            <hr class="my-1">
-                            <a href="/admin/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                ⚙️ Django Admin
-                            </a>
+                    <div id="admin-menu" class="hidden items-center space-x-1">
+                        <!-- User Management Dropdown -->
+                        <div class="relative" id="user-mgmt-dropdown-container">
+                            <button id="user-mgmt-dropdown-btn" class="text-gray-300 hover:text-white transition flex items-center px-2 py-2 text-sm">
+                                Quản lý Người dùng
+                                <svg class="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div id="user-mgmt-dropdown-menu" class="hidden absolute left-0 mt-2 w-52 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 transition-opacity duration-200">
+                                <a href="/manage/users/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Người dùng & Thuộc tính
+                                </a>
+                                <a href="/manage/user-types/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Loại người dùng
+                                </a>
+                            </div>
                         </div>
+                        
+                        <!-- Policy Management Dropdown -->
+                        <div class="relative" id="policy-mgmt-dropdown-container">
+                            <button id="policy-mgmt-dropdown-btn" class="text-gray-300 hover:text-white transition flex items-center px-2 py-2 text-sm">
+                                Quản lý Chính sách
+                                <svg class="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div id="policy-mgmt-dropdown-menu" class="hidden absolute left-0 mt-2 w-52 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 transition-opacity duration-200">
+                                <a href="/manage/attributes/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Lược đồ thuộc tính
+                                </a>
+                                <a href="/manage/policies/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Chính sách truy cập
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Document Management -->
+                        <a href="/manage/files/" class="text-gray-300 hover:text-white transition px-2 py-2 text-sm">
+                            Quản lý Tài liệu
+                        </a>
+                        
+                        <!-- Django Admin -->
+                        <a href="/admin/" class="text-gray-300 hover:text-white transition px-2 py-2 text-sm">
+                            Django Admin
+                        </a>
                     </div>
                     
                     <!-- Auth Links (shown when not logged in) -->
@@ -94,10 +109,17 @@
             <div class="px-2 pt-2 pb-3 space-y-1">
                 <a href="/" class="block px-3 py-2 text-white hover:bg-slate-600 rounded">Trang chủ</a>
                 <div id="mobile-admin-menu" class="hidden">
-                    <span class="block px-3 py-2 text-gray-400 text-sm">Quản trị:</span>
-                    <a href="/api/admin/pages/user-types/" class="block px-6 py-2 text-white hover:bg-slate-600 rounded">Loại người dùng</a>
-                    <a href="/api/admin/pages/attributes/" class="block px-6 py-2 text-white hover:bg-slate-600 rounded">Lược đồ thuộc tính</a>
-                    <a href="/api/admin/pages/user-attributes/" class="block px-6 py-2 text-white hover:bg-slate-600 rounded">Thuộc tính người dùng</a>
+                    <span class="block px-3 py-2 text-gray-400 text-sm font-semibold">👥 Quản lý Người dùng:</span>
+                    <a href="/manage/users/" class="block px-6 py-2 text-white hover:bg-slate-600 rounded">Người dùng & Thuộc tính</a>
+                    <a href="/manage/user-types/" class="block px-6 py-2 text-white hover:bg-slate-600 rounded">Loại người dùng</a>
+                    
+                    <span class="block px-3 py-2 text-gray-400 text-sm font-semibold mt-2">🔐 Quản lý Chính sách:</span>
+                    <a href="/manage/attributes/" class="block px-6 py-2 text-white hover:bg-slate-600 rounded">Lược đồ thuộc tính</a>
+                    <a href="/manage/policies/" class="block px-6 py-2 text-white hover:bg-slate-600 rounded">Chính sách truy cập</a>
+                    
+                    <hr class="my-2 border-slate-600">
+                    <a href="/manage/files/" class="block px-3 py-2 text-white hover:bg-slate-600 rounded">📄 Quản lý Tài liệu</a>
+                    <a href="/admin/" class="block px-3 py-2 text-white hover:bg-slate-600 rounded">⚙️ Django Admin</a>
                 </div>
             </div>
         </div>
@@ -147,7 +169,9 @@
                         
                         // Only show admin menu if user is admin
                         if (perms.is_admin) {
-                            document.getElementById('admin-menu').classList.remove('hidden');
+                            const adminMenu = document.getElementById('admin-menu');
+                            adminMenu.classList.remove('hidden');
+                            adminMenu.classList.add('flex');
                             document.getElementById('mobile-admin-menu').classList.remove('hidden');
                             
                             // Update menu items based on specific permissions
@@ -165,15 +189,29 @@
         
         function updateAdminMenuItems(perms) {
             // Hide Django Admin link for non-superadmin
-            const djangoAdminLink = document.querySelector('a[href="/admin/"]');
-            if (djangoAdminLink && !perms.is_super_admin) {
-                djangoAdminLink.classList.add('hidden');
-            }
+            const djangoAdminLinks = document.querySelectorAll('a[href="/admin/"]');
+            djangoAdminLinks.forEach(link => {
+                if (!perms.is_super_admin) {
+                    link.classList.add('hidden');
+                }
+            });
             
             // Hide policies link for non-superadmin (only super admin can manage policies)
-            const policiesLink = document.querySelector('a[href="/manage/policies/"]');
-            if (policiesLink && !perms.is_super_admin) {
-                policiesLink.classList.add('hidden');
+            const policiesLinks = document.querySelectorAll('a[href="/manage/policies/"]');
+            policiesLinks.forEach(link => {
+                if (!perms.is_super_admin) {
+                    link.classList.add('hidden');
+                }
+            });
+            
+            // Hide Policy Management dropdown entirely if not super admin
+            const policyDropdownContainer = document.getElementById('policy-mgmt-dropdown-container');
+            if (policyDropdownContainer && !perms.is_super_admin) {
+                // Check if all links inside are hidden
+                const visibleLinks = policyDropdownContainer.querySelectorAll('a:not(.hidden)');
+                if (visibleLinks.length === 0) {
+                    policyDropdownContainer.classList.add('hidden');
+                }
             }
         }
         
@@ -213,41 +251,42 @@
             document.getElementById('mobile-menu').classList.toggle('hidden');
         });
         
-        // Admin dropdown functionality
-        const adminDropdownBtn = document.getElementById('admin-dropdown-btn');
-        const adminDropdownMenu = document.getElementById('admin-dropdown-menu');
-        let dropdownTimeout;
-        
-        if (adminDropdownBtn && adminDropdownMenu) {
-            const showDropdown = () => {
-                clearTimeout(dropdownTimeout);
-                adminDropdownMenu.classList.remove('hidden');
-                // Small delay for transition
-                setTimeout(() => {
-                    adminDropdownMenu.classList.remove('opacity-0');
-                    adminDropdownMenu.classList.add('opacity-100');
-                }, 10);
-            };
+        // Dropdown functionality helper
+        function setupDropdown(btnId, menuId) {
+            const btn = document.getElementById(btnId);
+            const menu = document.getElementById(menuId);
+            let dropdownTimeout;
             
-            const hideDropdown = () => {
-                dropdownTimeout = setTimeout(() => {
-                    adminDropdownMenu.classList.remove('opacity-100');
-                    adminDropdownMenu.classList.add('opacity-0');
-                    // Wait for transition to complete before hiding
+            if (btn && menu) {
+                const showDropdown = () => {
+                    clearTimeout(dropdownTimeout);
+                    menu.classList.remove('hidden');
                     setTimeout(() => {
-                        adminDropdownMenu.classList.add('hidden');
-                    }, 200);
-                }, 100); // 100ms delay before hiding
-            };
-            
-            // Show on button hover
-            adminDropdownBtn.addEventListener('mouseenter', showDropdown);
-            adminDropdownBtn.addEventListener('mouseleave', hideDropdown);
-            
-            // Keep open when hovering menu
-            adminDropdownMenu.addEventListener('mouseenter', showDropdown);
-            adminDropdownMenu.addEventListener('mouseleave', hideDropdown);
+                        menu.classList.remove('opacity-0');
+                        menu.classList.add('opacity-100');
+                    }, 10);
+                };
+                
+                const hideDropdown = () => {
+                    dropdownTimeout = setTimeout(() => {
+                        menu.classList.remove('opacity-100');
+                        menu.classList.add('opacity-0');
+                        setTimeout(() => {
+                            menu.classList.add('hidden');
+                        }, 200);
+                    }, 100);
+                };
+                
+                btn.addEventListener('mouseenter', showDropdown);
+                btn.addEventListener('mouseleave', hideDropdown);
+                menu.addEventListener('mouseenter', showDropdown);
+                menu.addEventListener('mouseleave', hideDropdown);
+            }
         }
+        
+        // Setup dropdowns for User Management and Policy Management
+        setupDropdown('user-mgmt-dropdown-btn', 'user-mgmt-dropdown-menu');
+        setupDropdown('policy-mgmt-dropdown-btn', 'policy-mgmt-dropdown-menu');
     </script>
 
     {% block extra_js %}{% endblock %}
