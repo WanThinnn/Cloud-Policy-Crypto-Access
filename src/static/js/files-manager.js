@@ -152,6 +152,21 @@
             const response = await fetch(url, { headers });
 
             if (!response.ok) {
+                // Check for specific error codes
+                if (response.status === 403) {
+                    const err = await response.json().catch(() => ({ error: 'Access denied' }));
+                    console.error('ABAC denied:', err);
+                    document.getElementById('files-grid').innerHTML = `
+                    <div class="col-span-full text-center text-gray-500 py-8">
+                        <svg class="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                        <p class="text-lg font-medium text-red-600">Truy cập bị từ chối</p>
+                        <p class="text-sm mt-2">${err.error || 'Bạn không có quyền xem tài liệu này'}</p>
+                        <p class="text-xs mt-4 text-gray-400">Resource: ${err.resource || 'document'} | Action: ${err.action || 'read'}</p>
+                    </div>`;
+                    return;
+                }
                 throw new Error('Failed to load files');
             }
 
@@ -237,12 +252,11 @@
 
             return `
             <div class="file-item group relative flex flex-col p-4 bg-white border border-gray-100 rounded-2xl transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-indigo-200 cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/50' : ''}"
-                ondblclick="handleFileClick('${filePath}', ${isFolder}, event)"
-                onclick="toggleSelection('${filePath}', true)"
+                onclick="handleFileClick('${filePath}', ${isFolder}, event)"
                 oncontextmenu="showContextMenu(event, '${filePath}', ${isFolder})">
                 
                 <!-- Selection Checkbox -->
-                <div class="absolute top-4 left-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity ${isSelected ? 'opacity-100' : ''}">
+                <div class="absolute top-4 left-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity ${isSelected ? 'opacity-100' : ''}" onclick="event.stopPropagation()">
                    <div class="checkbox-wrapper relative w-5 h-5">
                        <input type="checkbox" 
                            class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
@@ -310,11 +324,10 @@
 
             return `
             <div class="file-item group flex items-center px-6 py-4 hover:bg-indigo-50/30 transition-colors border-b border-gray-100 last:border-0 cursor-pointer ${isSelected ? 'bg-indigo-50/60' : ''}"
-                ondblclick="handleFileClick('${filePath}', ${isFolder}, event)"
-                onclick="toggleSelection('${filePath}', true)"
+                onclick="handleFileClick('${filePath}', ${isFolder}, event)"
                 oncontextmenu="showContextMenu(event, '${filePath}', ${isFolder})">
                 
-                <div class="w-8 flex items-center justify-center mr-2">
+                <div class="w-8 flex items-center justify-center mr-2" onclick="event.stopPropagation()">
                     <input type="checkbox" 
                         class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 opacity-0 group-hover:opacity-100 ${isSelected ? 'opacity-100' : ''}"
                         onchange="toggleSelection('${filePath}')"
@@ -433,14 +446,18 @@
     // ============= FILE OPERATIONS =============
 
     function handleFileClick(filePath, isFolder, event) {
-        if (event.ctrlKey || event.metaKey) {
-            // Ctrl+Click for multi-select
-            if (!isFolder) {
-                toggleSelection(filePath);
-            }
+        // Check if click is on checkbox - let checkbox handle it
+        if (event.target.type === 'checkbox' || event.target.closest('.checkbox-wrapper')) {
             return;
         }
 
+        // Ctrl+Click or Shift+Click for multi-select
+        if (event.ctrlKey || event.metaKey || event.shiftKey) {
+            toggleSelection(filePath);
+            return;
+        }
+
+        // Single click - open file/folder immediately
         if (isFolder) {
             loadFolder(filePath);
         } else {
@@ -916,8 +933,8 @@
                 const result = await response.json();
                 console.log('Upload successful:', result);
                 
-                // Get the uploaded file path
-                const uploadedFilePath = folder ? `${folder}/${file.name}` : file.name;
+                // Get the uploaded file path from the response (database path)
+                const uploadedFilePath = result.file_path;
                 
                 // Check if user wants to assign a policy
                 const policySelect = document.getElementById('upload-policy-select');

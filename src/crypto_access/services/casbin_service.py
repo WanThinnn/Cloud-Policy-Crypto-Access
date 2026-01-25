@@ -35,12 +35,12 @@ from crypto_access.models import UserAttribute, AccessPolicy, UserType
 # Permission mapping: action → required permissions
 ACTION_PERMISSION_MAP = {
     # File/Document actions
-    'read': ['file_read', 'file_view', '*'],
+    'read': ['file_read', 'file_view', 'file_read_limited', '*'],
     'write': ['file_create', 'file_write', '*'],
     'update': ['file_update', 'file_write', '*'],
     'delete': ['file_delete', '*'],
     'upload': ['file_upload', 'file_create', '*'],
-    'download': ['file_download', 'file_read', '*'],
+    'download': ['file_download', 'file_read', 'file_read_limited', '*'],
     
     # Encryption actions
     'encrypt': ['file_encrypt', 'key_manage', '*'],
@@ -48,7 +48,7 @@ ACTION_PERMISSION_MAP = {
     
     # Management actions
     'manage': ['*'],
-    'view': ['file_read', 'file_view', 'logs_view', 'reports_view', '*'],
+    'view': ['file_read', 'file_view', 'file_read_limited', 'logs_view', 'reports_view', '*'],
     
     # Policy actions
     'policy_read': ['policy_view', '*'],
@@ -212,25 +212,36 @@ class CasbinService:
         
         sub = AttrNamespace(attrs)
         
+        # Action aliases - some actions imply others
+        # e.g., 'download' is a type of 'read', 'upload' is a type of 'write'
+        action_aliases = {
+            'download': ['download', 'read'],
+            'upload': ['upload', 'write', 'create'],
+            'view': ['view', 'read'],
+        }
+        
+        actions_to_check = action_aliases.get(action, [action])
+        
         try:
-            # Check with Casbin enforcer
-            result = self._enforcer.enforce(sub, resource, action)
+            # Check with Casbin enforcer for action and its aliases
+            for check_action in actions_to_check:
+                result = self._enforcer.enforce(sub, resource, check_action)
+                if result:
+                    return True, f"abac_policy_allowed:{check_action}"
             
-            if result:
-                return True, "abac_policy_allowed"
+            # No policy allowed - check if there's any matching policy at all
+            # If no policy matched at all, return None to defer to RBAC
+            all_actions = actions_to_check + ['*']
+            matching_policies = AccessPolicy.objects.filter(
+                is_active=True,
+                resource__in=[resource, '*'],
+                action__in=all_actions
+            )
+            
+            if matching_policies.exists():
+                return False, "abac_policy_denied"
             else:
-                # Check if there's an explicit deny policy
-                # If no policy matched at all, return None
-                matching_policies = AccessPolicy.objects.filter(
-                    is_active=True,
-                    resource__in=[resource, '*'],
-                    action__in=[action, '*']
-                )
-                
-                if matching_policies.exists():
-                    return False, "abac_policy_denied"
-                else:
-                    return None, "no_abac_policy"
+                return None, "no_abac_policy"
                     
         except Exception as e:
             print(f"ABAC check error: {e}")
