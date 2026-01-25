@@ -25,7 +25,7 @@ from ..permissions import IsSuperAdmin, IsAdminOrSuperAdmin
 # =============================================================================
 
 def users_page(request):
-    """Render user management page"""
+    """Render user management page - permission check done via API"""
     return render(request, 'admin/users.html')
 
 

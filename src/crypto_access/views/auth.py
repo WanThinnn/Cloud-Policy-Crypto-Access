@@ -300,3 +300,47 @@ def user_profile(request):
     """
     serializer = UserDetailSerializer(request.user)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_permissions(request):
+    """
+    Get current user's permissions and role info
+    Used by frontend to show/hide admin menu items
+    
+    GET /api/auth/permissions/
+    """
+    user = request.user
+    
+    # Default permissions
+    permissions = {
+        'is_authenticated': True,
+        'is_admin': False,
+        'is_super_admin': False,
+        'user_type': None,
+        'can_manage_users': False,
+        'can_manage_policies': False,
+        'can_manage_files': False,
+        'can_view_audit_logs': False,
+    }
+    
+    if hasattr(user, 'profile') and user.profile:
+        profile = user.profile
+        user_type = profile.get_user_type_code()
+        
+        permissions.update({
+            'user_type': user_type,
+            'is_admin': profile.is_admin(),
+            'is_super_admin': profile.is_super_admin(),
+            'can_manage_users': profile.is_admin(),
+            'can_manage_policies': profile.is_super_admin(),  # Only super admin
+            'can_manage_files': user_type in ['super_admin', 'admin', 'data_owner'],
+            'can_view_audit_logs': user_type in ['super_admin', 'admin', 'auditor'],
+        })
+        
+        # Get base permissions from UserType
+        if profile.user_type_ref:
+            permissions['base_permissions'] = profile.user_type_ref.permissions
+    
+    return Response(permissions)

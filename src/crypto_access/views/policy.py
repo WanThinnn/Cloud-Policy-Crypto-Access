@@ -131,5 +131,5 @@ class AccessPolicyViewSet(viewsets.ModelViewSet):
 
 
 def policies_page(request):
-    """Render the policies admin page"""
+    """Render the policies admin page - permission check done via API"""
     return render(request, 'admin/policies.html')

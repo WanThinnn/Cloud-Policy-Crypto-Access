@@ -126,16 +126,68 @@
         const username = localStorage.getItem('username');
         
         // Update UI based on auth state
-        if (accessToken && username) {
-            // User is logged in
-            document.getElementById('auth-links').classList.add('hidden');
-            document.getElementById('user-section').classList.remove('hidden');
-            document.getElementById('user-info').textContent = `Xin chào, ${username}`;
-            
-            // Show admin menu (for now, show to all logged-in users - later filter by role)
-            document.getElementById('admin-menu').classList.remove('hidden');
-            document.getElementById('mobile-admin-menu').classList.remove('hidden');
+        async function initAuthUI() {
+            if (accessToken && username) {
+                // User is logged in
+                document.getElementById('auth-links').classList.add('hidden');
+                document.getElementById('user-section').classList.remove('hidden');
+                document.getElementById('user-info').textContent = `Xin chào, ${username}`;
+                
+                // Check permissions to show admin menu
+                try {
+                    const response = await fetch('/api/auth/permissions/', {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                    
+                    if (response.ok) {
+                        const perms = await response.json();
+                        
+                        // Store permissions for other pages to use
+                        localStorage.setItem('user_permissions', JSON.stringify(perms));
+                        
+                        // Only show admin menu if user is admin
+                        if (perms.is_admin) {
+                            document.getElementById('admin-menu').classList.remove('hidden');
+                            document.getElementById('mobile-admin-menu').classList.remove('hidden');
+                            
+                            // Update menu items based on specific permissions
+                            updateAdminMenuItems(perms);
+                        }
+                    } else if (response.status === 401) {
+                        // Token expired, try refresh or logout
+                        handleTokenExpired();
+                    }
+                } catch (error) {
+                    console.error('Error checking permissions:', error);
+                }
+            }
         }
+        
+        function updateAdminMenuItems(perms) {
+            // Hide Django Admin link for non-superadmin
+            const djangoAdminLink = document.querySelector('a[href="/admin/"]');
+            if (djangoAdminLink && !perms.is_super_admin) {
+                djangoAdminLink.classList.add('hidden');
+            }
+            
+            // Hide policies link for non-superadmin (only super admin can manage policies)
+            const policiesLink = document.querySelector('a[href="/manage/policies/"]');
+            if (policiesLink && !perms.is_super_admin) {
+                policiesLink.classList.add('hidden');
+            }
+        }
+        
+        function handleTokenExpired() {
+            localStorage.clear();
+            // Don't redirect if on public page
+            const publicPages = ['/', '/auth/login/', '/auth/register/'];
+            if (!publicPages.includes(window.location.pathname)) {
+                window.location.href = '/auth/login/?next=' + encodeURIComponent(window.location.pathname);
+            }
+        }
+        
+        // Initialize UI
+        initAuthUI();
 
         // Logout handler
         document.getElementById('logout-btn')?.addEventListener('click', async () => {

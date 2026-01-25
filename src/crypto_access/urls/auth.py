@@ -25,8 +25,9 @@ urlpatterns = [
     path('password-reset/request/', auth.password_reset_request, name='password_reset_request'),
     path('password-reset/confirm/', auth.password_reset_confirm, name='password_reset_confirm'),
     
-    # User Profile
+    # User Profile & Permissions
     path('profile/', auth.user_profile, name='user_profile'),
+    path('permissions/', auth.user_permissions, name='user_permissions'),
 ]
 
 # Separate patterns for template pages (accessed via /auth/ prefix)

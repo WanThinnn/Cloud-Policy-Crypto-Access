@@ -25,7 +25,7 @@ from ..permissions import IsSuperAdmin, IsAdminOrSuperAdmin, CanManageAttributes
 
 
 # =============================================================================
-# Template Views (HTML Pages)
+# Template Views (HTML Pages) - Permission check done via API
 # =============================================================================
 
 def user_types_page(request):

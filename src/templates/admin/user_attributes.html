@@ -114,27 +114,61 @@
 {% block extra_js %}
 <script>
     const API_BASE = '/api/admin/';
-    // accessToken is already declared in base.html
+    const token = localStorage.getItem('access_token');
     let selectedUserId = null;
     let attributeDefinitions = [];
 
-    // Check auth - show message if not logged in
-    const userSelect = document.getElementById('user-select');
-    if (!accessToken) {
-        userSelect.innerHTML = '<option value="">Vui lòng đăng nhập để sử dụng</option>';
-        userSelect.disabled = true;
+    // Permission check helper
+    async function checkPermissionAndInit() {
+        const userSelect = document.getElementById('user-select');
+        if (!token) {
+            showAuthRequired();
+            return false;
+        }
+        try {
+            const res = await fetch('/api/auth/permissions/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.status === 401) {
+                showAuthRequired();
+                return false;
+            }
+            const perms = await res.json();
+            if (!perms.is_super_admin) {
+                showAccessDenied();
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.error('Permission check failed:', e);
+            return false;
+        }
+    }
+
+    function showAuthRequired() {
+        document.getElementById('user-select').innerHTML = '<option value="">Vui lòng đăng nhập</option>';
+        document.getElementById('user-select').disabled = true;
         document.getElementById('load-btn').disabled = true;
-        showAlert('Bạn cần đăng nhập để xem trang này. <a href="/auth/login/" class="underline font-medium">Đăng nhập</a>', 'error');
+        showAlert('Bạn cần đăng nhập để xem trang này. <a href="/auth/login/?next=' + encodeURIComponent(location.pathname) + '" class="underline font-medium">Đăng nhập</a>', 'error');
+    }
+
+    function showAccessDenied() {
+        document.querySelector('.space-y-6').innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+                <div class="text-6xl mb-4">🚫</div>
+                <h2 class="text-2xl font-bold text-red-600 mb-2">Không có quyền truy cập</h2>
+                <p class="text-gray-600 mb-4">Chỉ Super Admin mới có thể truy cập trang này.</p>
+                <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">Về trang chủ</a>
+            </div>`;
     }
 
     const headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
+        'Authorization': `Bearer ${token}`
     };
 
     // Load users and attribute definitions
     async function init() {
-        if (!accessToken) return;
         await loadUsers();
         await loadAttributeDefinitions();
     }
@@ -338,6 +372,11 @@
         }
     });
 
-    init();
+    // Init with permission check
+    (async () => {
+        if (await checkPermissionAndInit()) {
+            init();
+        }
+    })();
 </script>
 {% endblock %}

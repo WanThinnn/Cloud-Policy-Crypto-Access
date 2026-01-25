@@ -228,16 +228,55 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const API_BASE = '/api/admin';
     let userTypes = [];
     let currentUserId = null;
     
-    // Check authentication
+    // Check authentication and permissions
     const token = localStorage.getItem('access_token');
-    if (!token) {
-        window.location.href = '/auth/login/?next=' + encodeURIComponent(window.location.pathname);
-        return;
+    
+    async function checkPermissionAndInit() {
+        if (!token) {
+            showAuthRequired();
+            return false;
+        }
+        try {
+            const res = await fetch('/api/auth/permissions/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.status === 401) {
+                showAuthRequired();
+                return false;
+            }
+            const perms = await res.json();
+            if (!perms.is_admin) {
+                showAccessDenied();
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.error('Permission check failed:', e);
+            return false;
+        }
+    }
+    
+    function showAuthRequired() {
+        document.getElementById('users-list').innerHTML = `
+            <tr><td colspan="6" class="px-6 py-8 text-center">
+                <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
+                <a href="/auth/login/?next=${encodeURIComponent(location.pathname)}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Đăng nhập</a>
+            </td></tr>`;
+    }
+    
+    function showAccessDenied() {
+        document.querySelector('.space-y-6').innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+                <div class="text-6xl mb-4">🚫</div>
+                <h2 class="text-2xl font-bold text-red-600 mb-2">Không có quyền truy cập</h2>
+                <p class="text-gray-600 mb-4">Chỉ Admin mới có thể truy cập trang này.</p>
+                <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">Về trang chủ</a>
+            </div>`;
     }
     
     // Show alert message
@@ -628,10 +667,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('filter-type').addEventListener('change', loadUsers);
     document.getElementById('filter-status').addEventListener('change', loadUsers);
     
-    // Initial load
-    loadUserTypes();
-    loadStats();
-    loadUsers();
+    // Init with permission check
+    if (await checkPermissionAndInit()) {
+        loadUserTypes();
+        loadStats();
+        loadUsers();
+    }
 });
 </script>
 {% endblock %}
