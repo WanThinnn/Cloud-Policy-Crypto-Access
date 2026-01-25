@@ -14,6 +14,9 @@ from .attributes import UserType, AttributeDefinition, UserAttribute
 # ABAC Policy models
 from .policy import AccessPolicy
 
+# Audit models (BM12, BM13)
+from .audit import AccessLog, KeyRevocation
+
 __all__ = [
     # Base
     'BaseModel',
@@ -30,5 +33,9 @@ __all__ = [
     
     # ABAC Policies
     'AccessPolicy',
+    
+    # Audit (BM12, BM13)
+    'AccessLog',
+    'KeyRevocation',
 ]
 

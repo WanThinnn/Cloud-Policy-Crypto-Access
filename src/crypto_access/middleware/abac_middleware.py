@@ -1,6 +1,6 @@
 """
 ABAC Middleware for Django (Policy Enforcement Point - PEP)
-Provides route-based ABAC protection
+Provides route-based ABAC protection with Access Logging (BM12)
 """
 
 import re
@@ -11,9 +11,31 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def get_client_ip(request):
+    """Extract client IP from request"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', 'unknown')
+
+
+def get_environment_attributes(request):
+    """Extract environment attributes from request for logging"""
+    from django.utils import timezone
+    
+    return {
+        'ip': get_client_ip(request),
+        'user_agent': request.META.get('HTTP_USER_AGENT', 'unknown')[:200],
+        'time': timezone.now().isoformat(),
+        'method': request.method,
+        'path': request.path,
+    }
+
+
 class ABACMiddleware:
     """
     Middleware to automatically enforce ABAC policies on configured routes
+    Now with Access Logging (BM12) support
     
     Configure in settings.py:
         ABAC_PROTECTED_ROUTES = [
@@ -41,10 +63,36 @@ class ABACMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
         self.protected_routes = getattr(settings, 'ABAC_PROTECTED_ROUTES', [])
+        self.enable_access_logging = getattr(settings, 'ABAC_ENABLE_ACCESS_LOGGING', True)
         
         # Compile regex patterns
         for route in self.protected_routes:
             route['_compiled'] = re.compile(route['pattern'])
+    
+    def _log_access(self, request, resource, action, result, 
+                    user_attributes=None, policies_matched=None, error_message=None):
+        """Log access attempt to database (BM12)"""
+        if not self.enable_access_logging:
+            return
+        
+        try:
+            from crypto_access.models import AccessLog
+            
+            AccessLog.log_access(
+                user=request.user if request.user.is_authenticated else None,
+                resource_type=resource,
+                action=action,
+                result=result,
+                resource_id=request.path,
+                policies_matched=policies_matched or [],
+                user_attributes=user_attributes or {},
+                environment_attributes=get_environment_attributes(request),
+                request_path=request.path,
+                request_method=request.method,
+                error_message=error_message
+            )
+        except Exception as e:
+            logger.error(f"[ABAC-LOG] Failed to log access: {e}")
     
     def __call__(self, request):
         # Debug: Log every request
@@ -55,32 +103,56 @@ class ABACMiddleware:
             if route['_compiled'].match(request.path):
                 logger.warning(f"[ABAC-MATCH] Protected route matched - {request.path}")
                 
+                resource = route['resource']
+                method = request.method
+                action = route.get('methods', {}).get(method)
+                
                 # Check if user is authenticated
                 if not request.user.is_authenticated:
                     logger.error(f"[ABAC-DENY] Unauthenticated access attempt to {request.path}")
+                    
+                    # Log denied access
+                    self._log_access(
+                        request=request,
+                        resource=resource,
+                        action=action or 'unknown',
+                        result='deny',
+                        error_message='Authentication required'
+                    )
+                    
                     return JsonResponse(
                         {'error': 'Authentication required'},
                         status=401
                     )
                 
                 # Get required action for this method
-                method = request.method
-                if method not in route.get('methods', {}):
+                if not action:
                     # Method not configured, allow by default
                     logger.info(f"[ABAC-ALLOW] Method {method} not configured for {request.path}, allowing")
                     continue
-                
-                action = route['methods'][method]
-                resource = route['resource']
                 
                 logger.warning(f"[ABAC-CHECK] Checking {request.user.username} - resource:{resource} action:{action}")
                 
                 # Import here to avoid circular imports
                 from crypto_access.services.casbin_service import casbin_service
                 
+                # Get user attributes for logging
+                user_attributes = casbin_service.get_user_attributes(request.user)
+                
                 # Check ABAC permission
                 if not casbin_service.check_access(request.user, resource, action):
                     logger.error(f"[ABAC-DENY] Access DENIED - user:{request.user.username} resource:{resource} action:{action}")
+                    
+                    # Log denied access
+                    self._log_access(
+                        request=request,
+                        resource=resource,
+                        action=action,
+                        result='deny',
+                        user_attributes=user_attributes,
+                        error_message=f'Access denied by ABAC policy for {resource}/{action}'
+                    )
+                    
                     return JsonResponse(
                         {
                             'error': 'Access denied by ABAC policy',
@@ -93,6 +165,15 @@ class ABACMiddleware:
                     )
                 
                 logger.warning(f"[ABAC-ALLOW] Access ALLOWED - user:{request.user.username} resource:{resource} action:{action}")
+                
+                # Log allowed access
+                self._log_access(
+                    request=request,
+                    resource=resource,
+                    action=action,
+                    result='allow',
+                    user_attributes=user_attributes
+                )
         
         # Continue with request
         logger.info(f"[ABAC-PASS] Request passed - {request.path}")
