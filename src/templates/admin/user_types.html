@@ -45,36 +45,198 @@
 
 <!-- Modal -->
 <div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         <h3 id="modal-title" class="text-lg font-semibold mb-4">Thêm loại người dùng</h3>
         <form id="user-type-form" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Code</label>
-                <input type="text" name="code" required pattern="[a-z][a-z0-9_]*"
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="data_analyst">
-                <p class="mt-1 text-xs text-gray-500">Chỉ chữ thường, số và dấu gạch dưới</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Tên hiển thị</label>
-                <input type="text" name="name" required
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Data Analyst">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Code</label>
+                    <input type="text" name="code" required pattern="[a-z][a-z0-9_]*"
+                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="data_analyst">
+                    <p class="mt-1 text-xs text-gray-500">Chỉ chữ thường, số và dấu gạch dưới</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tên hiển thị</label>
+                    <input type="text" name="name" required
+                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Data Analyst">
+                </div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700">Mô tả</label>
                 <textarea name="description" rows="2"
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Quyền (mỗi dòng 1 quyền)</label>
-                <textarea name="permissions" rows="3"
                     class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="file_read&#10;file_download"></textarea>
+                    placeholder="Mô tả ngắn về vai trò của loại người dùng này"></textarea>
             </div>
+            
+            <!-- Permissions Builder -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <label class="block text-sm font-medium text-blue-800">🔐 Phân quyền</label>
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center text-xs">
+                            <input type="checkbox" id="full-access-checkbox" class="text-red-600 rounded mr-1">
+                            <span class="text-red-600 font-medium">⭐ Toàn quyền (*)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Permission Groups -->
+                <div id="permission-groups" class="space-y-3">
+                    <!-- File Permissions -->
+                    <div class="bg-white rounded p-3 border">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700">📄 Quản lý File</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="file">Chọn tất cả</button>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_read" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <span>Xem file</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_create" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <span>Tạo file</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_upload" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <span>Upload file</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_download" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <span>Download file</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_delete" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <span>Xóa file</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_share" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <span>Chia sẻ file</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Encryption Permissions -->
+                    <div class="bg-white rounded p-3 border">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700">🔒 Mã hóa & Bảo mật</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="crypto">Chọn tất cả</button>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_encrypt" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="crypto">
+                                <span>Mã hóa file</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_decrypt" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="crypto">
+                                <span>Giải mã file</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="key_manage" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="crypto">
+                                <span>Quản lý khóa</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="key_revoke" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="crypto">
+                                <span>Thu hồi khóa</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Policy Permissions -->
+                    <div class="bg-white rounded p-3 border">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700">📋 Chính sách & Quy định</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="policy">Chọn tất cả</button>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="policy_view" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="policy">
+                                <span>Xem chính sách</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="policy_define" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="policy">
+                                <span>Định nghĩa chính sách</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="policy_manage" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="policy">
+                                <span>Quản lý chính sách</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- User Management Permissions -->
+                    <div class="bg-white rounded p-3 border">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700">👥 Quản lý Người dùng</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="user">Chọn tất cả</button>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="user_view" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="user">
+                                <span>Xem người dùng</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="user_create" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="user">
+                                <span>Tạo người dùng</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="user_management_department" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="user">
+                                <span>Quản lý phòng ban</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="user_management" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="user">
+                                <span>Toàn quyền người dùng</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Audit Permissions -->
+                    <div class="bg-white rounded p-3 border">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700">📊 Kiểm toán & Báo cáo</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="audit">Chọn tất cả</button>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="logs_view" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="audit">
+                                <span>Xem logs</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="reports_view" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="audit">
+                                <span>Xem báo cáo</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="audit_export" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="audit">
+                                <span>Xuất báo cáo</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Custom Permissions -->
+                <div class="mt-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs text-gray-500">Quyền tùy chỉnh (nếu cần):</label>
+                        <button type="button" id="toggle-custom-perms" class="text-xs text-blue-600 hover:underline">+ Thêm quyền khác</button>
+                    </div>
+                    <textarea id="custom-permissions" name="custom_permissions" rows="2" class="hidden mt-2 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="permission_1&#10;permission_2"></textarea>
+                </div>
+                
+                <!-- Permission Preview -->
+                <div class="mt-3 p-2 bg-white rounded border">
+                    <span class="text-xs text-gray-500">Quyền đã chọn:</span>
+                    <div id="permission-preview" class="mt-1 flex flex-wrap gap-1 min-h-[24px]">
+                        <span class="text-gray-400 text-sm">(Chưa chọn quyền nào)</span>
+                    </div>
+                </div>
+            </div>
+            
             <div class="flex items-center">
-                <input type="checkbox" name="is_active" checked class="h-4 w-4 text-indigo-600 rounded">
-                <label class="ml-2 text-sm text-gray-700">Kích hoạt</label>
+                <input type="checkbox" name="is_active" id="is_active_checkbox" checked class="h-4 w-4 text-indigo-600 rounded">
+                <label for="is_active_checkbox" class="ml-2 text-sm text-gray-700">Kích hoạt</label>
             </div>
             <div class="flex justify-end space-x-3 pt-4">
                 <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Hủy</button>
@@ -90,6 +252,7 @@
     const API_BASE = '/api/admin/user-types/';
     // accessToken is already declared in base.html
     let editingId = null;
+    let isFullAccess = false;
 
     // Check auth - show message instead of immediate redirect
     if (!accessToken) {
@@ -105,6 +268,115 @@
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`
     };
+
+    // ========== PERMISSION BUILDER LOGIC ==========
+    function updatePermissionPreview() {
+        const preview = document.getElementById('permission-preview');
+        
+        if (isFullAccess) {
+            preview.innerHTML = '<span class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded font-medium">⭐ Toàn quyền (*)</span>';
+            return;
+        }
+        
+        const selectedPerms = getSelectedPermissions();
+        
+        if (selectedPerms.length === 0) {
+            preview.innerHTML = '<span class="text-gray-400 text-sm">(Chưa chọn quyền nào)</span>';
+        } else {
+            preview.innerHTML = selectedPerms.map(p => 
+                `<span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">${p}</span>`
+            ).join('');
+        }
+    }
+    
+    function getSelectedPermissions() {
+        if (isFullAccess) return ['*'];
+        
+        const checkboxes = document.querySelectorAll('.perm-checkbox:checked');
+        const perms = Array.from(checkboxes).map(cb => cb.value);
+        
+        // Add custom permissions
+        const customPerms = document.getElementById('custom-permissions').value
+            .split('\n')
+            .map(p => p.trim())
+            .filter(p => p);
+        
+        return [...perms, ...customPerms];
+    }
+    
+    function setSelectedPermissions(permissions) {
+        // Reset all
+        document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('custom-permissions').value = '';
+        document.getElementById('full-access-checkbox').checked = false;
+        isFullAccess = false;
+        
+        if (permissions.includes('*')) {
+            document.getElementById('full-access-checkbox').checked = true;
+            isFullAccess = true;
+            togglePermissionCheckboxes(true);
+            updatePermissionPreview();
+            return;
+        }
+        
+        togglePermissionCheckboxes(false);
+        
+        const customPerms = [];
+        permissions.forEach(perm => {
+            const checkbox = document.querySelector(`.perm-checkbox[value="${perm}"]`);
+            if (checkbox) {
+                checkbox.checked = true;
+            } else {
+                customPerms.push(perm);
+            }
+        });
+        
+        if (customPerms.length > 0) {
+            document.getElementById('custom-permissions').value = customPerms.join('\n');
+            document.getElementById('custom-permissions').classList.remove('hidden');
+        }
+        
+        updatePermissionPreview();
+    }
+    
+    function togglePermissionCheckboxes(disabled) {
+        document.querySelectorAll('.perm-checkbox').forEach(cb => {
+            cb.disabled = disabled;
+            cb.parentElement.classList.toggle('opacity-50', disabled);
+        });
+        document.querySelectorAll('.select-all-btn').forEach(btn => {
+            btn.disabled = disabled;
+            btn.classList.toggle('opacity-50', disabled);
+        });
+    }
+    
+    // Event listeners for permissions
+    document.querySelectorAll('.perm-checkbox').forEach(cb => {
+        cb.addEventListener('change', updatePermissionPreview);
+    });
+    
+    document.getElementById('full-access-checkbox').addEventListener('change', function() {
+        isFullAccess = this.checked;
+        togglePermissionCheckboxes(isFullAccess);
+        updatePermissionPreview();
+    });
+    
+    document.querySelectorAll('.select-all-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const group = this.dataset.group;
+            const checkboxes = document.querySelectorAll(`.perm-checkbox[data-group="${group}"]`);
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            updatePermissionPreview();
+        });
+    });
+    
+    document.getElementById('toggle-custom-perms').addEventListener('click', function() {
+        const textarea = document.getElementById('custom-permissions');
+        textarea.classList.toggle('hidden');
+    });
+    
+    document.getElementById('custom-permissions').addEventListener('input', updatePermissionPreview);
 
     // Load user types
     async function loadUserTypes() {
@@ -188,6 +460,8 @@
         editingId = null;
         document.getElementById('modal-title').textContent = 'Thêm loại người dùng';
         document.getElementById('user-type-form').reset();
+        document.getElementById('custom-permissions').classList.add('hidden');
+        setSelectedPermissions([]);
         document.getElementById('modal').classList.remove('hidden');
     });
 
@@ -206,8 +480,11 @@
             form.code.value = ut.code;
             form.name.value = ut.name;
             form.description.value = ut.description || '';
-            form.permissions.value = ut.permissions.join('\n');
             form.is_active.checked = ut.is_active;
+            
+            // Set permissions using new builder
+            setSelectedPermissions(ut.permissions);
+            
             document.getElementById('modal').classList.remove('hidden');
         } catch (error) {
             showAlert('Lỗi: ' + error.message, 'error');
@@ -235,11 +512,18 @@
     document.getElementById('user-type-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target;
+        
+        const permissions = getSelectedPermissions();
+        if (permissions.length === 0) {
+            showAlert('Vui lòng chọn ít nhất một quyền', 'error');
+            return;
+        }
+        
         const data = {
             code: form.code.value,
             name: form.name.value,
             description: form.description.value,
-            permissions: form.permissions.value.split('\n').filter(p => p.trim()),
+            permissions: permissions,
             is_active: form.is_active.checked
         };
 
