@@ -83,6 +83,51 @@ class AccessPolicyViewSet(viewsets.ModelViewSet):
             {'value': choice[0], 'label': choice[1]}
             for choice in AccessPolicy.ACTION_CHOICES
         ])
+    
+    @action(detail=False, methods=['post'])
+    def test_access(self, request):
+        """
+        Test access decision for debugging Hybrid RBAC+ABAC
+        
+        Request body:
+        {
+            "username": "john",  // or "user_id": 1
+            "resource": "document",
+            "action": "read"
+        }
+        
+        Returns detailed explanation of the decision
+        """
+        from django.contrib.auth.models import User
+        from crypto_access.services.casbin_service import casbin_service
+        
+        # Get user
+        username = request.data.get('username')
+        user_id = request.data.get('user_id')
+        resource = request.data.get('resource', 'document')
+        action = request.data.get('action', 'read')
+        
+        if not username and not user_id:
+            return Response(
+                {'error': 'username or user_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            if user_id:
+                user = User.objects.get(id=user_id)
+            else:
+                user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get detailed explanation
+        explanation = casbin_service.explain_decision(user, resource, action)
+        
+        return Response(explanation)
 
 
 def policies_page(request):

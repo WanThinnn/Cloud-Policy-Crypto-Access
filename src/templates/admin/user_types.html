@@ -72,14 +72,23 @@
             
             <!-- Permissions Builder -->
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div class="flex justify-between items-center mb-3">
-                    <label class="block text-sm font-medium text-blue-800">🔐 Phân quyền</label>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-sm font-medium text-blue-800">🔐 Quyền cơ bản (RBAC Layer)</label>
                     <div class="flex items-center gap-2">
                         <label class="inline-flex items-center text-xs">
                             <input type="checkbox" id="full-access-checkbox" class="text-red-600 rounded mr-1">
                             <span class="text-red-600 font-medium">⭐ Toàn quyền (*)</span>
                         </label>
                     </div>
+                </div>
+                
+                <!-- Explanation -->
+                <div class="mb-3 p-2 bg-white rounded border border-blue-100">
+                    <p class="text-xs text-gray-600">
+                        <strong>💡 Hybrid RBAC + ABAC:</strong><br>
+                        • <span class="text-blue-600 font-medium">Quyền cơ bản (ở đây)</span> = Khả năng TỐI ĐA mà loại người dùng này CÓ THỂ làm<br>
+                        • <span class="text-green-600 font-medium">Chính sách ABAC</span> = Điều kiện CHI TIẾT (phòng ban, thời gian, v.v.) để được thực hiện quyền
+                    </p>
                 </div>
                 
                 <!-- Permission Groups -->

@@ -7,8 +7,8 @@
     <!-- Header -->
     <div class="flex justify-between items-center">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Quản lý Chính sách Truy cập</h1>
-            <p class="mt-1 text-sm text-gray-600">Định nghĩa chính sách ABAC cho hệ thống (BM7)</p>
+            <h1 class="text-2xl font-bold text-gray-900">Quản lý Chính sách Truy cập (ABAC Layer)</h1>
+            <p class="mt-1 text-sm text-gray-600">Điều kiện chi tiết cho phân quyền - Áp dụng SAU khi đã có quyền cơ bản từ Loại người dùng</p>
         </div>
         <div class="flex gap-2">
             <button id="reload-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center">
@@ -28,6 +28,29 @@
 
     <!-- Alert -->
     <div id="alert" class="hidden rounded-md p-4"></div>
+    
+    <!-- Hybrid RBAC+ABAC Explanation -->
+    <div class="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-gray-800 mb-2">📋 Cách hoạt động của Hybrid RBAC + ABAC</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div class="bg-white rounded p-3 border border-blue-100">
+                <div class="font-medium text-blue-700 mb-1">Layer 1: RBAC (Loại người dùng)</div>
+                <p class="text-gray-600">Quyền cơ bản từ vai trò. VD: Data User có thể <code class="bg-gray-100 px-1 rounded">file_read</code>, <code class="bg-gray-100 px-1 rounded">file_download</code></p>
+                <div class="mt-1 text-blue-600">→ Nếu KHÔNG có quyền cơ bản → <span class="text-red-600 font-medium">TỪ CHỐI</span></div>
+            </div>
+            <div class="bg-white rounded p-3 border border-green-100">
+                <div class="font-medium text-green-700 mb-1">Layer 2: ABAC (Chính sách này)</div>
+                <p class="text-gray-600">Điều kiện chi tiết. VD: Chỉ phòng IT, mức bảo mật secret+ mới được đọc tài liệu kỹ thuật</p>
+                <div class="mt-1 text-green-600">→ Tinh chỉnh quyền theo ngữ cảnh cụ thể</div>
+            </div>
+        </div>
+        <div class="mt-2 text-xs text-gray-500 flex items-center">
+            <svg class="w-4 h-4 mr-1 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <strong>Lưu ý: </strong> Policy DENY luôn được ưu tiên hơn ALLOW. Không có policy → dùng kết quả RBAC.
+        </div>
+    </div>
 
     <!-- Policies Table -->
     <div class="bg-white shadow rounded-lg overflow-hidden">
