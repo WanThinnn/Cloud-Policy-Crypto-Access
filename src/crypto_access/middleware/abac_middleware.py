@@ -96,10 +96,11 @@ class ABACMiddleware:
     
     def _check_file_ownership(self, request, action):
         """
-        Check if user is the owner of the file being accessed.
+        Check if user is the owner of the file being accessed OR has explicit access grant.
         Owner can always access their own files (download, delete).
+        Users in granted_users list of FileAccessPolicy also bypass ABAC.
         
-        Returns True if user is owner, False otherwise.
+        Returns True if user is owner or has explicit grant, False otherwise.
         """
         if action not in ['download', 'delete', 'read']:
             return False
@@ -112,17 +113,25 @@ class ABACMiddleware:
             return False
         
         try:
-            from crypto_access.models import UploadedFile
+            from crypto_access.models import UploadedFile, FileAccessPolicy
+            
             uploaded_file = UploadedFile.objects.filter(
                 bucket__name=bucket_name,
                 file_path=file_path
             ).first()
             
+            # Check 1: User is the owner
             if uploaded_file and uploaded_file.uploaded_by == request.user:
                 logger.info(f"[ABAC-OWNER] User {request.user.username} is owner of {file_path}")
                 return True
+            
+            # Check 2: User has explicit access grant via FileAccessPolicy
+            if FileAccessPolicy.check_user_has_access(request.user, bucket_name, file_path):
+                logger.info(f"[ABAC-GRANT] User {request.user.username} has explicit access to {file_path}")
+                return True
+                
         except Exception as e:
-            logger.error(f"[ABAC-OWNER] Error checking ownership: {e}")
+            logger.error(f"[ABAC-OWNER] Error checking ownership/grant: {e}")
         
         return False
     

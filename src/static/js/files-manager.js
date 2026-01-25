@@ -14,6 +14,7 @@
     let currentContextFile = null;
     let availableFolders = [];
     let userPermissions = null;
+    let availablePolicies = []; // Cache available policies
 
     // Get access token from localStorage
     const accessToken = localStorage.getItem('access_token');
@@ -707,13 +708,110 @@
 
     async function openUploadModal() {
         document.getElementById('upload-modal').classList.remove('hidden');
-        await loadFolderList();
+        
+        // Reset form
+        document.getElementById('upload-form').reset();
+        document.getElementById('new-policy-form-upload').classList.add('hidden');
+        
+        // Load folders and policies in parallel
+        await Promise.all([
+            loadFolderList(),
+            loadPoliciesForUpload()
+        ]);
     }
 
     function closeUploadModal() {
         document.getElementById('upload-modal').classList.add('hidden');
         document.getElementById('upload-form').reset();
         document.getElementById('upload-progress-container').classList.add('hidden');
+        document.getElementById('new-policy-form-upload').classList.add('hidden');
+    }
+    
+    async function loadPoliciesForUpload() {
+        const select = document.getElementById('upload-policy-select');
+        select.innerHTML = '<option value="">Đang tải policies...</option>';
+        
+        try {
+            const response = await fetch(`${API_BASE}files/available_policies/`, { headers });
+            if (response.ok) {
+                const policies = await response.json();
+                select.innerHTML = `
+                    <option value="">-- Không gán policy (sử dụng ABAC mặc định) --</option>
+                    ${policies.map(p => `
+                        <option value="${p.id}" data-effect="${p.effect}">
+                            ${escapeHtml(p.name)} (${p.effect === 'allow' ? '✓ Allow' : '✕ Deny'})
+                        </option>
+                    `).join('')}
+                `;
+            } else {
+                select.innerHTML = '<option value="">-- Không gán policy --</option>';
+            }
+        } catch (error) {
+            console.error('Error loading policies:', error);
+            select.innerHTML = '<option value="">-- Không gán policy --</option>';
+        }
+    }
+    
+    function toggleNewPolicyForm() {
+        const form = document.getElementById('new-policy-form-upload');
+        form.classList.toggle('hidden');
+        
+        if (!form.classList.contains('hidden')) {
+            // Clear existing policy selection when creating new
+            document.getElementById('upload-policy-select').value = '';
+        }
+    }
+    
+    async function assignPolicyToUploadedFile(filePath, policyId, isCreatingNew) {
+        try {
+            let payload = {
+                file_path: filePath,
+                bucket_name: 'documents',
+                target_type: 'file',
+                notes: 'Assigned during upload'
+            };
+            
+            if (isCreatingNew) {
+                // Create new policy
+                const name = document.getElementById('upload-new-policy-name').value.trim();
+                const condition = document.getElementById('upload-new-policy-condition').value.trim();
+                const effect = document.querySelector('input[name="upload-policy-effect"]:checked').value;
+                
+                if (!name || !condition) {
+                    console.warn('New policy info incomplete, skipping policy assignment');
+                    return;
+                }
+                
+                payload.create_new_policy = true;
+                payload.new_policy_name = name;
+                payload.new_policy_description = `Policy for file: ${filePath}`;
+                payload.new_policy_subject_condition = condition;
+                payload.new_policy_effect = effect;
+            } else if (policyId) {
+                payload.policy_id = parseInt(policyId);
+            } else {
+                return; // No policy to assign
+            }
+            
+            const response = await fetch(`${API_BASE}files/assign_policy/`, {
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (response.ok) {
+                console.log('Policy assigned to uploaded file');
+            } else {
+                const err = await response.json().catch(() => ({}));
+                console.error('Failed to assign policy:', err);
+                // Don't show error - upload was successful, policy assignment is optional
+            }
+        } catch (error) {
+            console.error('Error assigning policy:', error);
+        }
     }
 
     async function loadFolderList() {
@@ -817,6 +915,21 @@
             if (response.ok) {
                 const result = await response.json();
                 console.log('Upload successful:', result);
+                
+                // Get the uploaded file path
+                const uploadedFilePath = folder ? `${folder}/${file.name}` : file.name;
+                
+                // Check if user wants to assign a policy
+                const policySelect = document.getElementById('upload-policy-select');
+                const selectedPolicyId = policySelect.value;
+                const newPolicyForm = document.getElementById('new-policy-form-upload');
+                const isCreatingNewPolicy = !newPolicyForm.classList.contains('hidden');
+                
+                if (selectedPolicyId || isCreatingNewPolicy) {
+                    // Assign policy to the uploaded file
+                    await assignPolicyToUploadedFile(uploadedFilePath, selectedPolicyId, isCreatingNewPolicy);
+                }
+                
                 showAlert('✅ Upload thành công!', 'success');
                 closeUploadModal();
                 loadFolder(currentPath);
@@ -885,7 +998,373 @@
             case 'delete':
                 deleteFile(currentContextFile);
                 break;
+            case 'assign_policy':
+                openAssignPolicyModal(currentContextFile);
+                break;
+            case 'view_policies':
+                openViewPoliciesModal(currentContextFile);
+                break;
         }
+    }
+
+    // ============= POLICY ASSIGNMENT =============
+    
+    let selectedPolicyId = null;
+    let currentPolicyTab = 'existing';
+    let assigningFilePath = null;
+    
+    async function loadAvailablePolicies() {
+        try {
+            const response = await fetch(`${API_BASE}files/available_policies/`, { headers });
+            if (response.ok) {
+                availablePolicies = await response.json();
+                renderPoliciesList(availablePolicies);
+            }
+        } catch (error) {
+            console.error('Error loading policies:', error);
+        }
+    }
+    
+    function renderPoliciesList(policies) {
+        const container = document.getElementById('policies-list');
+        
+        if (!policies || policies.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <svg class="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <p>Chưa có policy nào.</p>
+                    <p class="text-sm">Chuyển sang tab "Tạo Policy mới" để tạo.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = policies.map(policy => `
+            <div class="policy-item border rounded-lg p-3 cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 transition-all ${selectedPolicyId === policy.id ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500' : ''}"
+                 onclick="selectPolicy(${policy.id})">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium text-gray-900">${escapeHtml(policy.name)}</span>
+                            <span class="px-2 py-0.5 text-xs rounded-full ${policy.effect === 'allow' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                ${policy.effect === 'allow' ? '✓ Allow' : '✕ Deny'}
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-1">${escapeHtml(policy.description || 'Không có mô tả')}</p>
+                        <div class="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                            <span>Resource: ${policy.resource}</span>
+                            <span>Action: ${policy.action}</span>
+                        </div>
+                    </div>
+                    <div class="ml-2">
+                        ${selectedPolicyId === policy.id 
+                            ? '<svg class="w-6 h-6 text-indigo-600" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+                            : '<div class="w-6 h-6 border-2 border-gray-300 rounded-full"></div>'
+                        }
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function selectPolicy(policyId) {
+        selectedPolicyId = policyId;
+        renderPoliciesList(availablePolicies);
+    }
+    
+    function filterPolicies(query) {
+        const filtered = availablePolicies.filter(p => 
+            p.name.toLowerCase().includes(query.toLowerCase()) ||
+            (p.description && p.description.toLowerCase().includes(query.toLowerCase()))
+        );
+        renderPoliciesList(filtered);
+    }
+    
+    function switchPolicyTab(tab) {
+        currentPolicyTab = tab;
+        
+        // Update tab styles
+        document.getElementById('tab-existing').classList.toggle('border-indigo-600', tab === 'existing');
+        document.getElementById('tab-existing').classList.toggle('text-indigo-600', tab === 'existing');
+        document.getElementById('tab-existing').classList.toggle('border-transparent', tab !== 'existing');
+        document.getElementById('tab-existing').classList.toggle('text-gray-500', tab !== 'existing');
+        
+        document.getElementById('tab-new').classList.toggle('border-indigo-600', tab === 'new');
+        document.getElementById('tab-new').classList.toggle('text-indigo-600', tab === 'new');
+        document.getElementById('tab-new').classList.toggle('border-transparent', tab !== 'new');
+        document.getElementById('tab-new').classList.toggle('text-gray-500', tab !== 'new');
+        
+        // Show/hide panels
+        document.getElementById('panel-existing').classList.toggle('hidden', tab !== 'existing');
+        document.getElementById('panel-new').classList.toggle('hidden', tab !== 'new');
+    }
+    
+    async function openAssignPolicyModal(filePath) {
+        assigningFilePath = filePath;
+        selectedPolicyId = null;
+        currentPolicyTab = 'existing';
+        
+        // Reset form
+        document.getElementById('policy-search').value = '';
+        document.getElementById('new-policy-name').value = '';
+        document.getElementById('new-policy-description').value = '';
+        document.getElementById('new-policy-condition').value = '';
+        document.getElementById('assign-notes').value = '';
+        document.querySelector('input[name="policy-effect"][value="allow"]').checked = true;
+        
+        // Update file name display
+        const fileName = filePath.split('/').pop();
+        document.getElementById('assign-policy-file-name').textContent = `File: ${fileName}`;
+        
+        // Show modal
+        document.getElementById('assign-policy-modal').classList.remove('hidden');
+        
+        // Load policies
+        switchPolicyTab('existing');
+        await loadAvailablePolicies();
+    }
+    
+    function closeAssignPolicyModal() {
+        document.getElementById('assign-policy-modal').classList.add('hidden');
+        assigningFilePath = null;
+        selectedPolicyId = null;
+    }
+    
+    async function submitAssignPolicy() {
+        if (!assigningFilePath) return;
+        
+        const btn = document.getElementById('submit-assign-policy');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang xử lý...';
+        
+        try {
+            let payload = {
+                file_path: assigningFilePath,
+                bucket_name: 'documents',
+                target_type: 'file',
+                notes: document.getElementById('assign-notes').value
+            };
+            
+            if (currentPolicyTab === 'existing') {
+                if (!selectedPolicyId) {
+                    showAlert('❌ Vui lòng chọn một policy', 'error');
+                    return;
+                }
+                payload.policy_id = selectedPolicyId;
+            } else {
+                // Create new policy
+                const name = document.getElementById('new-policy-name').value.trim();
+                const condition = document.getElementById('new-policy-condition').value.trim();
+                const effect = document.querySelector('input[name="policy-effect"]:checked').value;
+                
+                if (!name || !condition) {
+                    showAlert('❌ Vui lòng điền đầy đủ thông tin policy', 'error');
+                    return;
+                }
+                
+                payload.create_new_policy = true;
+                payload.new_policy_name = name;
+                payload.new_policy_description = document.getElementById('new-policy-description').value.trim();
+                payload.new_policy_subject_condition = condition;
+                payload.new_policy_effect = effect;
+            }
+            
+            const response = await fetch(`${API_BASE}files/assign_policy/`, {
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showAlert('✅ Đã gán quyền thành công', 'success');
+                closeAssignPolicyModal();
+                // Reload policies cache
+                await loadAvailablePolicies();
+            } else {
+                showAlert('❌ ' + (result.error || 'Gán quyền thất bại'), 'error');
+            }
+        } catch (error) {
+            console.error('Assign policy error:', error);
+            showAlert('❌ Lỗi: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Gán quyền';
+        }
+    }
+    
+    async function openViewPoliciesModal(filePath) {
+        assigningFilePath = filePath;
+        
+        const fileName = filePath.split('/').pop();
+        document.getElementById('view-policies-file-name').textContent = `File: ${fileName}`;
+        document.getElementById('view-policies-modal').classList.remove('hidden');
+        
+        // Load file policies
+        const container = document.getElementById('file-policies-content');
+        container.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                Đang tải...
+            </div>
+        `;
+        
+        try {
+            const response = await fetch(
+                `${API_BASE}files/file_policies/?path=${encodeURIComponent(filePath)}&bucket=documents`,
+                { headers }
+            );
+            
+            if (!response.ok) {
+                throw new Error('Failed to load policies');
+            }
+            
+            const data = await response.json();
+            renderFilePolicies(data);
+        } catch (error) {
+            console.error('Error loading file policies:', error);
+            container.innerHTML = `
+                <div class="text-center py-8 text-red-500">
+                    <p>Lỗi khi tải thông tin quyền</p>
+                    <p class="text-sm">${error.message}</p>
+                </div>
+            `;
+        }
+    }
+    
+    function renderFilePolicies(data) {
+        const container = document.getElementById('file-policies-content');
+        const { direct_policies, inherited_folder_policies } = data;
+        
+        if (direct_policies.length === 0 && inherited_folder_policies.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    <p class="text-lg font-medium">Chưa có quyền nào được gán</p>
+                    <p class="text-sm mt-1">File này sử dụng quyền ABAC mặc định của hệ thống</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        
+        // Direct policies
+        if (direct_policies.length > 0) {
+            html += `
+                <div class="mb-6">
+                    <h4 class="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                        Quyền trực tiếp (${direct_policies.length})
+                    </h4>
+                    <div class="space-y-2">
+                        ${direct_policies.map(p => renderPolicyItem(p, true)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Inherited folder policies
+        if (inherited_folder_policies.length > 0) {
+            html += `
+                <div>
+                    <h4 class="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                        Kế thừa từ thư mục (${inherited_folder_policies.length})
+                    </h4>
+                    <div class="space-y-2">
+                        ${inherited_folder_policies.map(p => renderPolicyItem(p, false)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+    }
+    
+    function renderPolicyItem(policy, canRemove) {
+        return `
+            <div class="border rounded-lg p-3 bg-gray-50">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium text-gray-900">${escapeHtml(policy.policy_name)}</span>
+                            <span class="px-2 py-0.5 text-xs rounded-full ${policy.policy_effect === 'allow' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                ${policy.policy_effect === 'allow' ? '✓ Allow' : '✕ Deny'}
+                            </span>
+                        </div>
+                        ${policy.policy_description ? `<p class="text-sm text-gray-500 mt-1">${escapeHtml(policy.policy_description)}</p>` : ''}
+                        <div class="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                            <span>Gán bởi: ${policy.assigned_by_username || 'N/A'}</span>
+                            <span>Ngày: ${new Date(policy.assigned_at).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                        ${policy.notes ? `<p class="text-xs text-gray-500 mt-1 italic">"${escapeHtml(policy.notes)}"</p>` : ''}
+                    </div>
+                    ${canRemove ? `
+                        <button onclick="removePolicyAssignment(${policy.id})" 
+                            class="ml-2 p-1 text-red-500 hover:bg-red-50 rounded transition-colors" title="Xóa quyền này">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    async function removePolicyAssignment(assignmentId) {
+        if (!confirm('Xác nhận xóa quyền này?')) return;
+        
+        try {
+            const response = await fetch(
+                `${API_BASE}files/remove_policy/?assignment_id=${assignmentId}`,
+                { method: 'DELETE', headers }
+            );
+            
+            if (response.ok) {
+                showAlert('✅ Đã xóa quyền', 'success');
+                // Reload view
+                if (assigningFilePath) {
+                    openViewPoliciesModal(assigningFilePath);
+                }
+            } else {
+                const err = await response.json().catch(() => ({ error: 'Failed' }));
+                showAlert('❌ ' + (err.error || 'Xóa thất bại'), 'error');
+            }
+        } catch (error) {
+            showAlert('❌ Lỗi: ' + error.message, 'error');
+        }
+    }
+    
+    function closeViewPoliciesModal() {
+        document.getElementById('view-policies-modal').classList.add('hidden');
+    }
+    
+    function openAssignPolicyFromView() {
+        closeViewPoliciesModal();
+        if (assigningFilePath) {
+            openAssignPolicyModal(assigningFilePath);
+        }
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     async function deleteFile(filePath) {
@@ -1012,5 +1491,20 @@
     window.downloadFromPreview = downloadFromPreview;
     window.contextAction = contextAction;
     window.createFolder = createFolder;
+    
+    // Upload policy functions
+    window.toggleNewPolicyForm = toggleNewPolicyForm;
+    
+    // Policy assignment functions
+    window.selectPolicy = selectPolicy;
+    window.filterPolicies = filterPolicies;
+    window.switchPolicyTab = switchPolicyTab;
+    window.openAssignPolicyModal = openAssignPolicyModal;
+    window.closeAssignPolicyModal = closeAssignPolicyModal;
+    window.submitAssignPolicy = submitAssignPolicy;
+    window.openViewPoliciesModal = openViewPoliciesModal;
+    window.closeViewPoliciesModal = closeViewPoliciesModal;
+    window.removePolicyAssignment = removePolicyAssignment;
+    window.openAssignPolicyFromView = openAssignPolicyFromView;
 
 })(); // End of IIFE

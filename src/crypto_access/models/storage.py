@@ -4,6 +4,7 @@ Storage Models - Track uploaded files in database
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from .policy import AccessPolicy
 
 
 class StorageBucket(models.Model):
@@ -108,3 +109,165 @@ class UploadedFile(models.Model):
             return 'document'
         else:
             return 'other'
+
+
+class FileAccessPolicy(models.Model):
+    """
+    Link files/folders to access policies
+    Allows assigning existing policies to files or creating file-specific policies
+    """
+    
+    TARGET_TYPE_CHOICES = [
+        ('file', 'Single File'),
+        ('folder', 'Folder (recursive)'),
+    ]
+    
+    # Target: either a specific file or a folder path
+    uploaded_file = models.ForeignKey(
+        UploadedFile, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True,
+        related_name='access_policies',
+        help_text="Link to specific file (for file targets)"
+    )
+    folder_path = models.CharField(
+        max_length=500, 
+        blank=True,
+        help_text="Folder path for folder-level policies (e.g., 'hr/', 'finance/reports/')"
+    )
+    bucket = models.ForeignKey(
+        StorageBucket, 
+        on_delete=models.CASCADE,
+        related_name='folder_policies',
+        help_text="Storage bucket for folder policies"
+    )
+    target_type = models.CharField(
+        max_length=10, 
+        choices=TARGET_TYPE_CHOICES, 
+        default='file'
+    )
+    
+    # The policy to apply
+    policy = models.ForeignKey(
+        AccessPolicy,
+        on_delete=models.CASCADE,
+        related_name='file_assignments',
+        help_text="The access policy to apply to this file/folder"
+    )
+    
+    # Override: allows granting specific users direct access regardless of ABAC
+    granted_users = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='granted_file_access',
+        help_text="Users with explicit access to this file (bypasses ABAC)"
+    )
+    
+    # Audit
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='assigned_file_policies'
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, help_text="Notes about why this policy was assigned")
+    
+    class Meta:
+        db_table = 'file_access_policies'
+        verbose_name = 'File Access Policy'
+        verbose_name_plural = 'File Access Policies'
+        ordering = ['-assigned_at']
+        # Ensure unique policy per file/folder
+        unique_together = [
+            ('uploaded_file', 'policy'),
+            ('folder_path', 'bucket', 'policy'),
+        ]
+    
+    def __str__(self):
+        target = self.uploaded_file.file_name if self.uploaded_file else f"Folder: {self.folder_path}"
+        return f"{target} -> {self.policy.name}"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if not self.uploaded_file and not self.folder_path:
+            raise ValidationError("Either uploaded_file or folder_path must be set")
+        if self.uploaded_file and self.folder_path:
+            raise ValidationError("Cannot set both uploaded_file and folder_path")
+    
+    @classmethod
+    def get_policies_for_file(cls, bucket_name: str, file_path: str):
+        """
+        Get all policies that apply to a specific file.
+        Includes both direct file policies and inherited folder policies.
+        """
+        policies = []
+        
+        # Direct file policy
+        try:
+            bucket = StorageBucket.objects.get(name=bucket_name)
+            file_record = UploadedFile.objects.filter(
+                bucket=bucket, 
+                file_path=file_path
+            ).first()
+            
+            if file_record:
+                file_policies = cls.objects.filter(
+                    uploaded_file=file_record
+                ).select_related('policy')
+                policies.extend([fp.policy for fp in file_policies])
+            
+            # Folder policies (check all parent folders)
+            path_parts = file_path.split('/')
+            for i in range(len(path_parts)):
+                folder_path = '/'.join(path_parts[:i+1]) + '/' if i < len(path_parts) - 1 else '/'.join(path_parts[:i]) + '/'
+                folder_policies = cls.objects.filter(
+                    bucket=bucket,
+                    folder_path=folder_path,
+                    target_type='folder'
+                ).select_related('policy')
+                policies.extend([fp.policy for fp in folder_policies])
+                
+        except StorageBucket.DoesNotExist:
+            pass
+        
+        return list(set(policies))  # Remove duplicates
+    
+    @classmethod
+    def check_user_has_access(cls, user, bucket_name: str, file_path: str):
+        """
+        Check if user has explicit access to a file via granted_users.
+        Returns True if user is in granted_users of any applicable FileAccessPolicy.
+        """
+        try:
+            bucket = StorageBucket.objects.get(name=bucket_name)
+            file_record = UploadedFile.objects.filter(
+                bucket=bucket, 
+                file_path=file_path
+            ).first()
+            
+            if file_record:
+                # Check direct file grants
+                if cls.objects.filter(
+                    uploaded_file=file_record,
+                    granted_users=user
+                ).exists():
+                    return True
+            
+            # Check folder grants
+            path_parts = file_path.split('/')
+            for i in range(len(path_parts)):
+                folder_path = '/'.join(path_parts[:i+1]) + '/' if i < len(path_parts) - 1 else '/'.join(path_parts[:i]) + '/'
+                if cls.objects.filter(
+                    bucket=bucket,
+                    folder_path=folder_path,
+                    target_type='folder',
+                    granted_users=user
+                ).exists():
+                    return True
+                    
+        except StorageBucket.DoesNotExist:
+            pass
+        
+        return False

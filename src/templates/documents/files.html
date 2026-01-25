@@ -166,7 +166,12 @@
 <!-- Upload Modal -->
 <div id="upload-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">Upload Tài liệu</h3>
+        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            Upload Tài liệu
+        </h3>
         <form id="upload-form" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700">Chọn file</label>
@@ -191,6 +196,56 @@
                 <button type="button" onclick="refreshFolders()" class="text-xs text-indigo-600 hover:text-indigo-800 mt-1">
                     🔄 Làm mới danh sách
                 </button>
+            </div>
+
+            <!-- Access Policy Section -->
+            <div class="border-t pt-4 mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                    Gán quyền truy cập (tùy chọn)
+                </label>
+                
+                <select id="upload-policy-select" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                    <option value="">-- Không gán policy (sử dụng ABAC mặc định) --</option>
+                    <!-- Policies will be loaded here -->
+                </select>
+                <p class="mt-1 text-xs text-gray-500">Chọn policy để kiểm soát ai có thể truy cập file này</p>
+                
+                <!-- Quick create new policy -->
+                <div class="mt-3">
+                    <button type="button" onclick="toggleNewPolicyForm()" class="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        Tạo policy mới cho file này
+                    </button>
+                    
+                    <div id="new-policy-form-upload" class="hidden mt-3 p-3 bg-gray-50 rounded-lg border space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Tên Policy</label>
+                            <input type="text" id="upload-new-policy-name" placeholder="VD: HR-Confidential"
+                                class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Điều kiện (Subject Condition)</label>
+                            <input type="text" id="upload-new-policy-condition" placeholder="VD: r.sub.department == 'hr'"
+                                class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm font-mono">
+                            <p class="text-xs text-gray-400 mt-1">Sử dụng r.sub.[attribute] để kiểm tra thuộc tính user</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-1 text-xs cursor-pointer">
+                                <input type="radio" name="upload-policy-effect" value="allow" checked class="text-green-600">
+                                <span class="text-green-600">✓ Allow</span>
+                            </label>
+                            <label class="flex items-center gap-1 text-xs cursor-pointer">
+                                <input type="radio" name="upload-policy-effect" value="deny" class="text-red-600">
+                                <span class="text-red-600">✕ Deny</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t">
@@ -251,12 +306,179 @@
         Download
     </button>
     <hr class="my-1">
+    <button onclick="contextAction('assign_policy')" class="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-600 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+        Gán quyền truy cập
+    </button>
+    <button onclick="contextAction('view_policies')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+        </svg>
+        Xem quyền đã gán
+    </button>
+    <hr class="my-1">
     <button onclick="contextAction('delete')" class="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
         </svg>
         Xóa
     </button>
+</div>
+
+<!-- Assign Policy Modal -->
+<div id="assign-policy-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
+            <h3 class="text-xl font-bold flex items-center gap-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                Gán quyền truy cập
+            </h3>
+            <p class="text-indigo-100 mt-1 text-sm" id="assign-policy-file-name">File: </p>
+        </div>
+        
+        <div class="p-6 overflow-y-auto max-h-[60vh]">
+            <!-- Tabs -->
+            <div class="flex border-b mb-6">
+                <button id="tab-existing" onclick="switchPolicyTab('existing')" 
+                    class="px-4 py-2 border-b-2 border-indigo-600 text-indigo-600 font-medium">
+                    Chọn Policy có sẵn
+                </button>
+                <button id="tab-new" onclick="switchPolicyTab('new')" 
+                    class="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                    Tạo Policy mới
+                </button>
+            </div>
+            
+            <!-- Existing Policies Tab -->
+            <div id="panel-existing" class="space-y-4">
+                <div class="relative">
+                    <input type="text" id="policy-search" placeholder="Tìm kiếm policy..." 
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        oninput="filterPolicies(this.value)">
+                    <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+                
+                <div id="policies-list" class="space-y-2 max-h-64 overflow-y-auto">
+                    <!-- Policies will be loaded here -->
+                    <div class="text-center py-8 text-gray-500">
+                        <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                        Đang tải danh sách policies...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- New Policy Tab -->
+            <div id="panel-new" class="hidden space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tên Policy *</label>
+                    <input type="text" id="new-policy-name" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        placeholder="VD: HR-Read-Only">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                    <input type="text" id="new-policy-description" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        placeholder="VD: Cho phép bộ phận HR đọc file">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Điều kiện truy cập (Subject Condition) *</label>
+                    <textarea id="new-policy-condition" rows="3"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                        placeholder="VD: r.sub.department == 'hr'"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Sử dụng r.sub.[attribute] để truy cập thuộc tính người dùng. 
+                        VD: r.sub.department, r.sub.clearance_level, r.sub.user_type
+                    </p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Hiệu lực *</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="policy-effect" value="allow" checked 
+                                class="text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-green-600 font-medium">✓ Cho phép (Allow)</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="policy-effect" value="deny" 
+                                class="text-red-600 focus:ring-red-500">
+                            <span class="text-red-600 font-medium">✕ Từ chối (Deny)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Common: Notes -->
+            <div class="mt-4 pt-4 border-t">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú (tùy chọn)</label>
+                <input type="text" id="assign-notes" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    placeholder="VD: Gán quyền theo yêu cầu ticket #123">
+            </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 p-6 bg-gray-50 border-t">
+            <button onclick="closeAssignPolicyModal()" 
+                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Hủy
+            </button>
+            <button onclick="submitAssignPolicy()" id="submit-assign-policy"
+                class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Gán quyền
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- View Policies Modal -->
+<div id="view-policies-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
+            <h3 class="text-xl font-bold flex items-center gap-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                Quyền truy cập đã gán
+            </h3>
+            <p class="text-blue-100 mt-1 text-sm" id="view-policies-file-name">File: </p>
+        </div>
+        
+        <div class="p-6 overflow-y-auto max-h-[60vh]">
+            <div id="file-policies-content">
+                <!-- Content will be loaded here -->
+                <div class="text-center py-8 text-gray-500">
+                    <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    Đang tải...
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 p-6 bg-gray-50 border-t">
+            <button onclick="closeViewPoliciesModal()" 
+                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Đóng
+            </button>
+            <button onclick="openAssignPolicyFromView()" 
+                class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Thêm quyền mới
+            </button>
+        </div>
+    </div>
 </div>
 {% endblock %}
 

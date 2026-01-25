@@ -10,15 +10,23 @@ from django.http import HttpResponse
 from django.utils import timezone
 from datetime import timedelta
 import uuid
+import logging
 
-from ..models import StorageBucket, UploadedFile
+from ..models import StorageBucket, UploadedFile, FileAccessPolicy, AccessPolicy
 from ..serializers import (
     StorageBucketSerializer,
     UploadedFileSerializer,
     FileUploadSerializer,
     SignedUrlRequestSerializer
 )
+from ..serializers.storage import (
+    FileAccessPolicySerializer,
+    AssignPolicyToFileSerializer,
+    PolicyListForAssignmentSerializer
+)
 from ..services.storage_service import get_storage_service
+
+logger = logging.getLogger(__name__)
 
 
 class StorageBucketViewSet(viewsets.ModelViewSet):
@@ -477,5 +485,216 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': f"Failed to create folder: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    # ============= FILE ACCESS POLICY MANAGEMENT =============
+    
+    @action(detail=False, methods=['get'])
+    def available_policies(self, request):
+        """
+        Get list of available policies for assignment.
+        Filters policies that are applicable to documents/files.
+        """
+        policies = AccessPolicy.objects.filter(
+            is_active=True,
+            resource__in=['document', '*']  # Only document-related policies
+        ).order_by('priority', 'name')
+        
+        serializer = PolicyListForAssignmentSerializer(policies, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def file_policies(self, request):
+        """
+        Get policies assigned to a specific file or folder.
+        Query params: path, bucket (default: documents)
+        """
+        file_path = request.GET.get('path', '')
+        bucket_name = request.GET.get('bucket', 'documents')
+        
+        if not file_path:
+            return Response(
+                {'error': 'File path is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            bucket = StorageBucket.objects.get(name=bucket_name)
+        except StorageBucket.DoesNotExist:
+            return Response(
+                {'error': f"Bucket '{bucket_name}' not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get direct file policies
+        file_record = UploadedFile.objects.filter(
+            bucket=bucket,
+            file_path=file_path
+        ).first()
+        
+        file_policies = []
+        if file_record:
+            file_policies = FileAccessPolicy.objects.filter(
+                uploaded_file=file_record
+            ).select_related('policy', 'assigned_by')
+        
+        # Get folder policies that apply to this path
+        folder_policies = []
+        path_parts = file_path.split('/')
+        for i in range(len(path_parts)):
+            folder_path = '/'.join(path_parts[:i+1]) + '/'
+            fp = FileAccessPolicy.objects.filter(
+                bucket=bucket,
+                folder_path=folder_path,
+                target_type='folder'
+            ).select_related('policy', 'assigned_by')
+            folder_policies.extend(list(fp))
+        
+        return Response({
+            'file_path': file_path,
+            'bucket': bucket_name,
+            'direct_policies': FileAccessPolicySerializer(file_policies, many=True).data,
+            'inherited_folder_policies': FileAccessPolicySerializer(folder_policies, many=True).data
+        })
+    
+    @action(detail=False, methods=['post'])
+    def assign_policy(self, request):
+        """
+        Assign a policy to a file or folder.
+        Can use existing policy or create a new one.
+        """
+        serializer = AssignPolicyToFileSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        data = serializer.validated_data
+        file_path = data['file_path']
+        bucket_name = data['bucket_name']
+        target_type = data['target_type']
+        
+        try:
+            bucket = StorageBucket.objects.get(name=bucket_name)
+        except StorageBucket.DoesNotExist:
+            return Response(
+                {'error': f"Bucket '{bucket_name}' not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get or create the policy
+        policy = None
+        if data.get('policy_id'):
+            try:
+                policy = AccessPolicy.objects.get(id=data['policy_id'])
+            except AccessPolicy.DoesNotExist:
+                return Response(
+                    {'error': f"Policy ID {data['policy_id']} not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        elif data.get('create_new_policy'):
+            # Create new policy for this file
+            policy = AccessPolicy.objects.create(
+                name=data['new_policy_name'],
+                description=data.get('new_policy_description', ''),
+                subject_condition=data['new_policy_subject_condition'],
+                resource='document',
+                action='*',  # All actions for document
+                effect=data['new_policy_effect'],
+                created_by=request.user
+            )
+            logger.info(f"Created new policy '{policy.name}' for file assignment")
+        
+        # Create FileAccessPolicy
+        file_record = None
+        folder_path = ''
+        
+        if target_type == 'file':
+            file_record = UploadedFile.objects.filter(
+                bucket=bucket,
+                file_path=file_path
+            ).first()
+            
+            if not file_record:
+                return Response(
+                    {'error': f"File '{file_path}' not found in bucket '{bucket_name}'"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:  # folder
+            folder_path = file_path if file_path.endswith('/') else file_path + '/'
+        
+        # Check if policy already assigned
+        existing = FileAccessPolicy.objects.filter(
+            policy=policy,
+            bucket=bucket,
+        )
+        if target_type == 'file':
+            existing = existing.filter(uploaded_file=file_record)
+        else:
+            existing = existing.filter(folder_path=folder_path)
+        
+        if existing.exists():
+            return Response(
+                {'error': 'This policy is already assigned to this file/folder'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create the assignment
+        file_access_policy = FileAccessPolicy.objects.create(
+            uploaded_file=file_record if target_type == 'file' else None,
+            folder_path=folder_path if target_type == 'folder' else '',
+            bucket=bucket,
+            target_type=target_type,
+            policy=policy,
+            assigned_by=request.user,
+            notes=data.get('notes', '')
+        )
+        
+        # Add granted users if specified
+        if data.get('grant_user_ids'):
+            from django.contrib.auth.models import User
+            users = User.objects.filter(id__in=data['grant_user_ids'])
+            file_access_policy.granted_users.set(users)
+        
+        return Response({
+            'message': 'Policy assigned successfully',
+            'assignment': FileAccessPolicySerializer(file_access_policy).data
+        }, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['delete'])
+    def remove_policy(self, request):
+        """
+        Remove a policy assignment from a file/folder.
+        Query params: assignment_id
+        """
+        assignment_id = request.GET.get('assignment_id')
+        
+        if not assignment_id:
+            return Response(
+                {'error': 'assignment_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            assignment = FileAccessPolicy.objects.get(id=assignment_id)
+            
+            # Check if user is owner or admin
+            file_owner = None
+            if assignment.uploaded_file:
+                file_owner = assignment.uploaded_file.uploaded_by
+            
+            if not (request.user.is_superuser or 
+                    assignment.assigned_by == request.user or 
+                    file_owner == request.user):
+                return Response(
+                    {'error': 'You do not have permission to remove this policy assignment'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            assignment.delete()
+            return Response({'message': 'Policy assignment removed successfully'})
+            
+        except FileAccessPolicy.DoesNotExist:
+            return Response(
+                {'error': f"Assignment ID {assignment_id} not found"},
+                status=status.HTTP_404_NOT_FOUND
             )
 

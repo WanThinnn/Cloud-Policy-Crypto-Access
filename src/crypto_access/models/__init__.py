@@ -6,7 +6,7 @@ Models package for crypto_access app
 from .base import BaseModel, UserProfile
 
 # Storage models
-from .storage import StorageBucket, UploadedFile
+from .storage import StorageBucket, UploadedFile, FileAccessPolicy
 
 # ABAC Attribute models
 from .attributes import UserType, AttributeDefinition, UserAttribute
@@ -25,6 +25,7 @@ __all__ = [
     # Storage
     'StorageBucket',
     'UploadedFile',
+    'FileAccessPolicy',
     
     # ABAC Attributes
     'UserType',
