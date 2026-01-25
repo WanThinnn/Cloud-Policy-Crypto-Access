@@ -94,6 +94,38 @@ class ABACMiddleware:
         except Exception as e:
             logger.error(f"[ABAC-LOG] Failed to log access: {e}")
     
+    def _check_file_ownership(self, request, action):
+        """
+        Check if user is the owner of the file being accessed.
+        Owner can always access their own files (download, delete).
+        
+        Returns True if user is owner, False otherwise.
+        """
+        if action not in ['download', 'delete', 'read']:
+            return False
+        
+        # Get file path from query params
+        file_path = request.GET.get('path', '')
+        bucket_name = request.GET.get('bucket', 'documents')
+        
+        if not file_path:
+            return False
+        
+        try:
+            from crypto_access.models import UploadedFile
+            uploaded_file = UploadedFile.objects.filter(
+                bucket__name=bucket_name,
+                file_path=file_path
+            ).first()
+            
+            if uploaded_file and uploaded_file.uploaded_by == request.user:
+                logger.info(f"[ABAC-OWNER] User {request.user.username} is owner of {file_path}")
+                return True
+        except Exception as e:
+            logger.error(f"[ABAC-OWNER] Error checking ownership: {e}")
+        
+        return False
+    
     def __call__(self, request):
         # Debug: Log every request
         logger.info(f"[ABAC] Processing {request.method} {request.path}")
@@ -139,8 +171,11 @@ class ABACMiddleware:
                 # Get user attributes for logging
                 user_attributes = casbin_service.get_user_attributes(request.user)
                 
-                # Check ABAC permission
-                if not casbin_service.check_access(request.user, resource, action):
+                # Check if user is owner of the file (owners can always access their own files)
+                is_owner = self._check_file_ownership(request, action)
+                
+                # Check ABAC permission (skip if owner)
+                if not is_owner and not casbin_service.check_access(request.user, resource, action):
                     logger.error(f"[ABAC-DENY] Access DENIED - user:{request.user.username} resource:{resource} action:{action}")
                     
                     # Log denied access
@@ -164,15 +199,17 @@ class ABACMiddleware:
                         status=403
                     )
                 
-                logger.warning(f"[ABAC-ALLOW] Access ALLOWED - user:{request.user.username} resource:{resource} action:{action}")
+                allow_reason = 'owner_bypass' if is_owner else 'abac_allowed'
+                logger.warning(f"[ABAC-ALLOW] Access ALLOWED ({allow_reason}) - user:{request.user.username} resource:{resource} action:{action}")
                 
-                # Log allowed access
+                # Log allowed access with reason
                 self._log_access(
                     request=request,
                     resource=resource,
                     action=action,
                     result='allow',
-                    user_attributes=user_attributes
+                    user_attributes=user_attributes,
+                    error_message=f'Allowed via {allow_reason}' if is_owner else None
                 )
         
         # Continue with request

@@ -341,6 +341,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         Download file by path from Supabase
         GET /api/storage/files/download_by_path/?path=public/company-policy.md
         Protected by ABAC middleware - requires 'download' permission on 'document'
+        
+        Note: File owner can always download their own files regardless of ABAC policy
         """
         storage = get_storage_service()
         bucket_name = request.query_params.get('bucket', 'documents')
@@ -351,6 +353,15 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 {'error': 'path parameter is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Check if user is owner of this file (can bypass ABAC for their own files)
+        # This is already passed ABAC middleware, but we track ownership for audit
+        uploaded_file = UploadedFile.objects.filter(
+            bucket__name=bucket_name,
+            file_path=file_path
+        ).first()
+        
+        is_owner = uploaded_file and uploaded_file.uploaded_by == request.user
         
         try:
             file_data = storage.download_file(bucket_name, file_path)
@@ -363,7 +374,11 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 'txt': 'text/plain',
                 'pdf': 'application/pdf',
                 'doc': 'application/msword',
-                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg', 
+                'png': 'image/png',
+                'gif': 'image/gif',
             }
             content_type = content_types.get(ext, 'application/octet-stream')
             
@@ -374,6 +389,93 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response(
                 {'error': f"Download failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['delete'])
+    def delete_by_path(self, request):
+        """
+        Delete file by path from Supabase
+        DELETE /api/storage/files/delete_by_path/?path=public/file.md&bucket=documents
+        Protected by ABAC middleware - requires 'delete' permission on 'document'
+        """
+        storage = get_storage_service()
+        bucket_name = request.query_params.get('bucket', 'documents')
+        file_path = request.query_params.get('path', '')
+        
+        if not file_path:
+            return Response(
+                {'error': 'path parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Delete from Supabase Storage
+            storage.delete_file(bucket_name, [file_path])
+            
+            # Also delete from database if exists
+            UploadedFile.objects.filter(
+                bucket__name=bucket_name,
+                file_path=file_path
+            ).delete()
+            
+            return Response({
+                'message': f"File '{file_path}' deleted successfully"
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': f"Delete failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'])
+    def create_folder(self, request):
+        """
+        Create a folder in Supabase Storage
+        POST /api/storage/files/create_folder/
+        Body: { "folder_name": "hr", "bucket_name": "documents", "parent_path": "" }
+        """
+        bucket_name = request.data.get('bucket_name', 'documents')
+        folder_name = request.data.get('folder_name', '')
+        parent_path = request.data.get('parent_path', '')
+        
+        if not folder_name:
+            return Response(
+                {'error': 'folder_name is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate folder name
+        import re
+        if not re.match(r'^[a-zA-Z0-9_-]+$', folder_name):
+            return Response(
+                {'error': 'Folder name can only contain letters, numbers, underscore and hyphen'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        storage = get_storage_service()
+        
+        try:
+            # Create folder by uploading a placeholder file
+            # Supabase creates folders implicitly when files are uploaded
+            folder_path = f"{parent_path}/{folder_name}/.folder" if parent_path else f"{folder_name}/.folder"
+            
+            storage.upload_file(
+                bucket_name=bucket_name,
+                file_path=folder_path,
+                file_data=b'',  # Empty placeholder
+                content_type='text/plain'
+            )
+            
+            return Response({
+                'message': f"Folder '{folder_name}' created successfully",
+                'path': folder_path.replace('/.folder', '')
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {'error': f"Failed to create folder: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

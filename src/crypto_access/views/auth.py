@@ -307,7 +307,7 @@ def user_profile(request):
 def user_permissions(request):
     """
     Get current user's permissions and role info
-    Used by frontend to show/hide admin menu items
+    Used by frontend to show/hide admin menu items and control features
     
     GET /api/auth/permissions/
     """
@@ -323,11 +323,26 @@ def user_permissions(request):
         'can_manage_policies': False,
         'can_manage_files': False,
         'can_view_audit_logs': False,
+        # File permissions (for files manager)
+        'can_upload_files': False,
+        'can_download_files': False,
+        'can_delete_files': False,
     }
     
     if hasattr(user, 'profile') and user.profile:
         profile = user.profile
         user_type = profile.get_user_type_code()
+        
+        # Get base permissions from UserType
+        base_permissions = []
+        if profile.user_type_ref:
+            base_permissions = profile.user_type_ref.permissions or []
+        
+        # Helper to check permission
+        def has_perm(perm_list):
+            if '*' in base_permissions:
+                return True
+            return any(p in base_permissions for p in perm_list)
         
         permissions.update({
             'user_type': user_type,
@@ -337,10 +352,11 @@ def user_permissions(request):
             'can_manage_policies': profile.is_super_admin(),  # Only super admin
             'can_manage_files': user_type in ['super_admin', 'admin', 'data_owner'],
             'can_view_audit_logs': user_type in ['super_admin', 'admin', 'auditor'],
+            # File permissions based on UserType permissions
+            'can_upload_files': has_perm(['file_upload', 'file_create']),
+            'can_download_files': has_perm(['file_download', 'file_read']),
+            'can_delete_files': has_perm(['file_delete']),
+            'base_permissions': base_permissions,
         })
-        
-        # Get base permissions from UserType
-        if profile.user_type_ref:
-            permissions['base_permissions'] = profile.user_type_ref.permissions
     
     return Response(permissions)

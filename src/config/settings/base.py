@@ -235,6 +235,13 @@ ABAC_PROTECTED_ROUTES = [
         }
     },
     {
+        'pattern': r'^/api/storage/files/create_folder/',
+        'resource': 'document',
+        'methods': {
+            'POST': 'upload',  # Creating folder requires upload permission
+        }
+    },
+    {
         'pattern': r'^/api/storage/files/browse/',
         'resource': 'document',
         'methods': {
@@ -246,6 +253,13 @@ ABAC_PROTECTED_ROUTES = [
         'resource': 'document',
         'methods': {
             'GET': 'download',
+        }
+    },
+    {
+        'pattern': r'^/api/storage/files/delete_by_path/',
+        'resource': 'document',
+        'methods': {
+            'DELETE': 'delete',
         }
     },
     {

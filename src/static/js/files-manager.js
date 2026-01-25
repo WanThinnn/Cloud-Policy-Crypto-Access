@@ -13,8 +13,9 @@
     let allFiles = [];
     let currentContextFile = null;
     let availableFolders = [];
+    let userPermissions = null;
 
-    // Get access token from base template
+    // Get access token from localStorage
     const accessToken = localStorage.getItem('access_token');
     const headers = {
         'Authorization': `Bearer ${accessToken}`
@@ -22,16 +23,57 @@
 
     // ============= INITIALIZATION =============
 
-    if (!accessToken) {
-        document.getElementById('files-grid').innerHTML = `
-        <div class="col-span-full text-center py-8">
-            <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
-            <a href="/auth/login/" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md inline-block">Đăng nhập</a>
-        </div>`;
-    } else {
-        loadFolder('');
-        setupEventListeners();
+    async function initFileManager() {
+        if (!accessToken) {
+            showAuthRequired();
+            return;
+        }
+
+        // Check user permissions first
+        try {
+            const permResponse = await fetch('/api/auth/permissions/', { headers });
+            if (permResponse.status === 401) {
+                showAuthRequired();
+                return;
+            }
+            userPermissions = await permResponse.json();
+            
+            // Update UI based on permissions
+            updateUIForPermissions();
+            
+            // Load files
+            await loadFolder('');
+            setupEventListeners();
+        } catch (error) {
+            console.error('Init error:', error);
+            showError('Không thể kết nối đến server');
+        }
     }
+
+    function showAuthRequired() {
+        document.getElementById('files-grid').innerHTML = `
+        <div class="col-span-full text-center py-12">
+            <div class="text-6xl mb-4">🔐</div>
+            <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
+            <a href="/auth/login/?next=${encodeURIComponent(location.pathname)}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md inline-block">Đăng nhập</a>
+        </div>`;
+        // Hide upload button
+        const uploadBtn = document.getElementById('upload-btn');
+        if (uploadBtn) uploadBtn.classList.add('hidden');
+    }
+
+    function updateUIForPermissions() {
+        // Show/hide upload button based on permission
+        const uploadBtn = document.getElementById('upload-btn');
+        if (uploadBtn) {
+            // User needs file_upload or file_create permission
+            const canUpload = userPermissions.can_upload_files !== false;
+            uploadBtn.classList.toggle('hidden', !canUpload);
+        }
+    }
+
+    // Start initialization
+    initFileManager();
 
     // ============= EVENT LISTENERS =============
 
@@ -629,8 +671,36 @@
 
         if (!confirm(`Xóa ${selectedFiles.size} files đã chọn?`)) return;
 
-        showAlert('Chức năng bulk delete sẽ được implement đầy đủ sau', 'info');
+        showAlert(`Đang xóa ${selectedFiles.size} files...`, 'info');
+
+        let success = 0;
+        let failed = 0;
+
+        for (const filePath of selectedFiles) {
+            try {
+                const url = `${API_BASE}files/delete_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
+                const response = await fetch(url, { 
+                    method: 'DELETE',
+                    headers 
+                });
+                
+                if (response.ok) {
+                    success++;
+                } else if (response.status === 403) {
+                    failed++;
+                    showAlert('🚫 Bạn không có quyền xóa một số files', 'error');
+                } else {
+                    failed++;
+                }
+            } catch (error) {
+                failed++;
+            }
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        showAlert(`✅ Đã xóa ${success} files${failed > 0 ? `, ${failed} thất bại` : ''}`, 'success');
         clearSelection();
+        loadFolder(currentPath);
     }
 
     // ============= UPLOAD =============
@@ -813,10 +883,37 @@
                 downloadFile(currentContextFile);
                 break;
             case 'delete':
-                if (confirm('Xóa file này?')) {
-                    showAlert('Chức năng xóa sẽ được implement đầy đủ sau', 'info');
-                }
+                deleteFile(currentContextFile);
                 break;
+        }
+    }
+
+    async function deleteFile(filePath) {
+        if (!confirm(`Xóa file "${filePath.split('/').pop()}"?`)) return;
+        
+        try {
+            const url = `${API_BASE}files/delete_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
+            const response = await fetch(url, { 
+                method: 'DELETE',
+                headers 
+            });
+            
+            if (response.status === 403) {
+                const err = await response.json().catch(() => ({ error: 'Access denied' }));
+                showAlert('🚫 ' + (err.error || 'Bạn không có quyền xóa file này'), 'error');
+                return;
+            }
+            
+            if (response.ok) {
+                showAlert('✅ Đã xóa file thành công', 'success');
+                loadFolder(currentPath);
+            } else {
+                const err = await response.json().catch(() => ({ error: 'Delete failed' }));
+                showAlert('❌ ' + (err.error || 'Xóa file thất bại'), 'error');
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            showAlert('❌ Lỗi: ' + error.message, 'error');
         }
     }
 
@@ -859,7 +956,7 @@
         showAlert(message, 'error');
     }
 
-    function createFolder() {
+    async function createFolder() {
         const name = prompt('Tên thư mục mới:');
         if (!name) return;
 
@@ -868,7 +965,36 @@
             return;
         }
 
-        showAlert('Chức năng tạo thư mục sẽ được implement sau', 'info');
+        try {
+            const response = await fetch(`${API_BASE}files/create_folder/`, {
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    folder_name: name,
+                    bucket_name: 'documents',
+                    parent_path: currentPath
+                })
+            });
+
+            if (response.status === 403) {
+                showAlert('🚫 Bạn không có quyền tạo thư mục', 'error');
+                return;
+            }
+
+            if (response.ok) {
+                showAlert(`✅ Đã tạo thư mục "${name}"`, 'success');
+                loadFolder(currentPath);
+            } else {
+                const err = await response.json().catch(() => ({ error: 'Failed to create folder' }));
+                showAlert('❌ ' + (err.error || 'Tạo thư mục thất bại'), 'error');
+            }
+        } catch (error) {
+            console.error('Create folder error:', error);
+            showAlert('❌ Lỗi: ' + error.message, 'error');
+        }
     }
 
     // ============= EXPOSE TO GLOBAL SCOPE =============
@@ -876,6 +1002,7 @@
     window.handleFileClick = handleFileClick;
     window.previewFile = previewFile;
     window.downloadFile = downloadFile;
+    window.deleteFile = deleteFile;
     window.toggleSelection = toggleSelection;
     window.clearSelection = clearSelection;
     window.bulkDownload = bulkDownload;
@@ -884,9 +1011,6 @@
     window.closePreview = closePreview;
     window.downloadFromPreview = downloadFromPreview;
     window.contextAction = contextAction;
-    // Stub for createFolder helper
-    window.createFolder = function () {
-        showAlert('Tính năng tạo thư mục đang phát triển', 'info');
-    };
+    window.createFolder = createFolder;
 
 })(); // End of IIFE
