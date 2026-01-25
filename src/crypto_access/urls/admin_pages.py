@@ -4,7 +4,7 @@ Admin Page URLs (HTML templates without /api/ prefix)
 
 from django.urls import path
 from django.shortcuts import render
-from crypto_access.views import attributes, policy
+from crypto_access.views import attributes, policy, users
 
 app_name = 'admin_pages'
 
@@ -14,6 +14,7 @@ def files_page(request):
 
 urlpatterns = [
     # Admin template pages (HTML)
+    path('users/', users.users_page, name='users_page'),
     path('user-types/', attributes.user_types_page, name='user_types_page'),
     path('attributes/', attributes.attributes_page, name='attributes_page'),
     path('user-attributes/', attributes.user_attributes_page, name='user_attributes_page'),

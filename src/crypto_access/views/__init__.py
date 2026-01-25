@@ -42,6 +42,12 @@ from .policy import (
     policies_page,
 )
 
+# Import user management views
+from .users import (
+    UserManagementViewSet,
+    users_page,
+)
+
 __all__ = [
     # Base views
     'index',
@@ -78,5 +84,9 @@ __all__ = [
     # Policy management views
     'AccessPolicyViewSet',
     'policies_page',
+    
+    # User management views
+    'UserManagementViewSet',
+    'users_page',
 ]
 

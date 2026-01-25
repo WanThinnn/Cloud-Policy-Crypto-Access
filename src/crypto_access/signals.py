@@ -35,13 +35,16 @@ def user_deleted_handler(sender, instance, **kwargs):
     key_id = f"privkey_{instance.id}_placeholder"
     
     if old_attrs:
-        KeyRevocation.revoke_user_key(
-            user=instance,
+        # Create revocation record WITHOUT linking to user (since user will be deleted)
+        # Store username in reason_detail for audit purposes
+        KeyRevocation.objects.create(
+            user=None,  # Don't link to user since it's being deleted
             key_id=key_id,
             reason='account_termination',
             old_attributes=old_attrs,
             new_attributes={},
-            reason_detail=f'User account {instance.username} deleted'
+            reason_detail=f'User account {instance.username} (ID: {instance.id}) deleted',
+            status='completed'
         )
         logger.info(f"[KEY-REVOKE] User {instance.username} deleted - key revoked")
 
@@ -153,6 +156,16 @@ def handle_attribute_deletion(sender, instance, **kwargs):
     KeyRevocation = get_key_revocation_model()
     
     if sender != UserAttribute:
+        return
+    
+    # Check if user still exists and is not being deleted
+    # If user is being deleted, the user_deleted_handler will handle revocation
+    try:
+        user = instance.user
+        if user is None or not User.objects.filter(pk=user.pk).exists():
+            logger.info(f"[ATTR-DELETE] Skipping revocation - user is being deleted")
+            return
+    except User.DoesNotExist:
         return
     
     logger.warning(
