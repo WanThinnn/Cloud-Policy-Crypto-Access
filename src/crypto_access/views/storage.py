@@ -517,6 +517,71 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 {'error': f"Download failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+            
+    @action(detail=False, methods=['get'])
+    def preview_by_path(self, request):
+        """
+        Preview file by path from Supabase (displays in browser instead of downloading)
+        GET /api/storage/files/preview_by_path/?path=public/company-policy.md
+        Protected by ABAC middleware - requires 'read' permission on 'document'
+        """
+        storage = get_storage_service()
+        bucket_name = request.query_params.get('bucket', 'documents')
+        file_path = request.query_params.get('path', '')
+        
+        if not file_path:
+            return Response(
+                {'error': 'path parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if user is owner of this file (can bypass ABAC for their own files)
+        uploaded_file = UploadedFile.objects.filter(
+            bucket__name=bucket_name,
+            file_path=file_path
+        ).first()
+        
+        is_owner = uploaded_file and uploaded_file.uploaded_by == request.user
+        
+        try:
+            file_data = storage.download_file(bucket_name, file_path)
+            
+            # Decrypt if necessary
+            file_data = self._decrypt_file_if_needed(
+                file_data, 
+                bucket_name, 
+                file_path, 
+                request.user,
+                is_owner=is_owner
+            )
+            
+            file_name = file_path.split('/')[-1]
+            
+            # Guess content type
+            ext = file_name.split('.')[-1].lower() if '.' in file_name else ''
+            content_types = {
+                'md': 'text/markdown',
+                'txt': 'text/plain',
+                'pdf': 'application/pdf',
+                'doc': 'application/msword',
+                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg', 
+                'png': 'image/png',
+                'gif': 'image/gif',
+            }
+            content_type = content_types.get(ext, 'application/octet-stream')
+            
+            response = HttpResponse(file_data, content_type=content_type)
+            # Use inline instead of attachment for preview
+            response['Content-Disposition'] = f'inline; filename="{file_name}"'
+            return response
+            
+        except Exception as e:
+            return Response(
+                {'error': f"Preview failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=False, methods=['delete'])
     def delete_by_path(self, request):

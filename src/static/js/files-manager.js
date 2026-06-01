@@ -531,7 +531,7 @@
         </div>`;
 
         try {
-            const url = `${API_BASE}files/download_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
+            const url = `${API_BASE}files/preview_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
             console.log('Previewing file:', url);
             const response = await fetch(url, { headers });
 

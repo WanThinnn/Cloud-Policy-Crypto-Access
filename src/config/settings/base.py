@@ -256,6 +256,13 @@ ABAC_PROTECTED_ROUTES = [
         }
     },
     {
+        'pattern': r'^/api/storage/files/preview_by_path/',
+        'resource': 'document',
+        'methods': {
+            'GET': 'read',
+        }
+    },
+    {
         'pattern': r'^/api/storage/files/delete_by_path/',
         'resource': 'document',
         'methods': {
