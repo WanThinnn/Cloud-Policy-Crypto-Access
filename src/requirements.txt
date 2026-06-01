@@ -28,7 +28,7 @@ python-dotenv==1.0.1
 
 # Supabase Storage
 supabase==2.10.0
-storage3==0.8.1
+storage3>=0.9.0,<0.10.0
 
 # WSGI Server (for production)
 gunicorn==23.0.0
@@ -56,3 +56,7 @@ dj-database-url==2.1.0
 
 # Python Casbin
 pycasbin==2.7.1
+
+# Tailwind
+django-tailwind==3.8.0
+django-browser-reload==1.12.0
