@@ -369,8 +369,64 @@ class CasbinService:
             },
             
             # User context
-            'user_attributes': attrs,
         }
+
+
+    def get_allowed_policies_for_user(self, user, action: str = 'read') -> list[int]:
+        """
+        Pre-evaluates all active policies for a given user and action.
+        Returns a list of AccessPolicy IDs that evaluate to 'allow' for the user.
+        """
+        from crypto_access.models import AccessPolicy
+        
+        if user.is_superuser:
+            return list(AccessPolicy.objects.filter(is_active=True).values_list('id', flat=True))
+            
+        user_attrs = self.get_user_attributes(user)
+        
+        class AttrNamespace:
+            def __init__(self, attributes):
+                for k, v in attributes.items():
+                    setattr(self, k, v)
+            
+            def __getattr__(self, name):
+                return None
+        
+        r_sub = AttrNamespace(user_attrs)
+        eval_context = {
+            'r': type('Request', (), {'sub': r_sub})(),
+            'True': True,
+            'False': False,
+            'true': True,
+            'false': False,
+        }
+        
+        allowed_policy_ids = []
+        all_policies = AccessPolicy.objects.filter(is_active=True)
+        
+        for policy in all_policies:
+            if action == 'download':
+                if policy.action not in ['download', '*']:
+                    continue
+            elif action in ['read', 'view']:
+                if policy.action not in ['read', 'view', 'download', '*']:
+                    continue
+            else:
+                if policy.action not in [action, '*']:
+                    continue
+                    
+            try:
+                condition = policy.subject_condition.replace('&&', ' and ').replace('||', ' or ')
+                condition = condition.replace('!', 'not ')
+                
+                if eval(condition, {"__builtins__": {}}, eval_context):
+                    if policy.effect == 'allow':
+                        allowed_policy_ids.append(policy.id)
+            except Exception as e:
+                logger.error(f"[ABAC] Failed to evaluate policy {policy.id} condition: {e}")
+                continue
+                
+        return allowed_policy_ids
 
 
     def check_file_access(self, user, bucket_name: str, file_path: str, action: str = 'read') -> Tuple[bool, str]:

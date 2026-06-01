@@ -153,7 +153,10 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             if os.path.exists(temp_out_name): os.remove(temp_out_name)
     
     def get_queryset(self):
-        """Filter files by user or bucket"""
+        """Filter files by user, bucket, and ABAC policies"""
+        from django.db.models import Q
+        from crypto_access.services.casbin_service import casbin_service
+        
         queryset = super().get_queryset()
         
         # Filter by bucket
@@ -170,6 +173,32 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         my_files = self.request.query_params.get('my_files', None)
         if my_files and self.request.user.is_authenticated:
             queryset = queryset.filter(uploaded_by=self.request.user)
+        
+        # ABAC Post-filtering: only return files the user is allowed to see
+        if self.request.user.is_authenticated and not self.request.user.is_superuser:
+            # Step 1: Pre-evaluate which policies this user satisfies
+            allowed_policy_ids = casbin_service.get_allowed_policies_for_user(
+                self.request.user, 'read'
+            )
+            
+            # Step 2: Check if user has general read access via ABAC
+            has_general_read = casbin_service.check_access(
+                self.request.user, 'document', 'read'
+            )
+            
+            # Step 3: Build Q filter conditions
+            # Condition A: User is the file owner (always allowed)
+            condition = Q(uploaded_by=self.request.user)
+            
+            # Condition B: File has a policy that matches user's allowed policies
+            if allowed_policy_ids:
+                condition |= Q(access_policies__policy_id__in=allowed_policy_ids)
+            
+            # Condition C: File has no policy assigned AND user has general read access
+            if has_general_read:
+                condition |= Q(access_policies__isnull=True)
+            
+            queryset = queryset.filter(condition).distinct()
         
         return queryset
     
