@@ -35,12 +35,13 @@ from crypto_access.models import UserAttribute, AccessPolicy, UserType
 # Permission mapping: action → required permissions
 ACTION_PERMISSION_MAP = {
     # File/Document actions - READ and DOWNLOAD are SEPARATE
-    'read': ['file_read', 'file_view', 'file_read_limited', '*'],  # View only in browser
+    # File/Document actions
+    'read': ['file_read', 'file_view', 'file_read_limited', 'file_download', '*'],  # Download permission implies read
     'download': ['file_download', '*'],  # Export file - requires explicit permission
-    'write': ['file_create', 'file_write', '*'],
+    'write': ['file_create', 'file_write', 'file_upload', '*'],
     'update': ['file_update', 'file_write', '*'],
     'delete': ['file_delete', '*'],
-    'upload': ['file_upload', 'file_create', '*'],
+    'upload': ['file_upload', '*'],
     
     # Encryption actions
     'encrypt': ['file_encrypt', 'key_manage', '*'],
@@ -218,12 +219,15 @@ class CasbinService:
         
         sub = AttrNamespace(attrs)
         
-        # Action aliases - some actions imply others
-        # e.g., 'download' is a type of 'read', 'upload' is a type of 'write'
+        # Action aliases - higher level actions imply lower level ones
+        # e.g., 'download' permission grants 'read' access, 'upload' grants 'write'
         action_aliases = {
-            'download': ['download', 'read'],
-            'upload': ['upload', 'write', 'create'],
-            'view': ['view', 'read'],
+            'read': ['read', 'view', 'download'],  # If asking for read, checking download policy also works
+            'view': ['view', 'read', 'download'],
+            'download': ['download'],  # If asking for download, ONLY download policy works
+            'write': ['write', 'create', 'upload'],
+            'create': ['create', 'write', 'upload'],
+            'upload': ['upload'],
         }
         
         actions_to_check = action_aliases.get(action, [action])
@@ -419,17 +423,16 @@ class CasbinService:
         
         for policy in sorted_policies:
             # Check if action matches
-            # IMPORTANT: download does NOT inherit from read - they are separate permissions
-            # read policy covers: read, view
-            # download policy covers: download only
-            # '*' policy covers all
+            # If asking for download, requires explicit download or wildcard
+            # If asking for read, download policy also grants read
             if action == 'download':
-                # Download requires explicit download policy or wildcard
                 if policy.action not in ['download', '*']:
                     continue
+            elif action in ['read', 'view']:
+                if policy.action not in ['read', 'view', 'download', '*']:
+                    continue
             else:
-                # Read/view can use read policy or wildcard
-                if policy.action not in [action, 'read', '*']:
+                if policy.action not in [action, '*']:
                     continue
             
             # Evaluate the subject condition
