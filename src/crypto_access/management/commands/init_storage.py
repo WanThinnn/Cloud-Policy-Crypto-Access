@@ -3,7 +3,7 @@ Management command to initialize Supabase Storage buckets
 Usage: python manage.py init_storage
 """
 from django.core.management.base import BaseCommand
-from crypto_access.models_storage import StorageBucket
+from crypto_access.models import StorageBucket
 from crypto_access.services.storage_service import get_storage_service
 
 

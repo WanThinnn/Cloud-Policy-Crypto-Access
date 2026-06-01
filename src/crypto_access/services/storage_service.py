@@ -60,7 +60,7 @@ class SupabaseStorageService:
             if file_size_limit:
                 options["fileSizeLimit"] = file_size_limit
             
-            result = self.storage.create_bucket(bucket_name, options)
+            result = self.storage.create_bucket(id=bucket_name, name=bucket_name, options=options)
             logger.info(f"Bucket '{bucket_name}' created successfully (public={public})")
             return result
         except Exception as e:
