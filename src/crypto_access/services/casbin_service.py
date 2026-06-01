@@ -271,18 +271,14 @@ class CasbinService:
         # Layer 1: RBAC Check
         rbac_allowed, rbac_reason = self._check_rbac(user, resource, action)
         
-        if not rbac_allowed:
-            # RBAC denied - no need to check ABAC
-            return False
-        
-        # Layer 2: ABAC Check (only if RBAC passed)
+        # Layer 2: ABAC Check
         abac_result, abac_reason = self._check_abac(user, resource, action)
         
         if abac_result is False:
-            # Explicit ABAC deny
+            # Explicit ABAC deny (RESTRICT)
             return False
         elif abac_result is True:
-            # Explicit ABAC allow
+            # Explicit ABAC allow (EXTEND)
             return True
         else:
             # No ABAC policy matched - use RBAC result
