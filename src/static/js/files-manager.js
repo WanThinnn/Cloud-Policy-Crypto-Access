@@ -582,17 +582,12 @@
                     content.innerHTML = `<pre class="whitespace-pre-wrap font-mono text-sm bg-gray-50 p-4 rounded">${text}</pre>`;
                 }
             } else if (ext === 'pdf') {
-                // PDF preview - show message to download
+                // PDF preview using iframe
+                const blob = await response.blob();
+                const pdfUrl = URL.createObjectURL(blob);
                 content.innerHTML = `
-                <div class="text-center py-12">
-                    <svg class="mx-auto h-16 w-16 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
-                    </svg>
-                    <p class="mt-4 text-lg font-medium">PDF File</p>
-                    <p class="mt-2 text-sm text-gray-600">Không thể xem trước file PDF trong trình duyệt</p>
-                    <button onclick="downloadFromPreview()" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                        Download để xem
-                    </button>
+                <div style="width: 100%; height: 75vh; min-height: 500px;">
+                    <iframe src="${pdfUrl}#toolbar=0" style="width: 100%; height: 100%; border: none; border-radius: 0.5rem;" type="application/pdf" title="${fileName}"></iframe>
                 </div>`;
             } else {
                 // Unsupported format
