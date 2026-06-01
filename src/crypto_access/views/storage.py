@@ -25,6 +25,10 @@ from ..serializers.storage import (
     PolicyListForAssignmentSerializer
 )
 from ..services.storage_service import get_storage_service
+from ..services.cpabe_service import cpabe_service
+from ..services.casbin_service import casbin_service
+import tempfile
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +87,34 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     
+    def _decrypt_file_if_needed(self, file_data, bucket_name, file_path, user):
+        """Helper to decrypt file if it has a CP-ABE policy"""
+        file_policies = FileAccessPolicy.get_policies_for_file(bucket_name, file_path)
+        is_encrypted = any(p.cpabe_policy for p in file_policies)
+        
+        if not is_encrypted:
+            return file_data
+            
+        user_attrs = casbin_service.get_user_attributes(user)
+        
+        with tempfile.NamedTemporaryFile(delete=False) as f_key, \
+             tempfile.NamedTemporaryFile(delete=False) as f_in:
+            key_name = f_key.name
+            f_in.write(file_data)
+            temp_in_name = f_in.name
+            
+        temp_out_name = temp_in_name + ".dec"
+        
+        try:
+            cpabe_service.generate_user_key(user_attrs, key_name)
+            cpabe_service.decrypt_file(key_name, temp_in_name, temp_out_name)
+            with open(temp_out_name, 'rb') as f_out:
+                return f_out.read()
+        finally:
+            if os.path.exists(key_name): os.remove(key_name)
+            if os.path.exists(temp_in_name): os.remove(temp_in_name)
+            if os.path.exists(temp_out_name): os.remove(temp_out_name)
+    
     def get_queryset(self):
         """Filter files by user or bucket"""
         queryset = super().get_queryset()
@@ -129,6 +161,16 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         description = serializer.validated_data.get('description', '')
         tags = serializer.validated_data.get('tags', [])
         is_public = serializer.validated_data.get('is_public', False)
+        policy_id = serializer.validated_data.get('policy_id')
+        
+        policy_obj = None
+        cpabe_policy_str = None
+        if policy_id:
+            try:
+                policy_obj = AccessPolicy.objects.get(id=policy_id)
+                cpabe_policy_str = policy_obj.cpabe_policy
+            except AccessPolicy.DoesNotExist:
+                pass
         
         # Get or create bucket
         try:
@@ -148,8 +190,35 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         
         # Upload to Supabase
         storage = get_storage_service()
+        
+        # Check inherited policies from folders if no direct policy_id was provided
+        if not cpabe_policy_str:
+            inherited_policies = FileAccessPolicy.get_policies_for_file(bucket_name, file_path)
+            for p in inherited_policies:
+                if p.policy and p.policy.cpabe_policy:
+                    cpabe_policy_str = p.policy.cpabe_policy
+                    logger.info(f"Inheriting CP-ABE policy from folder: {cpabe_policy_str}")
+                    break
+        
         try:
             file_data = file.read()
+            
+            # Encrypt if policy has cpabe_policy
+            if cpabe_policy_str:
+                logger.info(f"Encrypting file with CP-ABE policy: {cpabe_policy_str}")
+                with tempfile.NamedTemporaryFile(delete=False) as f_in:
+                    f_in.write(file_data)
+                    temp_in_name = f_in.name
+                
+                temp_out_name = temp_in_name + ".enc"
+                try:
+                    cpabe_service.encrypt_file(temp_in_name, temp_out_name, cpabe_policy_str)
+                    with open(temp_out_name, 'rb') as f_out:
+                        file_data = f_out.read()
+                finally:
+                    if os.path.exists(temp_in_name): os.remove(temp_in_name)
+                    if os.path.exists(temp_out_name): os.remove(temp_out_name)
+
             upload_result = storage.upload_file(
                 bucket_name=bucket_name,
                 file_path=file_path,
@@ -183,6 +252,15 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 tags=tags
             )
             
+            if policy_obj:
+                FileAccessPolicy.objects.create(
+                    uploaded_file=uploaded_file,
+                    bucket=bucket,
+                    target_type='file',
+                    policy=policy_obj,
+                    assigned_by=request.user
+                )
+            
             return Response(
                 UploadedFileSerializer(uploaded_file).data,
                 status=status.HTTP_201_CREATED
@@ -204,6 +282,14 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             file_data = storage.download_file(
                 bucket_name=uploaded_file.bucket.name,
                 file_path=uploaded_file.file_path
+            )
+            
+            # Decrypt if necessary
+            file_data = self._decrypt_file_if_needed(
+                file_data, 
+                uploaded_file.bucket.name, 
+                uploaded_file.file_path, 
+                request.user
             )
             
             response = HttpResponse(file_data, content_type=uploaded_file.mime_type)
@@ -373,6 +459,15 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         
         try:
             file_data = storage.download_file(bucket_name, file_path)
+            
+            # Decrypt if necessary
+            file_data = self._decrypt_file_if_needed(
+                file_data, 
+                bucket_name, 
+                file_path, 
+                request.user
+            )
+            
             file_name = file_path.split('/')[-1]
             
             # Guess content type
@@ -654,6 +749,47 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             from django.contrib.auth.models import User
             users = User.objects.filter(id__in=data['grant_user_ids'])
             file_access_policy.granted_users.set(users)
+            
+        # Retroactive Encryption for File Assignment
+        if target_type == 'file' and policy.cpabe_policy:
+            storage = get_storage_service()
+            try:
+                # Check if it was already encrypted by another policy
+                other_policies = FileAccessPolicy.objects.filter(
+                    uploaded_file=file_record
+                ).exclude(id=file_access_policy.id)
+                
+                was_already_encrypted = any(p.policy.cpabe_policy for p in other_policies)
+                
+                if not was_already_encrypted:
+                    # Download plaintext
+                    file_data = storage.download_file(bucket_name, file_path)
+                    
+                    # Encrypt it
+                    logger.info(f"Retroactively encrypting file {file_path} with policy: {policy.cpabe_policy}")
+                    with tempfile.NamedTemporaryFile(delete=False) as f_in:
+                        f_in.write(file_data)
+                        temp_in_name = f_in.name
+                    
+                    temp_out_name = temp_in_name + ".enc"
+                    try:
+                        cpabe_service.encrypt_file(temp_in_name, temp_out_name, policy.cpabe_policy)
+                        with open(temp_out_name, 'rb') as f_out:
+                            enc_data = f_out.read()
+                            
+                        # Re-upload to overwrite the plaintext in Supabase
+                        storage.upload_file(
+                            bucket_name=bucket_name,
+                            file_path=file_path,
+                            file_data=enc_data,
+                            content_type=file_record.mime_type or 'application/octet-stream',
+                            upsert=True
+                        )
+                    finally:
+                        if os.path.exists(temp_in_name): os.remove(temp_in_name)
+                        if os.path.exists(temp_out_name): os.remove(temp_out_name)
+            except Exception as e:
+                logger.error(f"Failed to retroactively encrypt file {file_path}: {e}")
         
         return Response({
             'message': 'Policy assigned successfully',

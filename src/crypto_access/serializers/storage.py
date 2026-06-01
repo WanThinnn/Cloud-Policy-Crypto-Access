@@ -47,6 +47,7 @@ class FileUploadSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True)
     tags = serializers.ListField(child=serializers.CharField(), required=False)
     is_public = serializers.BooleanField(default=False)
+    policy_id = serializers.IntegerField(required=False, help_text="Policy ID for CP-ABE encryption")
     
     def validate_file(self, value):
         """Validate file size and type"""

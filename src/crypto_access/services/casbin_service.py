@@ -108,19 +108,25 @@ class CasbinService:
     
     def _load_policies_from_db(self):
         """Load all active policies from AccessPolicy model"""
+        from django.db.utils import OperationalError, ProgrammingError
+        
         # Clear existing policies
         self._enforcer.clear_policy()
         
         # Load from database
-        policies = AccessPolicy.objects.filter(is_active=True).order_by('priority')
-        for policy in policies:
-            # Add policy: sub_rule, obj, act, eft
-            self._enforcer.add_policy(
-                policy.subject_condition,
-                policy.resource,
-                policy.action,
-                policy.effect
-            )
+        try:
+            policies = AccessPolicy.objects.filter(is_active=True).order_by('priority')
+            for policy in policies:
+                # Add policy: sub_rule, obj, act, eft
+                self._enforcer.add_policy(
+                    policy.subject_condition,
+                    policy.resource,
+                    policy.action,
+                    policy.effect
+                )
+        except (OperationalError, ProgrammingError) as e:
+            # This happens during makemigrations when the table/columns don't exist yet
+            print(f"Skipping policy loading (likely during migrations): {e}")
     
     def reload_policies(self):
         """Reload policies from database (call after policy changes)"""

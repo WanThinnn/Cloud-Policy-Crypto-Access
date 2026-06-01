@@ -60,6 +60,13 @@ class AccessPolicy(BaseModel):
         help_text="ABAC condition expression using r.sub attributes. Example: r.sub.department == 'it'"
     )
     
+    cpabe_policy = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="Equivalent CP-ABE policy string. Example: (department:it and clearance_level:secret)"
+    )
+    
     # Resource and Action
     resource = models.CharField(
         max_length=50,
