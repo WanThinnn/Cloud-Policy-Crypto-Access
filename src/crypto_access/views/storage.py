@@ -87,7 +87,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     
-    def _decrypt_file_if_needed(self, file_data, bucket_name, file_path, user):
+    def _decrypt_file_if_needed(self, file_data, bucket_name, file_path, user, is_owner=False):
         """Helper to decrypt file if it has a CP-ABE policy"""
         file_policies = FileAccessPolicy.get_policies_for_file(bucket_name, file_path)
         is_encrypted = any(p.cpabe_policy for p in file_policies)
@@ -96,6 +96,24 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             return file_data
             
         user_attrs = casbin_service.get_user_attributes(user)
+        
+        # CP-ABE Bypass for SuperAdmin and File Owner
+        # We mathematically satisfy the policy by extracting required attributes from the policy string
+        if user.is_superuser or is_owner:
+            import re
+            for p in file_policies:
+                if p.cpabe_policy:
+                    tokens = re.findall(r'[a-zA-Z0-9_]+:[a-zA-Z0-9_]+', p.cpabe_policy)
+                    for token in tokens:
+                        k, v = token.split(':', 1)
+                        if k not in user_attrs:
+                            user_attrs[k] = []
+                        if isinstance(user_attrs[k], list):
+                            if v not in user_attrs[k]:
+                                user_attrs[k].append(v)
+                        else:
+                            if user_attrs[k] != v:
+                                user_attrs[k] = [user_attrs[k], v]
         
         with tempfile.NamedTemporaryFile(delete=False) as f_key, \
              tempfile.NamedTemporaryFile(delete=False) as f_in:
@@ -195,8 +213,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         if not cpabe_policy_str:
             inherited_policies = FileAccessPolicy.get_policies_for_file(bucket_name, file_path)
             for p in inherited_policies:
-                if p.policy and p.policy.cpabe_policy:
-                    cpabe_policy_str = p.policy.cpabe_policy
+                if p.cpabe_policy:
+                    cpabe_policy_str = p.cpabe_policy
                     logger.info(f"Inheriting CP-ABE policy from folder: {cpabe_policy_str}")
                     break
         
@@ -284,12 +302,16 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 file_path=uploaded_file.file_path
             )
             
+            # Check if user is owner
+            is_owner = uploaded_file.uploaded_by == request.user
+            
             # Decrypt if necessary
             file_data = self._decrypt_file_if_needed(
                 file_data, 
                 uploaded_file.bucket.name, 
                 uploaded_file.file_path, 
-                request.user
+                request.user,
+                is_owner=is_owner
             )
             
             response = HttpResponse(file_data, content_type=uploaded_file.mime_type)
@@ -465,7 +487,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 file_data, 
                 bucket_name, 
                 file_path, 
-                request.user
+                request.user,
+                is_owner=is_owner
             )
             
             file_name = file_path.split('/')[-1]
