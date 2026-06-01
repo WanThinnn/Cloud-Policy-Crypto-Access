@@ -1583,7 +1583,8 @@
                 file_path: assigningFilePath,
                 bucket_name: 'documents',
                 target_type: 'file',
-                notes: document.getElementById('assign-notes').value
+                notes: document.getElementById('assign-notes').value,
+                replace: document.getElementById('assign-replace-policy')?.checked || false
             };
             
             if (currentPolicyTab === 'existing') {
@@ -1970,5 +1971,10 @@
     window.closeViewPoliciesModal = closeViewPoliciesModal;
     window.removePolicyAssignment = removePolicyAssignment;
     window.openAssignPolicyFromView = openAssignPolicyFromView;
+    
+    // Context menu functions
+    window.showContextMenu = showContextMenu;
+    window.hideContextMenu = hideContextMenu;
+    window.contextAction = contextAction;
 
 })(); // End of IIFE

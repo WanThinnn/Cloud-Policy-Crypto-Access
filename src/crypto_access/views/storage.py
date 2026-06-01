@@ -815,69 +815,123 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         else:
             existing = existing.filter(folder_path=folder_path)
         
-        if existing.exists():
+        # Determine replace mode
+        replace_policies = self.request.data.get('replace', False) or self.request.query_params.get('replace', 'false').lower() == 'true'
+        
+        # Check ownership/admin rights for modifying policies
+        is_admin = getattr(request.user, 'is_superuser', False)
+        if hasattr(request.user, 'profile') and request.user.profile.user_type_ref:
+            if request.user.profile.user_type_ref.code in ['super_admin', 'admin']:
+                is_admin = True
+                
+        is_owner = file_record and file_record.uploaded_by == request.user
+        
+        if not (is_owner or is_admin):
+            return Response(
+                {'error': 'Only the file owner or an administrator can modify its policy.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if existing.exists() and not replace_policies:
             return Response(
                 {'error': 'This policy is already assigned to this file/folder'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Create the assignment
-        file_access_policy = FileAccessPolicy.objects.create(
-            uploaded_file=file_record if target_type == 'file' else None,
-            folder_path=folder_path if target_type == 'folder' else '',
-            bucket=bucket,
-            target_type=target_type,
-            policy=policy,
-            assigned_by=request.user,
-            notes=data.get('notes', '')
-        )
-        
-        # Add granted users if specified
-        if data.get('grant_user_ids'):
-            from django.contrib.auth.models import User
-            users = User.objects.filter(id__in=data['grant_user_ids'])
-            file_access_policy.granted_users.set(users)
-            
-        # Retroactive Encryption for File Assignment
-        if target_type == 'file' and policy.cpabe_policy:
+        # Handle Encryption / Re-encryption
+        if target_type == 'file':
             storage = get_storage_service()
             try:
-                # Check if it was already encrypted by another policy
-                other_policies = FileAccessPolicy.objects.filter(
+                # Find all existing policies to check if already encrypted
+                existing_all = FileAccessPolicy.objects.filter(
                     uploaded_file=file_record
-                ).exclude(id=file_access_policy.id)
+                )
+                was_already_encrypted = any(p.policy.cpabe_policy for p in existing_all)
                 
-                was_already_encrypted = any(p.policy.cpabe_policy for p in other_policies)
+                needs_encryption_update = False
+                file_data = None
                 
-                if not was_already_encrypted:
-                    # Download plaintext
+                if replace_policies:
+                    # If replacing, we must download, decrypt, and re-encrypt
+                    needs_encryption_update = True
+                    # Get plaintext bytes
                     file_data = storage.download_file(bucket_name, file_path)
+                    if was_already_encrypted:
+                        file_data = self._decrypt_file_if_needed(
+                            file_data, bucket_name, file_path, request.user, is_owner=True
+                        )
                     
-                    # Encrypt it
-                    logger.info(f"Retroactively encrypting file {file_path} with policy: {policy.cpabe_policy}")
-                    with tempfile.NamedTemporaryFile(delete=False) as f_in:
-                        f_in.write(file_data)
-                        temp_in_name = f_in.name
-                    
-                    temp_out_name = temp_in_name + ".enc"
-                    try:
-                        cpabe_service.encrypt_file(temp_in_name, temp_out_name, policy.cpabe_policy)
-                        with open(temp_out_name, 'rb') as f_out:
-                            enc_data = f_out.read()
-                            
-                        # Re-upload to overwrite the plaintext in Supabase
+                    # Delete old policies
+                    existing_all.delete()
+                else:
+                    if not was_already_encrypted and policy.cpabe_policy:
+                        needs_encryption_update = True
+                        file_data = storage.download_file(bucket_name, file_path)
+                        
+                # Create the assignment
+                file_access_policy = FileAccessPolicy.objects.create(
+                    uploaded_file=file_record,
+                    bucket=bucket,
+                    target_type=target_type,
+                    policy=policy,
+                    assigned_by=request.user,
+                    notes=data.get('notes', '')
+                )
+                
+                if needs_encryption_update:
+                    if policy.cpabe_policy:
+                        # Encrypt plaintext
+                        logger.info(f"Encrypting file {file_path} with policy: {policy.cpabe_policy}")
+                        with tempfile.NamedTemporaryFile(delete=False) as f_in:
+                            f_in.write(file_data)
+                            temp_in_name = f_in.name
+                        
+                        temp_out_name = temp_in_name + ".enc"
+                        try:
+                            cpabe_service.encrypt_file(temp_in_name, temp_out_name, policy.cpabe_policy)
+                            with open(temp_out_name, 'rb') as f_out:
+                                enc_data = f_out.read()
+                                
+                            storage.upload_file(
+                                bucket_name=bucket_name,
+                                file_path=file_path,
+                                file_data=enc_data,
+                                content_type=file_record.mime_type or 'application/octet-stream',
+                                upsert=True
+                            )
+                        finally:
+                            if os.path.exists(temp_in_name): os.remove(temp_in_name)
+                            if os.path.exists(temp_out_name): os.remove(temp_out_name)
+                    elif replace_policies:
+                        # Policy has no CP-ABE, and we are replacing -> Upload plaintext
+                        logger.info(f"Removing encryption for file {file_path}")
                         storage.upload_file(
                             bucket_name=bucket_name,
                             file_path=file_path,
-                            file_data=enc_data,
+                            file_data=file_data,
                             content_type=file_record.mime_type or 'application/octet-stream',
                             upsert=True
                         )
-                    finally:
-                        if os.path.exists(temp_in_name): os.remove(temp_in_name)
-                        if os.path.exists(temp_out_name): os.remove(temp_out_name)
             except Exception as e:
-                logger.error(f"Failed to retroactively encrypt file {file_path}: {e}")
+                logger.error(f"Failed to update encryption for file {file_path}: {e}")
+                return Response({'error': f"Failed to update encryption: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            # Create the assignment for folder
+            if replace_policies:
+                FileAccessPolicy.objects.filter(
+                    folder_path=folder_path,
+                    bucket=bucket,
+                    target_type=target_type
+                ).delete()
+                
+            file_access_policy = FileAccessPolicy.objects.create(
+                folder_path=folder_path,
+                bucket=bucket,
+                target_type=target_type,
+                policy=policy,
+                assigned_by=request.user,
+                notes=data.get('notes', '')
+            )
         
         return Response({
             'message': 'Policy assigned successfully',
