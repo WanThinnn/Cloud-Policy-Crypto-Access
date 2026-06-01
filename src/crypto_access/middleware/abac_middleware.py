@@ -221,12 +221,7 @@ class ABACMiddleware:
                     
                     return JsonResponse(
                         {
-                            'error': 'Access denied by ABAC policy',
-                            'reason': access_reason,
-                            'resource': resource,
-                            'action': action,
-                            'path': request.path,
-                            'user': request.user.username
+                            'error': 'You do not have permission to perform this action.',
                         },
                         status=403
                     )

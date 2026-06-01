@@ -2,9 +2,10 @@
 Authentication Views - Registration, Login, Password Management
 """
 from rest_framework import status, generics
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
@@ -13,6 +14,14 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
 import secrets
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class AuthRateThrottle(AnonRateThrottle):
+    """Rate limit: 5 attempts per minute for auth endpoints"""
+    rate = '5/min'
 
 from ..serializers import (
     RegisterSerializer,
@@ -39,6 +48,7 @@ def register_page(request):
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([AuthRateThrottle])
 def register(request):
     """
     Register new user
@@ -81,6 +91,7 @@ def register(request):
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([AuthRateThrottle])
 def login(request):
     """
     Login user
@@ -197,6 +208,7 @@ def change_password(request):
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([AuthRateThrottle])
 def password_reset_request(request):
     """
     Request password reset (send reset token)
@@ -225,9 +237,10 @@ def password_reset_request(request):
             # TODO: Send email with reset link
             # send_password_reset_email(user.email, reset_token)
             
+            logger.info(f"[AUTH] Password reset token generated for {email}")
+            
             return Response({
-                'message': 'Password reset instructions sent to email',
-                'debug_token': reset_token  # Remove this in production
+                'message': 'Password reset instructions sent to email'
             })
             
         except User.DoesNotExist:
