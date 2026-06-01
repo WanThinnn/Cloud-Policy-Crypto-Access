@@ -490,3 +490,7 @@ env/
 .vscode/
 
 tmp/
+
+
+# --- KEYS ---
+src/config/keys
