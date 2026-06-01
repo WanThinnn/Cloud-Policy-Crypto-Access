@@ -11,6 +11,11 @@ from django.utils import timezone
 from datetime import timedelta
 import uuid
 import logging
+import hashlib
+import json
+from django.core.cache import cache
+import tempfile
+import os
 
 from ..models import StorageBucket, UploadedFile, FileAccessPolicy, AccessPolicy
 from ..serializers import (
@@ -115,16 +120,30 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                             if user_attrs[k] != v:
                                 user_attrs[k] = [user_attrs[k], v]
         
+        # Calculate cache key based on attributes
+        attrs_str = json.dumps(user_attrs, sort_keys=True)
+        attrs_hash = hashlib.sha256(attrs_str.encode('utf-8')).hexdigest()
+        cache_key = f"cpabe_key_{user.id}_{attrs_hash}"
+        cached_key_data = cache.get(cache_key)
+        
         with tempfile.NamedTemporaryFile(delete=False) as f_key, \
              tempfile.NamedTemporaryFile(delete=False) as f_in:
             key_name = f_key.name
+            if cached_key_data:
+                f_key.write(cached_key_data)
+            
             f_in.write(file_data)
             temp_in_name = f_in.name
             
         temp_out_name = temp_in_name + ".dec"
         
         try:
-            cpabe_service.generate_user_key(user_attrs, key_name)
+            if not cached_key_data:
+                cpabe_service.generate_user_key(user_attrs, key_name)
+                # Cache the generated key for 1 hour
+                with open(key_name, 'rb') as f:
+                    cache.set(cache_key, f.read(), timeout=3600)
+                    
             cpabe_service.decrypt_file(key_name, temp_in_name, temp_out_name)
             with open(temp_out_name, 'rb') as f_out:
                 return f_out.read()
