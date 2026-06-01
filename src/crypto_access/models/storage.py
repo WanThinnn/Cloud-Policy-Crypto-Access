@@ -134,6 +134,7 @@ class FileAccessPolicy(models.Model):
     folder_path = models.CharField(
         max_length=500, 
         blank=True,
+        null=True,
         help_text="Folder path for folder-level policies (e.g., 'hr/', 'finance/reports/')"
     )
     bucket = models.ForeignKey(

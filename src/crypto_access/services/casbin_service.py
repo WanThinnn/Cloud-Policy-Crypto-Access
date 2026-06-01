@@ -219,15 +219,18 @@ class CasbinService:
         
         sub = AttrNamespace(attrs)
         
-        # Action aliases - higher level actions imply lower level ones
-        # e.g., 'download' permission grants 'read' access, 'upload' grants 'write'
+        # Action aliases
+        # If user requests X, check if they have policy for X OR any policy that implies X.
+        # e.g. 'download' policy implies 'read' access, so if requesting 'read', check 'download' too.
+        # 'write' policy implies 'upload' access, so if requesting 'upload', check 'write' too.
         action_aliases = {
-            'read': ['read', 'view', 'download'],  # If asking for read, checking download policy also works
+            'read': ['read', 'download'],  # Requesting read -> check read OR download
             'view': ['view', 'read', 'download'],
-            'download': ['download'],  # If asking for download, ONLY download policy works
-            'write': ['write', 'create', 'upload'],
-            'create': ['create', 'write', 'upload'],
-            'upload': ['upload'],
+            'download': ['download'],  # Requesting download -> ONLY check download
+            'write': ['write'],
+            'create': ['create', 'write'],
+            'upload': ['upload', 'write', 'create'],
+            'delete': ['delete', 'write']
         }
         
         actions_to_check = action_aliases.get(action, [action])

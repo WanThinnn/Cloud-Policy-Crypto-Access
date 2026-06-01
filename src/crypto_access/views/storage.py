@@ -789,7 +789,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         
         # Create FileAccessPolicy
         file_record = None
-        folder_path = ''
+        folder_path = None
         
         if target_type == 'file':
             file_record = UploadedFile.objects.filter(
