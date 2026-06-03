@@ -86,6 +86,14 @@
         document.getElementById('grid-view-btn').addEventListener('click', () => switchView('grid'));
         document.getElementById('list-view-btn').addEventListener('click', () => switchView('list'));
 
+        // Preview modal buttons
+        const btnCloseTop = document.getElementById('btn-close-preview-top');
+        if (btnCloseTop) btnCloseTop.addEventListener('click', closePreview);
+        const btnCloseBottom = document.getElementById('btn-close-preview-bottom');
+        if (btnCloseBottom) btnCloseBottom.addEventListener('click', closePreview);
+        const btnDownloadPreview = document.getElementById('btn-download-preview');
+        if (btnDownloadPreview) btnDownloadPreview.addEventListener('click', downloadFromPreview);
+
         // Upload modal
         document.getElementById('upload-btn').addEventListener('click', openUploadModal);
         document.getElementById('cancel-upload').addEventListener('click', closeUploadModal);
@@ -659,6 +667,7 @@
 
     function closePreview() {
         document.getElementById('preview-modal').classList.add('hidden');
+        document.getElementById('preview-content').innerHTML = '';
         currentContextFile = null;
     }
 

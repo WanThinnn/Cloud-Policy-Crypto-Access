@@ -345,11 +345,11 @@
 </div>
 
 <!-- File Preview Modal -->
-<div id="preview-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
+<div id="preview-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-[9999]">
     <div class="bg-white rounded-lg w-full mx-4 flex flex-col" style="max-width: 90vw; max-height: 90vh;">
-        <div class="flex items-center justify-between p-4 border-b">
+        <div class="flex items-center justify-between p-4 border-b relative z-10 bg-white rounded-t-lg shadow-sm">
             <h3 class="text-lg font-semibold" id="preview-title">Preview</h3>
-            <button onclick="closePreview()" class="text-gray-500 hover:text-gray-700">
+            <button id="btn-close-preview-top" onclick="document.getElementById('preview-modal').classList.add('hidden'); document.getElementById('preview-content').innerHTML = ''; window.currentContextFile = null;" class="text-gray-500 hover:text-gray-700">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -358,16 +358,16 @@
         <div id="preview-content" class="flex-1 overflow-auto p-6">
             <!-- Content here -->
         </div>
-        <div class="flex justify-between items-center p-4 border-t bg-gray-50">
+        <div class="flex justify-between items-center p-4 border-t bg-gray-50 relative z-10 rounded-b-lg shadow-inner">
             <div class="flex gap-2">
-                <button onclick="downloadFromPreview()" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-2">
+                <button id="btn-download-preview" onclick="if(window.downloadFile && window.currentContextFile) window.downloadFile(window.currentContextFile); else if(window.downloadFromPreview) window.downloadFromPreview();" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>
                     Download
                 </button>
             </div>
-            <button onclick="closePreview()" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">
+            <button id="btn-close-preview-bottom" onclick="document.getElementById('preview-modal').classList.add('hidden'); document.getElementById('preview-content').innerHTML = ''; window.currentContextFile = null;" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">
                 Đóng
             </button>
         </div>
@@ -643,5 +643,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/files-manager.js' %}"></script>
+<script src="{% static 'js/files-manager.js' %}?v=2"></script>
 {% endblock %}
