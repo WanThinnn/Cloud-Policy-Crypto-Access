@@ -140,10 +140,14 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             try:
                 return cpabe_service.decrypt_buffer(key_name, file_data)
             except Exception as e:
-                logger.error(f"Decryption failed: {e}. Returning original file data.")
-                # If decryption fails (e.g. file is plaintext but has a policy),
-                # fallback to returning original data
-                return file_data
+                error_msg = str(e)
+                logger.error(f"Decryption failed: {error_msg}")
+                # If the error is about unsupported format (-7 or 101), the file might actually be plaintext
+                if "(-7)" in error_msg or "(-8)" in error_msg or "101" in error_msg or "format" in error_msg.lower():
+                    logger.warning("Assuming file is plaintext due to format error. Returning original data.")
+                    return file_data
+                # Otherwise (e.g. -4 Crypto failed), it is a real decryption failure
+                raise Exception(f"Access Denied or Crypto Error: You do not have the required attributes to decrypt this file. ({error_msg})")
         finally:
             if os.path.exists(key_name):
                 os.remove(key_name)
