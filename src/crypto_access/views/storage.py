@@ -159,7 +159,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         from django.db.models import Q
         from crypto_access.services.casbin_service import casbin_service
         
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().filter(is_deleted=False)
         
         # Filter by bucket
         bucket_name = self.request.query_params.get('bucket', None)
@@ -403,23 +403,18 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['delete'])
     def delete_from_storage(self, request, pk=None):
-        """Delete file from both Supabase Storage and database"""
+        """Soft delete file (move to trash)"""
         uploaded_file = self.get_object()
-        storage = get_storage_service()
         
         try:
-            # Delete from Supabase
-            storage.delete_file(
-                bucket_name=uploaded_file.bucket.name,
-                file_paths=[uploaded_file.file_path]
-            )
-            
-            # Delete from database
+            # Soft delete in database
             file_name = uploaded_file.file_name
-            uploaded_file.delete()
+            uploaded_file.is_deleted = True
+            uploaded_file.deleted_at = timezone.now()
+            uploaded_file.save()
             
             return Response({
-                'message': f"File '{file_name}' deleted successfully"
+                'message': f"File '{file_name}' moved to trash successfully"
             })
             
         except Exception as e:
@@ -427,6 +422,51 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 {'error': f"Delete failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+            
+    @action(detail=False, methods=['get'])
+    def trash(self, request):
+        """List soft-deleted files (Admin only)"""
+        if not request.user.profile.is_admin():
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        trashed_files = UploadedFile.objects.filter(is_deleted=True).select_related('bucket', 'uploaded_by')
+        return Response(UploadedFileSerializer(trashed_files, many=True).data)
+        
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """Restore soft-deleted file (Admin only)"""
+        if not request.user.profile.is_admin():
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        try:
+            uploaded_file = UploadedFile.objects.get(pk=pk, is_deleted=True)
+            uploaded_file.is_deleted = False
+            uploaded_file.deleted_at = None
+            uploaded_file.save()
+            
+            return Response({
+                'message': f"File '{uploaded_file.file_name}' restored successfully"
+            })
+        except UploadedFile.DoesNotExist:
+            return Response({'error': 'File not found in trash'}, status=status.HTTP_404_NOT_FOUND)
+            
+    @action(detail=True, methods=['delete'])
+    def hard_delete(self, request, pk=None):
+        """Permanently delete file from DB and Supabase (SuperAdmin only)"""
+        if not request.user.profile.is_super_admin():
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        try:
+            uploaded_file = UploadedFile.objects.get(pk=pk, is_deleted=True)
+            file_name = uploaded_file.file_name
+            # This will trigger post_delete signal to remove from Supabase
+            uploaded_file.delete()
+            
+            return Response({
+                'message': f"File '{file_name}' permanently deleted"
+            })
+        except UploadedFile.DoesNotExist:
+            return Response({'error': 'File not found in trash'}, status=status.HTTP_404_NOT_FOUND)
     
     @action(detail=False, methods=['get'])
     def stats(self, request):

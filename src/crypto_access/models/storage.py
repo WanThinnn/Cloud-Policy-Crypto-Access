@@ -60,6 +60,10 @@ class UploadedFile(models.Model):
     tags = models.JSONField(default=list, blank=True)
     metadata = models.JSONField(default=dict, blank=True, help_text="Additional metadata")
     
+    # Soft Delete
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    
     # Timestamps
     uploaded_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

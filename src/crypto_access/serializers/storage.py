@@ -34,7 +34,8 @@ class UploadedFileSerializer(serializers.ModelSerializer):
             'file_type', 'mime_type', 'file_size', 'file_size_display',
             'public_url', 'signed_url', 'signed_url_expires_at',
             'uploaded_by', 'uploaded_by_username', 'description',
-            'tags', 'metadata', 'uploaded_at', 'updated_at'
+            'tags', 'metadata', 'uploaded_at', 'updated_at',
+            'is_deleted', 'deleted_at'
         ]
         read_only_fields = ['uploaded_at', 'updated_at']
 

@@ -12,6 +12,10 @@ def files_page(request):
     """Render document management page"""
     return render(request, 'documents/files.html')
 
+def trash_page(request):
+    """Render trash management page"""
+    return render(request, 'documents/trash.html')
+
 def user_attributes_redirect(request):
     """Redirect to users page (merged functionality)"""
     return redirect('admin_pages:users_page')
@@ -24,4 +28,5 @@ urlpatterns = [
     path('user-attributes/', user_attributes_redirect, name='user_attributes_page'),  # Redirects to users
     path('policies/', policy.policies_page, name='policies_page'),
     path('files/', files_page, name='files_page'),
+    path('trash/', trash_page, name='trash_page'),
 ]

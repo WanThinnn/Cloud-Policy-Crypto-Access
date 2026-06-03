@@ -682,9 +682,9 @@
     async function bulkDelete() {
         if (selectedFiles.size === 0) return;
 
-        if (!confirm(`Xóa ${selectedFiles.size} files đã chọn?`)) return;
+        if (!confirm(`Chuyển ${selectedFiles.size} files đã chọn vào thùng rác?`)) return;
 
-        showAlert(`Đang xóa ${selectedFiles.size} files...`, 'info');
+        showAlert(`Đang chuyển ${selectedFiles.size} files vào thùng rác...`, 'info');
 
         let success = 0;
         let failed = 0;
@@ -711,9 +711,34 @@
             await new Promise(resolve => setTimeout(resolve, 200));
         }
 
-        showAlert(`✅ Đã xóa ${success} files${failed > 0 ? `, ${failed} thất bại` : ''}`, 'success');
+        showAlert(`✅ Đã chuyển ${success} files vào thùng rác${failed > 0 ? `, ${failed} thất bại` : ''}`, 'success');
         clearSelection();
         loadFolder(currentPath);
+    }
+
+    async function deleteFile(filePath) {
+        if (!confirm(`Chuyển file này vào thùng rác?`)) return;
+        
+        showAlert(`Đang chuyển file vào thùng rác...`, 'info');
+        
+        try {
+            const url = `${API_BASE}files/delete_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
+            const response = await fetch(url, { 
+                method: 'DELETE',
+                headers 
+            });
+            
+            if (response.ok) {
+                showAlert(`✅ Đã chuyển file vào thùng rác`, 'success');
+                loadFolder(currentPath);
+            } else if (response.status === 403) {
+                showAlert('🚫 Bạn không có quyền xóa file này', 'error');
+            } else {
+                showAlert('❌ Lỗi chuyển file vào thùng rác', 'error');
+            }
+        } catch (error) {
+            showAlert('❌ Lỗi chuyển file vào thùng rác: ' + error.message, 'error');
+        }
     }
 
     // ============= UPLOAD =============
