@@ -900,10 +900,24 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     
                     # Delete old policies
                     existing_all.delete()
+                    policy_to_encrypt = policy.cpabe_policy
                 else:
-                    if not was_already_encrypted and policy.cpabe_policy:
+                    if policy.cpabe_policy:
                         needs_encryption_update = True
-                        file_data = storage.download_file(bucket_name, file_path)
+                        if was_already_encrypted:
+                            # Add operation: Combine all existing CP-ABE policies with the new one
+                            all_cpabe = [p.policy.cpabe_policy for p in existing_all if p.policy.cpabe_policy]
+                            all_cpabe.append(policy.cpabe_policy)
+                            policy_to_encrypt = " or ".join(f"({p})" for p in all_cpabe)
+                            
+                            # Decrypt existing file data first
+                            enc_data = storage.download_file(bucket_name, file_path)
+                            file_data = self._decrypt_file_if_needed(
+                                enc_data, bucket_name, file_path, request.user, is_owner=True
+                            )
+                        else:
+                            file_data = storage.download_file(bucket_name, file_path)
+                            policy_to_encrypt = policy.cpabe_policy
                         
                 # Create the assignment
                 file_access_policy = FileAccessPolicy.objects.create(
@@ -916,11 +930,11 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 )
                 
                 if needs_encryption_update:
-                    if policy.cpabe_policy:
+                    if policy_to_encrypt:
                         # Encrypt plaintext
-                        logger.info(f"Encrypting file {file_path} with policy: {policy.cpabe_policy}")
+                        logger.info(f"Encrypting file {file_path} with policy: {policy_to_encrypt}")
                         try:
-                            enc_data = cpabe_service.encrypt_buffer(file_data, policy.cpabe_policy)
+                            enc_data = cpabe_service.encrypt_buffer(file_data, policy_to_encrypt)
                             
                             storage.upload_file(
                                 bucket_name=bucket_name,

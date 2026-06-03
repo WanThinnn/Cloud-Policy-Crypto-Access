@@ -51,10 +51,10 @@ class CPABEService:
             self._encrypt_func.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
             self._encrypt_func.restype = ctypes.c_int
         
-        # int AC17decrypt(const char *publicKeyFile, const char *privateKeyFile, const char *ciphertextFile, const char *recovertextFile)
+        # int hybrid_cpabe_decrypt(const char *privateKeyFile, const char *ciphertextFile, const char *recovertextFile)
         self._decrypt_func = getattr(self._lib, 'AC17decrypt', getattr(self._lib, 'hybrid_cpabe_decrypt', None))
         if self._decrypt_func:
-            self._decrypt_func.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+            self._decrypt_func.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
             self._decrypt_func.restype = ctypes.c_int
             
         # Buffer-based Operations
@@ -191,7 +191,6 @@ class CPABEService:
             raise CPABEError("Decryption function not found in library")
             
         result = self._decrypt_func(
-            self.pk_path.encode('utf-8'),
             private_key_path.encode('utf-8'),
             input_path.encode('utf-8'),
             output_path.encode('utf-8')
