@@ -1,4 +1,5 @@
 import os
+import platform
 import ctypes
 import tempfile
 import logging
@@ -11,10 +12,16 @@ class CPABEError(Exception):
     pass
 
 class CPABEService:
-    """Wrapper for libhybrid-cp-abe.dll using ctypes"""
+    """Wrapper for libhybrid-cp-abe using ctypes"""
     
     def __init__(self):
-        self.dll_path = os.path.join(settings.BASE_DIR, 'lib', 'libhybrid-cp-abe.dll')
+        system = platform.system()
+        if system == 'Windows':
+            lib_name = 'libhybrid-cp-abe.dll'
+        else:
+            lib_name = 'libhybrid-cp-abe.so'
+            
+        self.dll_path = os.path.join(settings.BASE_DIR, 'lib', lib_name)
         self.keys_dir = os.path.join(settings.BASE_DIR, 'config', 'keys')
         self.msk_path = os.path.join(self.keys_dir, 'master_key.key')
         self.pk_path = os.path.join(self.keys_dir, 'public_key.key')
