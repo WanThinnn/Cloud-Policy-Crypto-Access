@@ -17,7 +17,7 @@ from django.core.cache import cache
 import tempfile
 import os
 
-from ..models import StorageBucket, UploadedFile, FileAccessPolicy, AccessPolicy
+from ..models import StorageBucket, UploadedFile, FileAccessPolicy, AccessPolicy, FileVersion
 from ..serializers import (
     StorageBucketSerializer,
     UploadedFileSerializer,
@@ -305,7 +305,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 bucket_name=bucket_name,
                 file_path=physical_path,
                 file_data=file_data,
-                content_type=file.content_type
+                content_type=file.content_type,
+                upsert=True
             )
             
             # Get URL (Note: For public files, we use the physical path)
@@ -322,7 +323,9 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             if existing_file:
                 uploaded_file = existing_file
                 uploaded_file.file_size = file.size
-                uploaded_file.save(update_fields=['file_size', 'updated_at'])
+                uploaded_file.is_deleted = False
+                uploaded_file.deleted_at = None
+                uploaded_file.save(update_fields=['file_size', 'updated_at', 'is_deleted', 'deleted_at'])
             else:
                 uploaded_file = UploadedFile.objects.create(
                     bucket=bucket,
@@ -584,37 +587,49 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         path = request.query_params.get('path', '')
         
         try:
-            files = storage.list_files(
+            # 1. Get folders from Supabase (to preserve empty folders)
+            supabase_items = storage.list_files(
                 bucket_name=bucket_name,
                 path=path,
                 limit=100
             )
+            folders = [f for f in supabase_items if f.get('id') is None]
             
-            # Get deleted files to filter them out
-            deleted_paths = set(UploadedFile.objects.filter(
-                bucket__name=bucket_name,
-                is_deleted=True
-            ).values_list('file_path', flat=True))
-            
-            # Transform to standard format
             result = []
-            for f in files:
-                is_folder = f.get('id') is None  # Folders don't have id
+            for f in folders:
                 f_path = f"{path}/{f.get('name', '')}" if path else f.get('name', '')
-                
-                # Skip if file is soft-deleted
-                if not is_folder and f_path in deleted_paths:
-                    continue
-                    
                 result.append({
                     'name': f.get('name', ''),
-                    'type': 'folder' if is_folder else 'file',
-                    'size': f.get('metadata', {}).get('size', 0) if not is_folder else None,
-                    'id': f.get('id'),
+                    'type': 'folder',
+                    'size': None,
+                    'id': None,
                     'created_at': f.get('created_at'),
                     'updated_at': f.get('updated_at'),
                     'path': f_path
                 })
+                
+            # 2. Get files from Database for THIS path
+            db_files = UploadedFile.objects.filter(
+                bucket__name=bucket_name,
+                is_deleted=False
+            )
+            
+            for db_file in db_files:
+                # Get the directory part of the file_path
+                parts = db_file.file_path.split('/')
+                file_dir = '/'.join(parts[:-1]) if len(parts) > 1 else ''
+                
+                # Only include files exactly in the current path (not subdirectories)
+                if file_dir == path:
+                    result.append({
+                        'name': db_file.file_name,
+                        'type': 'file',
+                        'size': db_file.file_size,
+                        'id': db_file.id,
+                        'created_at': db_file.uploaded_at,
+                        'updated_at': db_file.updated_at,
+                        'path': db_file.file_path
+                    })
             
             return Response({
                 'path': path,

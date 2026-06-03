@@ -6,7 +6,7 @@ Models package for crypto_access app
 from .base import BaseModel, UserProfile
 
 # Storage models
-from .storage import StorageBucket, UploadedFile, FileAccessPolicy
+from .storage import StorageBucket, UploadedFile, FileAccessPolicy, FileVersion
 
 # ABAC Attribute models
 from .attributes import UserType, AttributeDefinition, UserAttribute
