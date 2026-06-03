@@ -94,6 +94,14 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     
     def _decrypt_file_if_needed(self, file_data, bucket_name, file_path, user, is_owner=False):
         """Helper to decrypt file if it has a CP-ABE policy"""
+        # Fast path: Check if we recently decrypted this exact file for this user
+        file_hash = hashlib.sha256(file_data).hexdigest()
+        decrypted_cache_key = f"decrypted_{user.id}_{file_hash}"
+        cached_decrypted = cache.get(decrypted_cache_key)
+        if cached_decrypted:
+            logger.info(f"Returning decrypted data from cache for file: {file_path}")
+            return cached_decrypted
+
         file_policies = FileAccessPolicy.get_policies_for_file(bucket_name, file_path)
         is_encrypted = any(p.cpabe_policy for p in file_policies)
         
@@ -140,6 +148,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             try:
                 decrypted_data = cpabe_service.decrypt_buffer(key_name, file_data)
                 logger.info(f"CP-ABE Decryption successful for file: {file_path}")
+                # Cache the decrypted data for 10 minutes (600 seconds)
+                cache.set(decrypted_cache_key, decrypted_data, timeout=600)
                 return decrypted_data
             except Exception as e:
                 error_msg = str(e)
