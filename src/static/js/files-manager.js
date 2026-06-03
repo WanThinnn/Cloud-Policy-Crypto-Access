@@ -15,6 +15,11 @@
     let availableFolders = [];
     let userPermissions = null;
     let availablePolicies = []; // Cache available policies
+    
+    // Caches
+    const folderCache = new Map();
+    const CACHE_TTL = 60000; // 60 seconds
+    let policyCache = null;
 
     // Get access token from localStorage
     const accessToken = localStorage.getItem('access_token');
@@ -197,6 +202,17 @@
         updateBreadcrumb(path);
 
         try {
+            // Check cache first
+            if (folderCache.has(path)) {
+                const cached = folderCache.get(path);
+                if (Date.now() - cached.timestamp < CACHE_TTL) {
+                    console.log('Serving folder from cache:', path);
+                    allFiles = cached.data.files || [];
+                    renderFiles(allFiles);
+                    return;
+                }
+            }
+
             showLoading();
             const url = `${API_BASE}files/browse/?path=${encodeURIComponent(path)}&bucket=documents`;
             console.log('Loading folder:', url);
@@ -222,6 +238,10 @@
             }
 
             const data = await response.json();
+            
+            // Save to cache
+            folderCache.set(path, { data, timestamp: Date.now() });
+            
             allFiles = data.files || [];
             renderFiles(allFiles);
 
@@ -765,32 +785,8 @@
 
         showAlert(`✅ Đã chuyển ${success} files vào thùng rác${failed > 0 ? `, ${failed} thất bại` : ''}`, 'success');
         clearSelection();
+        folderCache.clear();
         loadFolder(currentPath);
-    }
-
-    async function deleteFile(filePath) {
-        if (!confirm(`Chuyển file này vào thùng rác?`)) return;
-        
-        showAlert(`Đang chuyển file vào thùng rác...`, 'info');
-        
-        try {
-            const url = `${API_BASE}files/delete_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
-            const response = await fetch(url, { 
-                method: 'DELETE',
-                headers 
-            });
-            
-            if (response.ok) {
-                showAlert(`✅ Đã chuyển file vào thùng rác`, 'success');
-                loadFolder(currentPath);
-            } else if (response.status === 403) {
-                showAlert('🚫 Bạn không có quyền xóa file này', 'error');
-            } else {
-                showAlert('❌ Lỗi chuyển file vào thùng rác', 'error');
-            }
-        } catch (error) {
-            showAlert('❌ Lỗi chuyển file vào thùng rác: ' + error.message, 'error');
-        }
     }
 
     // ============= UPLOAD =============
@@ -822,20 +818,24 @@
         select.innerHTML = '<option value="">Đang tải policies...</option>';
         
         try {
-            const response = await fetch(`${API_BASE}files/available_policies/`, { headers });
-            if (response.ok) {
-                const policies = await response.json();
-                select.innerHTML = `
-                    <option value="">-- Không gán policy (sử dụng ABAC mặc định) --</option>
-                    ${policies.map(p => `
-                        <option value="${p.id}" data-effect="${p.effect}">
-                            ${escapeHtml(p.name)} (${p.effect === 'allow' ? '✓ Allow' : '✕ Deny'})
-                        </option>
-                    `).join('')}
-                `;
+            if (policyCache && Date.now() - policyCache.timestamp < CACHE_TTL) {
+                availablePolicies = policyCache.data;
             } else {
-                select.innerHTML = '<option value="">-- Không gán policy --</option>';
+                const response = await fetch(`${API_BASE}files/available_policies/`, { headers });
+                if (response.ok) {
+                    availablePolicies = await response.json();
+                    policyCache = { data: availablePolicies, timestamp: Date.now() };
+                }
             }
+            
+            select.innerHTML = `
+                <option value="">-- Không gán policy (sử dụng ABAC mặc định) --</option>
+                ${availablePolicies.map(p => `
+                    <option value="${p.id}" data-effect="${p.effect}">
+                        ${escapeHtml(p.name)} (${p.effect === 'allow' ? '✓ Allow' : '✕ Deny'})
+                    </option>
+                `).join('')}
+            `;
         } catch (error) {
             console.error('Error loading policies:', error);
             select.innerHTML = '<option value="">-- Không gán policy --</option>';
@@ -1290,6 +1290,7 @@
             
             if (response.ok) {
                 console.log('Policy assigned to uploaded file');
+                policyCache = null; // Invalidate cache
             } else {
                 const err = await response.json().catch(() => ({}));
                 console.error('Failed to assign policy:', err);
@@ -1385,6 +1386,7 @@
                 
                 showAlert('✅ Upload thành công!', 'success');
                 closeUploadModal();
+                folderCache.clear();
                 loadFolder(currentPath);
             } else {
                 const err = await response.json().catch(() => ({ error: 'Upload thất bại' }));
@@ -1473,9 +1475,16 @@
     
     async function loadAvailablePolicies() {
         try {
+            if (policyCache && Date.now() - policyCache.timestamp < CACHE_TTL) {
+                availablePolicies = policyCache.data;
+                renderPoliciesList(availablePolicies);
+                return;
+            }
+
             const response = await fetch(`${API_BASE}files/available_policies/`, { headers });
             if (response.ok) {
                 availablePolicies = await response.json();
+                policyCache = { data: availablePolicies, timestamp: Date.now() };
                 renderPoliciesList(availablePolicies);
             }
         } catch (error) {
@@ -1679,6 +1688,7 @@
                 showAlert('✅ Đã gán quyền thành công', 'success');
                 closeAssignPolicyModal();
                 // Reload policies cache
+                policyCache = null;
                 await loadAvailablePolicies();
             } else {
                 showAlert('❌ ' + (result.error || 'Gán quyền thất bại'), 'error');
@@ -1833,6 +1843,7 @@
                 if (assigningFilePath) {
                     openViewPoliciesModal(assigningFilePath);
                 }
+                policyCache = null; // Invalidate cache
             } else {
                 const err = await response.json().catch(() => ({ error: 'Failed' }));
                 showAlert('❌ ' + (err.error || 'Xóa thất bại'), 'error');
@@ -1878,6 +1889,7 @@
             
             if (response.ok) {
                 showAlert('✅ Đã xóa file thành công', 'success');
+                folderCache.clear();
                 loadFolder(currentPath);
             } else {
                 const err = await response.json().catch(() => ({ error: 'Delete failed' }));
