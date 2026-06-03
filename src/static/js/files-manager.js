@@ -99,6 +99,21 @@
         const btnDownloadPreview = document.getElementById('btn-download-preview');
         if (btnDownloadPreview) btnDownloadPreview.addEventListener('click', downloadFromPreview);
 
+        // Context menu delegation
+        const handleContextMenu = (e) => {
+            const fileItem = e.target.closest('.file-item');
+            if (fileItem) {
+                e.preventDefault();
+                const filePath = fileItem.dataset.filepath;
+                const isFolder = fileItem.dataset.isfolder === 'true';
+                if (!isFolder) {
+                    showContextMenu(e, filePath, isFolder);
+                }
+            }
+        };
+        document.getElementById('files-grid').addEventListener('contextmenu', handleContextMenu);
+        document.getElementById('files-list').addEventListener('contextmenu', handleContextMenu);
+
         // Upload modal
         document.getElementById('upload-btn').addEventListener('click', openUploadModal);
         document.getElementById('cancel-upload').addEventListener('click', closeUploadModal);
@@ -324,7 +339,8 @@
             return `
             <div class="file-item group relative flex flex-col p-4 bg-white border border-gray-100 rounded-2xl transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-indigo-200 cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/50' : ''}"
                 onclick="handleFileClick('${filePath}', ${isFolder}, event)"
-                oncontextmenu="showContextMenu(event, '${filePath}', ${isFolder})">
+                data-filepath="${filePath}"
+                data-isfolder="${isFolder}">
                 
                 <!-- Selection Checkbox -->
                 <div class="absolute top-4 left-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity ${isSelected ? 'opacity-100' : ''}" onclick="event.stopPropagation()">
@@ -396,7 +412,8 @@
             return `
             <div class="file-item group flex items-center px-6 py-4 hover:bg-indigo-50/30 transition-colors border-b border-gray-100 last:border-0 cursor-pointer ${isSelected ? 'bg-indigo-50/60' : ''}"
                 onclick="handleFileClick('${filePath}', ${isFolder}, event)"
-                oncontextmenu="showContextMenu(event, '${filePath}', ${isFolder})">
+                data-filepath="${filePath}"
+                data-isfolder="${isFolder}">
                 
                 <div class="w-8 flex items-center justify-center mr-2" onclick="event.stopPropagation()">
                     <input type="checkbox" 
@@ -1464,6 +1481,9 @@
             case 'view_policies':
                 openViewPoliciesModal(currentContextFile);
                 break;
+            case 'versions':
+                openVersionHistoryModal(currentContextFile);
+                break;
         }
     }
 
@@ -1981,6 +2001,208 @@
         }
     }
 
+    // ============= VERSION HISTORY =============
+    
+    let currentVersionFile = null;
+
+    async function openVersionHistoryModal(filePath) {
+        currentVersionFile = filePath;
+        const fileName = filePath.split('/').pop();
+        document.getElementById('version-history-file-name').textContent = `File: ${fileName}`;
+        
+        const modal = document.getElementById('version-history-modal');
+        modal.classList.remove('hidden');
+        
+        const listContainer = document.getElementById('version-history-list');
+        listContainer.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                Đang tải...
+            </div>`;
+            
+        try {
+            // Find file ID
+            const file = allFiles.find(f => f.path === filePath);
+            if (!file || !file.id) {
+                throw new Error("File not found or missing ID");
+            }
+            
+            const response = await fetch(`${API_BASE}files/${file.id}/versions/`, { headers });
+            if (!response.ok) throw new Error("Failed to load versions");
+            
+            const data = await response.json();
+            
+            if (!data.versions || data.versions.length === 0) {
+                listContainer.innerHTML = `<div class="text-center py-4 text-gray-500">Không có lịch sử phiên bản</div>`;
+                return;
+            }
+            
+            let html = '';
+            data.versions.forEach((v, index) => {
+                const isLatest = index === 0;
+                const date = new Date(v.created_at).toLocaleString('vi-VN');
+                const size = (v.file_size / 1024).toFixed(1) + ' KB';
+                const policyText = v.cpabe_policy ? `Mã hóa CP-ABE (${v.cpabe_policy})` : 'Không mã hóa';
+                
+                html += `
+                <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between ${isLatest ? 'ring-1 ring-indigo-500' : ''}">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-indigo-50 rounded-lg flex flex-col items-center justify-center text-indigo-600">
+                            <span class="text-xs font-bold">v${v.version_number}</span>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-medium text-gray-900">Phiên bản ${v.version_number}</h4>
+                                ${isLatest ? '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full font-medium">Mới nhất</span>' : ''}
+                            </div>
+                            <p class="text-sm text-gray-500 mt-1">
+                                ${date} • ${size} • Uploaded by ${v.uploaded_by}
+                            </p>
+                            <p class="text-xs text-gray-400 mt-0.5">
+                                ${policyText}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="previewFileVersion('${filePath}', ${v.version_number})" class="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            Preview
+                        </button>
+                        <button onclick="downloadFileVersion('${filePath}', ${v.version_number})" class="px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 border border-indigo-100 rounded hover:bg-indigo-100 transition-colors flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            Tải xuống
+                        </button>
+                    </div>
+                </div>`;
+            });
+            listContainer.innerHTML = html;
+        } catch (error) {
+            console.error('Load versions error:', error);
+            listContainer.innerHTML = `<div class="text-center py-4 text-red-500">Lỗi: ${error.message}</div>`;
+        }
+    }
+
+    function closeVersionHistoryModal() {
+        document.getElementById('version-history-modal').classList.add('hidden');
+        currentVersionFile = null;
+    }
+
+    async function downloadFileVersion(filePath, versionNumber) {
+        try {
+            showAlert(`Đang tải phiên bản ${versionNumber}...`, 'info');
+            const url = `${API_BASE}files/download_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents&version=${versionNumber}`;
+
+            const response = await fetch(url, { headers });
+
+            if (response.status === 403) {
+                const error = await response.json().catch(() => ({ error: 'Access denied' }));
+                showAlert('🚫 ' + (error.error || 'Bạn không có quyền download file này'), 'error');
+                return;
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: response.statusText }));
+                throw new Error(errorData.error || 'Download failed');
+            }
+
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = filePath.split('/').pop();
+            if (contentDisposition) {
+                const matches = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (matches && matches[1]) {
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            } else {
+                const ext = filename.split('.').pop();
+                const base = filename.substring(0, filename.length - ext.length - 1);
+                filename = `${base}_v${versionNumber}.${ext}`;
+            }
+
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+
+            showAlert('✅ Download thành công!', 'success');
+        } catch (error) {
+            console.error('Download error:', error);
+            showAlert('❌ Lỗi download: ' + error.message, 'error');
+        }
+    }
+
+    async function previewFileVersion(filePath, versionNumber) {
+        closeVersionHistoryModal(); // Close version modal so preview is visible
+        
+        const fileName = filePath.split('/').pop();
+        const ext = fileName.split('.').pop().toLowerCase();
+        
+        let titleName = fileName;
+        if (ext) {
+            titleName = fileName.substring(0, fileName.length - ext.length - 1) + `_v${versionNumber}.` + ext;
+        } else {
+            titleName = fileName + `_v${versionNumber}`;
+        }
+        
+        document.getElementById('preview-title').textContent = titleName;
+        document.getElementById('preview-modal').classList.remove('hidden');
+
+        const content = document.getElementById('preview-content');
+
+        // Show loading
+        content.innerHTML = `
+        <div class="flex items-center justify-center py-12">
+            <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+            <span class="ml-3 text-lg text-gray-600">Đang tải và giải mã...</span>
+        </div>`;
+
+        try {
+            const previewUrl = `${API_BASE}files/preview_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents&version=${versionNumber}`;
+            const response = await fetch(previewUrl, { headers });
+
+            if (!response.ok) {
+                if (response.status === 403) throw new Error("Bạn không có quyền xem file này");
+                throw new Error("Không thể tải file preview");
+            }
+
+            const contentType = response.headers.get('content-type');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            if (contentType.startsWith('image/')) {
+                content.innerHTML = `<img src="${url}" class="max-w-full max-h-[70vh] object-contain mx-auto rounded-lg shadow-sm" />`;
+            } else if (contentType === 'application/pdf') {
+                content.innerHTML = `<iframe src="${url}" class="w-full h-[70vh] rounded-lg shadow-sm border-0"></iframe>`;
+            } else if (contentType.startsWith('text/')) {
+                const text = await blob.text();
+                // Escape HTML tags to prevent XSS and display properly
+                const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                content.innerHTML = `<pre class="whitespace-pre-wrap p-4 bg-gray-50 rounded-lg text-sm text-gray-800 border overflow-auto max-h-[70vh]">${escapedText}</pre>`;
+            } else {
+                content.innerHTML = `
+                <div class="text-center py-12">
+                    <div class="text-6xl mb-4">📁</div>
+                    <p class="text-gray-600 mb-4">Không thể xem trước định dạng file này (${ext})</p>
+                    <button onclick="downloadFileVersion('${filePath}', ${versionNumber})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg inline-flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Tải xuống phiên bản này
+                    </button>
+                </div>`;
+            }
+        } catch (error) {
+            content.innerHTML = `
+            <div class="text-center py-12">
+                <div class="text-6xl mb-4">❌</div>
+                <p class="text-red-600 font-medium">${error.message}</p>
+            </div>`;
+        }
+    }
+
+
     // ============= EXPOSE TO GLOBAL SCOPE =============
     window.loadFolder = loadFolder;
     window.handleFileClick = handleFileClick;
@@ -2033,5 +2255,11 @@
     window.showContextMenu = showContextMenu;
     window.hideContextMenu = hideContextMenu;
     window.contextAction = contextAction;
+    
+    // Version History functions
+    window.openVersionHistoryModal = openVersionHistoryModal;
+    window.closeVersionHistoryModal = closeVersionHistoryModal;
+    window.downloadFileVersion = downloadFileVersion;
+    window.previewFileVersion = previewFileVersion;
 
 })(); // End of IIFE

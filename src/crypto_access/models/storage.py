@@ -114,6 +114,31 @@ class UploadedFile(models.Model):
         else:
             return 'other'
 
+    def get_latest_version(self):
+        """Get the latest FileVersion object"""
+        return self.versions.order_by('-version_number').first()
+
+
+class FileVersion(models.Model):
+    """
+    Track versions of an uploaded file. Each version points to a physical file 
+    on the storage bucket and records the CP-ABE policy used to encrypt it.
+    """
+    file = models.ForeignKey(UploadedFile, on_delete=models.CASCADE, related_name='versions')
+    version_number = models.IntegerField(default=1)
+    physical_path = models.CharField(max_length=500, help_text="Actual path in storage (e.g. docs/report_v2.pdf)")
+    file_size = models.BigIntegerField(help_text="File size in bytes")
+    cpabe_policy = models.TextField(blank=True, null=True, help_text="CP-ABE policy string used to encrypt this specific version")
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'file_versions'
+        ordering = ['-version_number']
+        unique_together = ('file', 'version_number')
+        
+    def __str__(self):
+        return f"{self.file.file_name} - v{self.version_number}"
 
 class FileAccessPolicy(models.Model):
     """

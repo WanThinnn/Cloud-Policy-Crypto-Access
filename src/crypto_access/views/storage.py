@@ -92,7 +92,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     
-    def _decrypt_file_if_needed(self, file_data, bucket_name, file_path, user, is_owner=False):
+    def _decrypt_file_if_needed(self, file_data, bucket_name, file_path, user, is_owner=False, cpabe_policy_str=None):
         """Helper to decrypt file if it has a CP-ABE policy"""
         # Fast path: Check if we recently decrypted this exact file for this user
         file_hash = hashlib.sha256(file_data).hexdigest()
@@ -102,8 +102,13 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             logger.info(f"Returning decrypted data from cache for file: {file_path}")
             return cached_decrypted
 
-        file_policies = FileAccessPolicy.get_policies_for_file(bucket_name, file_path)
-        is_encrypted = any(p.cpabe_policy for p in file_policies)
+        if cpabe_policy_str is not None:
+            is_encrypted = bool(cpabe_policy_str)
+            policies_to_parse = [cpabe_policy_str] if is_encrypted else []
+        else:
+            file_policies = FileAccessPolicy.get_policies_for_file(bucket_name, file_path)
+            is_encrypted = any(p.cpabe_policy for p in file_policies)
+            policies_to_parse = [p.cpabe_policy for p in file_policies if p.cpabe_policy]
         
         if not is_encrypted:
             return file_data
@@ -114,9 +119,9 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         # We mathematically satisfy the policy by extracting required attributes from the policy string
         if user.is_superuser or is_owner:
             import re
-            for p in file_policies:
-                if p.cpabe_policy:
-                    tokens = re.findall(r'[a-zA-Z0-9_]+:[a-zA-Z0-9_]+', p.cpabe_policy)
+            for p_str in policies_to_parse:
+                if p_str:
+                    tokens = re.findall(r'[a-zA-Z0-9_]+:[a-zA-Z0-9_]+', p_str)
                     for token in tokens:
                         k, v = token.split(':', 1)
                         if k not in user_attrs:
@@ -166,7 +171,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Filter files by user, bucket, and ABAC policies"""
-        from django.db.models import Q
+        from crypto_access.models.storage import UploadedFile, StorageBucket, FileAccessPolicy, FileVersion
         from crypto_access.services.casbin_service import casbin_service
         
         queryset = super().get_queryset().filter(is_deleted=False)
@@ -259,12 +264,22 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Generate unique file path
+        # Determine logical file_path
         file_path = serializer.validated_data.get('file_path')
         if not file_path:
             ext = file.name.split('.')[-1] if '.' in file.name else ''
             unique_name = f"{uuid.uuid4()}.{ext}" if ext else str(uuid.uuid4())
             file_path = f"{timezone.now().strftime('%Y/%m/%d')}/{unique_name}"
+            
+        # Check if file exists for versioning
+        existing_file = UploadedFile.objects.filter(bucket=bucket, file_path=file_path).first()
+        version_number = 1
+        physical_path = file_path
+        
+        if existing_file:
+            latest_version = existing_file.get_latest_version()
+            version_number = (latest_version.version_number + 1) if latest_version else 2
+            physical_path = f"{file_path}_v{version_number}"
         
         # Upload to Supabase
         storage = get_storage_service()
@@ -288,35 +303,50 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
 
             upload_result = storage.upload_file(
                 bucket_name=bucket_name,
-                file_path=file_path,
+                file_path=physical_path,
                 file_data=file_data,
                 content_type=file.content_type
             )
             
-            # Get URL
+            # Get URL (Note: For public files, we use the physical path)
             if bucket.bucket_type == 'public':
-                file_url = storage.get_public_url(bucket_name, file_path)
+                file_url = storage.get_public_url(bucket_name, physical_path)
                 signed_url = None
                 signed_url_expires_at = None
             else:
                 file_url = None
-                signed_url = storage.create_signed_url(bucket_name, file_path, expires_in=3600)
+                signed_url = storage.create_signed_url(bucket_name, physical_path, expires_in=3600)
                 signed_url_expires_at = timezone.now() + timedelta(seconds=3600)
             
             # Save to database
-            uploaded_file = UploadedFile.objects.create(
-                bucket=bucket,
-                file_path=file_path,
-                file_name=file.name,
-                file_type=UploadedFile.detect_file_type(file.content_type),
-                mime_type=file.content_type,
+            if existing_file:
+                uploaded_file = existing_file
+                uploaded_file.file_size = file.size
+                uploaded_file.save(update_fields=['file_size', 'updated_at'])
+            else:
+                uploaded_file = UploadedFile.objects.create(
+                    bucket=bucket,
+                    file_path=file_path,
+                    file_name=file.name,
+                    file_type=UploadedFile.detect_file_type(file.content_type),
+                    mime_type=file.content_type,
+                    file_size=file.size,
+                    public_url=file_url,
+                    signed_url=signed_url,
+                    signed_url_expires_at=signed_url_expires_at,
+                    uploaded_by=request.user if request.user.is_authenticated else None,
+                    description=description,
+                    tags=tags
+                )
+            
+            # Create FileVersion
+            FileVersion.objects.create(
+                file=uploaded_file,
+                version_number=version_number,
+                physical_path=physical_path,
                 file_size=file.size,
-                public_url=file_url,
-                signed_url=signed_url,
-                signed_url_expires_at=signed_url_expires_at,
-                uploaded_by=request.user if request.user.is_authenticated else None,
-                description=description,
-                tags=tags
+                cpabe_policy=cpabe_policy_str,
+                uploaded_by=request.user if request.user.is_authenticated else None
             )
             
             if policy_obj:
@@ -344,11 +374,23 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         """Download file from Supabase Storage"""
         uploaded_file = self.get_object()
         storage = get_storage_service()
+        version_param = request.query_params.get('version')
         
         try:
+            # Determine which version to serve
+            if version_param:
+                file_version = uploaded_file.versions.filter(version_number=version_param).first()
+                if not file_version:
+                    return Response({'error': f'Version {version_param} not found'}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                file_version = uploaded_file.get_latest_version()
+                
+            physical_path = file_version.physical_path if file_version else uploaded_file.file_path
+            cpabe_policy_str = file_version.cpabe_policy if file_version else None
+            
             file_data = storage.download_file(
                 bucket_name=uploaded_file.bucket.name,
-                file_path=uploaded_file.file_path
+                file_path=physical_path
             )
             
             # Check if user is owner
@@ -360,11 +402,20 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 uploaded_file.bucket.name, 
                 uploaded_file.file_path, 
                 request.user,
-                is_owner=is_owner
+                is_owner=is_owner,
+                cpabe_policy_str=cpabe_policy_str
             )
             
             response = HttpResponse(file_data, content_type=uploaded_file.mime_type)
-            response['Content-Disposition'] = f'attachment; filename="{uploaded_file.file_name}"'
+            # Add version to filename if not latest
+            if version_param and file_version and file_version != uploaded_file.get_latest_version():
+                ext = uploaded_file.file_name.split('.')[-1] if '.' in uploaded_file.file_name else ''
+                base = uploaded_file.file_name[:-(len(ext)+1)] if ext else uploaded_file.file_name
+                file_name = f"{base}_v{version_param}.{ext}" if ext else f"{base}_v{version_param}"
+            else:
+                file_name = uploaded_file.file_name
+                
+            response['Content-Disposition'] = f'attachment; filename="{file_name}"'
             return response
             
         except Exception as e:
@@ -372,6 +423,27 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 {'error': f"Download failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=True, methods=['get'])
+    def versions(self, request, pk=None):
+        """Get version history for a file"""
+        uploaded_file = self.get_object()
+        
+        # Check basic read access
+        try:
+            versions = uploaded_file.versions.all().order_by('-version_number')
+            result = []
+            for v in versions:
+                result.append({
+                    'version_number': v.version_number,
+                    'file_size': v.file_size,
+                    'cpabe_policy': v.cpabe_policy,
+                    'uploaded_by': v.uploaded_by.username if v.uploaded_by else 'Unknown',
+                    'created_at': v.created_at
+                })
+            return Response({'versions': result})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
     def create_signed_url(self, request, pk=None):
@@ -584,8 +656,25 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         
         is_owner = uploaded_file and uploaded_file.uploaded_by == request.user
         
+        version_param = request.query_params.get('version')
+        
         try:
-            file_data = storage.download_file(bucket_name, file_path)
+            physical_path = file_path
+            cpabe_policy_str = None
+            
+            if uploaded_file:
+                if version_param:
+                    file_version = uploaded_file.versions.filter(version_number=version_param).first()
+                    if not file_version:
+                        return Response({'error': f'Version {version_param} not found'}, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    file_version = uploaded_file.get_latest_version()
+                    
+                if file_version:
+                    physical_path = file_version.physical_path
+                    cpabe_policy_str = file_version.cpabe_policy
+                    
+            file_data = storage.download_file(bucket_name, physical_path)
             
             # Decrypt if necessary
             file_data = self._decrypt_file_if_needed(
@@ -593,10 +682,15 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 bucket_name, 
                 file_path, 
                 request.user,
-                is_owner=is_owner
+                is_owner=is_owner,
+                cpabe_policy_str=cpabe_policy_str
             )
             
             file_name = file_path.split('/')[-1]
+            if version_param and file_version and file_version != uploaded_file.get_latest_version():
+                ext = file_name.split('.')[-1] if '.' in file_name else ''
+                base = file_name[:-(len(ext)+1)] if ext else file_name
+                file_name = f"{base}_v{version_param}.{ext}" if ext else f"{base}_v{version_param}"
             
             # Guess content type
             ext = file_name.split('.')[-1].lower() if '.' in file_name else ''
@@ -645,11 +739,27 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             bucket__name=bucket_name,
             file_path=file_path
         ).first()
-        
         is_owner = uploaded_file and uploaded_file.uploaded_by == request.user
         
+        version_param = request.query_params.get('version')
+        
         try:
-            file_data = storage.download_file(bucket_name, file_path)
+            physical_path = file_path
+            cpabe_policy_str = None
+            
+            if uploaded_file:
+                if version_param:
+                    file_version = uploaded_file.versions.filter(version_number=version_param).first()
+                    if not file_version:
+                        return Response({'error': f'Version {version_param} not found'}, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    file_version = uploaded_file.get_latest_version()
+                    
+                if file_version:
+                    physical_path = file_version.physical_path
+                    cpabe_policy_str = file_version.cpabe_policy
+                    
+            file_data = storage.download_file(bucket_name, physical_path)
             
             # Decrypt if necessary
             file_data = self._decrypt_file_if_needed(
@@ -657,10 +767,14 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 bucket_name, 
                 file_path, 
                 request.user,
-                is_owner=is_owner
+                is_owner=is_owner,
+                cpabe_policy_str=cpabe_policy_str
             )
-            
             file_name = file_path.split('/')[-1]
+            if version_param and file_version and file_version != uploaded_file.get_latest_version():
+                ext = file_name.split('.')[-1] if '.' in file_name else ''
+                base = file_name[:-(len(ext)+1)] if ext else file_name
+                file_name = f"{base}_v{version_param}.{ext}" if ext else f"{base}_v{version_param}"
             
             # Guess content type
             ext = file_name.split('.')[-1].lower() if '.' in file_name else ''
@@ -967,17 +1081,26 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 if replace_policies:
                     # If replacing, we must download, decrypt, and re-encrypt
                     needs_encryption_update = True
+                    latest_version = file_record.get_latest_version()
+                    physical_path = latest_version.physical_path if latest_version else file_path
+                    cpabe_policy_str = latest_version.cpabe_policy if latest_version else None
+                    
                     # Get plaintext bytes
-                    file_data = storage.download_file(bucket_name, file_path)
+                    file_data = storage.download_file(bucket_name, physical_path)
                     if was_already_encrypted:
                         file_data = self._decrypt_file_if_needed(
-                            file_data, bucket_name, file_path, request.user, is_owner=True
+                            file_data, bucket_name, file_path, request.user, is_owner=True, cpabe_policy_str=cpabe_policy_str
                         )
                     
                     # Delete old policies
                     existing_all.delete()
                     policy_to_encrypt = policy.cpabe_policy
+
                 else:
+                    latest_version = file_record.get_latest_version()
+                    physical_path = latest_version.physical_path if latest_version else file_path
+                    cpabe_policy_str = latest_version.cpabe_policy if latest_version else None
+                    
                     if policy.cpabe_policy:
                         needs_encryption_update = True
                         if was_already_encrypted:
@@ -987,12 +1110,12 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                             policy_to_encrypt = " or ".join(f"({p})" for p in all_cpabe)
                             
                             # Decrypt existing file data first
-                            enc_data = storage.download_file(bucket_name, file_path)
+                            enc_data = storage.download_file(bucket_name, physical_path)
                             file_data = self._decrypt_file_if_needed(
-                                enc_data, bucket_name, file_path, request.user, is_owner=True
+                                enc_data, bucket_name, file_path, request.user, is_owner=True, cpabe_policy_str=cpabe_policy_str
                             )
                         else:
-                            file_data = storage.download_file(bucket_name, file_path)
+                            file_data = storage.download_file(bucket_name, physical_path)
                             policy_to_encrypt = policy.cpabe_policy
                         
                 # Create the assignment
@@ -1008,30 +1131,37 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 if needs_encryption_update:
                     if policy_to_encrypt:
                         # Encrypt plaintext
-                        logger.info(f"Encrypting file {file_path} with policy: {policy_to_encrypt}")
+                        logger.info(f"Encrypting file {physical_path} with policy: {policy_to_encrypt}")
                         try:
                             enc_data = cpabe_service.encrypt_buffer(file_data, policy_to_encrypt)
                             
                             storage.upload_file(
                                 bucket_name=bucket_name,
-                                file_path=file_path,
+                                file_path=physical_path,
                                 file_data=enc_data,
                                 content_type=file_record.mime_type or 'application/octet-stream',
                                 upsert=True
                             )
+                            # Update FileVersion cpabe_policy
+                            if latest_version:
+                                latest_version.cpabe_policy = policy_to_encrypt
+                                latest_version.save(update_fields=['cpabe_policy'])
                         except Exception as e:
                             logger.error(f"Failed to encrypt file data during policy assignment: {e}")
                             raise
                     elif replace_policies:
                         # Policy has no CP-ABE, and we are replacing -> Upload plaintext
-                        logger.info(f"Removing encryption for file {file_path}")
+                        logger.info(f"Removing encryption for file {physical_path}")
                         storage.upload_file(
                             bucket_name=bucket_name,
-                            file_path=file_path,
+                            file_path=physical_path,
                             file_data=file_data,
                             content_type=file_record.mime_type or 'application/octet-stream',
                             upsert=True
                         )
+                        if latest_version:
+                            latest_version.cpabe_policy = ''
+                            latest_version.save(update_fields=['cpabe_policy'])
             except Exception as e:
                 logger.error(f"Failed to update encryption for file {file_path}: {e}")
                 return Response({'error': f"Failed to update encryption: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
