@@ -203,7 +203,7 @@ def handle_attribute_deletion(sender, instance, **kwargs):
     )
 
 # =============================================================================
-# UserProfile Signals - Trigger key revocation on user_type changes
+# UserProfile Signals - Trigger key revocation on user_type or account_status changes
 # =============================================================================
 
 def get_user_profile_model():
@@ -211,8 +211,8 @@ def get_user_profile_model():
     return UserProfile
 
 @receiver(pre_save)
-def capture_old_user_type(sender, instance, **kwargs):
-    """Capture old user_type_ref before save for comparison"""
+def capture_old_profile_state(sender, instance, **kwargs):
+    """Capture old user_type_ref and account_status before save for comparison"""
     UserProfile = get_user_profile_model()
     
     if sender != UserProfile:
@@ -222,12 +222,13 @@ def capture_old_user_type(sender, instance, **kwargs):
         try:
             old_instance = UserProfile.objects.get(pk=instance.pk)
             instance._old_user_type_code = old_instance.get_user_type_code()
+            instance._old_account_status = old_instance.account_status
         except UserProfile.DoesNotExist:
             pass
 
 @receiver(post_save)
-def handle_user_type_change(sender, instance, created, **kwargs):
-    """Trigger key revocation if user_type changes (e.g., from viewer to contributor)"""
+def handle_profile_changes(sender, instance, created, **kwargs):
+    """Trigger key revocation if user_type changes or account is suspended"""
     UserProfile = get_user_profile_model()
     KeyRevocation = get_key_revocation_model()
     
@@ -239,21 +240,19 @@ def handle_user_type_change(sender, instance, created, **kwargs):
         
     old_code = getattr(instance, '_old_user_type_code', None)
     new_code = instance.get_user_type_code()
+    old_status = getattr(instance, '_old_account_status', None)
+    new_status = instance.account_status
     
+    # 1. Handle user_type change
     if old_code and old_code != new_code:
         logger.warning(
             f"[USER-TYPE-CHANGE] User {instance.user.username}: "
             f"user_type changed from '{old_code}' to '{new_code}'"
         )
         
-        # We need to simulate the ABAC attributes including this new user_type
-        # Since it's already saved, get_user_attributes will inject the NEW code
         new_attrs = instance.get_abac_attributes()
-        # To get the old attributes for the log, we take current and force the old user_type
         old_attrs = new_attrs.copy()
         old_attrs['user_type'] = old_code
-        
-        # TODO: Get actual key_id
         key_id = f"privkey_{instance.user.id}_placeholder"
         
         KeyRevocation.revoke_user_key(
@@ -265,7 +264,52 @@ def handle_user_type_change(sender, instance, created, **kwargs):
             reason_detail=f"User Type upgraded/downgraded: '{old_code}' -> '{new_code}'"
         )
         
+        logger.warning(f"[KEY-REVOKE] Key revoked for user {instance.user.username} due to user_type change")
+
+    # 2. Handle account suspension
+    if old_status and old_status != new_status and new_status in ['suspended', 'inactive']:
         logger.warning(
-            f"[KEY-REVOKE] Key revoked for user {instance.user.username} "
-            f"due to user_type change"
+            f"[ACCOUNT-SUSPENDED] User {instance.user.username}: "
+            f"account_status changed from '{old_status}' to '{new_status}'"
         )
+        
+        # When suspended, we still log current attributes for audit
+        current_attrs = instance.get_abac_attributes()
+        key_id = f"privkey_{instance.user.id}_placeholder"
+        
+        KeyRevocation.revoke_user_key(
+            user=instance.user,
+            key_id=key_id,
+            reason='account_termination',
+            old_attributes=current_attrs,
+            new_attributes={},  # No new attributes for suspended user
+            reason_detail=f"Account {new_status} (previously {old_status})"
+        )
+        
+        logger.warning(f"[KEY-REVOKE] Key revoked for user {instance.user.username} due to account suspension")
+
+# =============================================================================
+# UploadedFile Signals - Handle physical deletion
+# =============================================================================
+
+@receiver(post_delete)
+def handle_uploaded_file_deletion(sender, instance, **kwargs):
+    """
+    Ensure physical file is deleted from Supabase Storage when 
+    the UploadedFile database record is deleted (avoid Storage Leak).
+    """
+    from .models import UploadedFile
+    from .services.storage_service import get_storage_service
+    
+    if sender != UploadedFile:
+        return
+        
+    storage = get_storage_service()
+    try:
+        storage.delete_file(
+            bucket_name=instance.bucket.name,
+            file_paths=[instance.file_path]
+        )
+        logger.info(f"[STORAGE-CLEANUP] Physically deleted '{instance.file_path}' from bucket '{instance.bucket.name}'")
+    except Exception as e:
+        logger.error(f"[STORAGE-LEAK-WARNING] Failed to delete physical file '{instance.file_path}': {str(e)}")
