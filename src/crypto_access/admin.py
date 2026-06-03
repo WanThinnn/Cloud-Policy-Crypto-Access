@@ -55,20 +55,21 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(StorageBucket)
 class StorageBucketAdmin(admin.ModelAdmin):
-    list_display = ('name', 'description', 'created_at', 'updated_at')
+    list_display = ('name', 'bucket_type', 'created_at')
+    list_filter = ('bucket_type',)
     search_fields = ('name',)
 
 @admin.register(UploadedFile)
 class UploadedFileAdmin(admin.ModelAdmin):
-    list_display = ('file_name', 'bucket', 'uploaded_by', 'is_encrypted', 'created_at')
-    list_filter = ('is_encrypted', 'bucket', 'created_at')
-    search_fields = ('file_name', 'original_name', 'uploaded_by__username')
+    list_display = ('file_name', 'bucket', 'uploaded_by', 'file_type', 'uploaded_at')
+    list_filter = ('file_type', 'bucket', 'uploaded_at')
+    search_fields = ('file_name', 'file_path', 'uploaded_by__username')
 
 @admin.register(FileAccessPolicy)
 class FileAccessPolicyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'bucket_name', 'file_path', 'action', 'effect', 'priority', 'is_active')
-    list_filter = ('action', 'effect', 'is_active')
-    search_fields = ('name', 'bucket_name', 'file_path')
+    list_display = ('target_type', 'bucket', 'policy', 'assigned_at')
+    list_filter = ('target_type', 'bucket')
+    search_fields = ('folder_path', 'uploaded_file__file_name')
 
 @admin.register(UserType)
 class UserTypeAdmin(admin.ModelAdmin):
@@ -96,9 +97,9 @@ class AccessPolicyAdmin(admin.ModelAdmin):
 
 @admin.register(AccessLog)
 class AccessLogAdmin(admin.ModelAdmin):
-    list_display = ('user', 'action', 'resource', 'resource_id', 'status', 'timestamp')
-    list_filter = ('action', 'status', 'resource', 'timestamp')
-    search_fields = ('user__username', 'ip_address', 'details')
+    list_display = ('log_id', 'user', 'action', 'resource_type', 'resource_id', 'result', 'timestamp')
+    list_filter = ('action', 'result', 'resource_type', 'timestamp')
+    search_fields = ('log_id', 'user__username', 'request_path', 'error_message')
 
 @admin.register(KeyRevocation)
 class KeyRevocationAdmin(admin.ModelAdmin):

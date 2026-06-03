@@ -38,20 +38,6 @@ def seed_user_types(apps, schema_editor):
             'permissions': ['file_read', 'file_download'],
             'is_system': True,
         },
-        {
-            'code': 'auditor',
-            'name': 'Auditor',
-            'description': 'Kiểm toán viên - Chỉ xem logs và báo cáo, không truy cập nội dung',
-            'permissions': ['logs_view', 'reports_view', 'audit_export'],
-            'is_system': True,
-        },
-        {
-            'code': 'guest',
-            'name': 'Guest',
-            'description': 'Khách - Quyền hạn chế, thời hạn ngắn',
-            'permissions': ['file_read_limited'],
-            'is_system': True,
-        },
     ]
     
     for ut in user_types:

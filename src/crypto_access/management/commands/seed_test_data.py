@@ -76,30 +76,6 @@ class Command(BaseCommand):
                     'clearance_level': 'secret',
                 }
             },
-            {
-                'username': 'auditor01',
-                'email': 'auditor@company.com',
-                'password': 'Test@123',
-                'full_name': 'Vũ Kiểm Toán',
-                'user_type': 'auditor',
-                'attributes': {
-                    'department': 'operations',
-                    'role': 'manager',
-                    'clearance_level': 'top_secret',
-                }
-            },
-            {
-                'username': 'guest01',
-                'email': 'guest@external.com',
-                'password': 'Test@123',
-                'full_name': 'Khách',
-                'user_type': 'guest',
-                'attributes': {
-                    'department': 'operations',
-                    'role': 'intern',
-                    'clearance_level': 'public',
-                }
-            },
         ]
         
         created_count = 0
