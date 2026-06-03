@@ -27,37 +27,134 @@ Flow:
 
 import casbin
 import os
+import re
+import ast
+import logging
 from django.conf import settings
-from typing import Dict, Any, Optional, Tuple
+from django.core.cache import cache
+from typing import Dict, Any, Optional, Tuple, List
 from crypto_access.models import UserAttribute, AccessPolicy, UserType
+from crypto_access.services.setting_service import SettingService
+
+logger = logging.getLogger(__name__)
 
 
-# Permission mapping: action → required permissions
-ACTION_PERMISSION_MAP = {
-    # File/Document actions - READ and DOWNLOAD are SEPARATE
-    # File/Document actions
-    'read': ['file_read', 'file_view', 'file_read_limited', 'file_download', '*'],  # Download permission implies read
-    'download': ['file_download', '*'],  # Export file - requires explicit permission
+def safe_eval_condition(condition: str, context: dict) -> bool:
+    """
+    Safely evaluate ABAC policy conditions without using eval().
+    Supports: ==, !=, 'in', 'and', 'or', 'not', attribute access via r.sub.X
+    """
+    try:
+        # Normalize operators
+        expr = condition.replace('&&', ' and ').replace('||', ' or ')
+        expr = expr.strip()
+        
+        # Handle 'and' / 'or' by splitting and recursing
+        # Split on ' or ' first (lower precedence)
+        if ' or ' in expr:
+            parts = expr.split(' or ', 1)
+            return safe_eval_condition(parts[0], context) or safe_eval_condition(parts[1], context)
+        
+        if ' and ' in expr:
+            parts = expr.split(' and ', 1)
+            return safe_eval_condition(parts[0], context) and safe_eval_condition(parts[1], context)
+        
+        # Handle 'not'
+        if expr.startswith('not ') or expr.startswith('!'):
+            inner = expr[4:].strip() if expr.startswith('not ') else expr[1:].strip()
+            return not safe_eval_condition(inner, context)
+        
+        # Strip outer parens
+        if expr.startswith('(') and expr.endswith(')'):
+            return safe_eval_condition(expr[1:-1], context)
+        
+        # Handle comparisons: ==, !=, in
+        for op in ['!=', '==', ' in ']:
+            if op in expr:
+                left, right = expr.split(op, 1)
+                left_val = _resolve_value(left.strip(), context)
+                right_val = _resolve_value(right.strip(), context)
+                if op == '==':
+                    return left_val == right_val
+                elif op == '!=':
+                    return left_val != right_val
+                elif op == ' in ':
+                    if isinstance(right_val, (list, tuple, set)):
+                        return left_val in right_val
+                    elif isinstance(right_val, str):
+                        return str(left_val) in right_val
+                    return False
+        
+        # Boolean value
+        val = _resolve_value(expr, context)
+        return bool(val)
+    except Exception:
+        return False
+
+
+def _resolve_value(token: str, context: dict):
+    """Resolve a token to its value from the context or as a literal."""
+    token = token.strip()
+    
+    # String literal
+    if (token.startswith("'") and token.endswith("'")) or \
+       (token.startswith('"') and token.endswith('"')):
+        return token[1:-1]
+    
+    # Boolean / None
+    if token in ('True', 'true'):
+        return True
+    if token in ('False', 'false'):
+        return False
+    if token in ('None', 'null'):
+        return None
+    
+    # Numeric
+    try:
+        return ast.literal_eval(token)
+    except (ValueError, SyntaxError):
+        pass
+    
+    # Attribute access: r.sub.department
+    parts = token.split('.')
+    obj = context
+    for part in parts:
+        if isinstance(obj, dict):
+            obj = obj.get(part)
+        else:
+            obj = getattr(obj, part, None)
+        if obj is None:
+            return None
+    return obj
+
+
+# Default mappings if settings are not available
+DEFAULT_ACTION_PERMISSION_MAP = {
+    'read': ['file_read', 'file_view', 'file_read_limited', 'file_download', '*'],
+    'download': ['file_download', '*'],
     'write': ['file_create', 'file_write', 'file_upload', '*'],
     'update': ['file_update', 'file_write', '*'],
     'delete': ['file_delete', '*'],
     'upload': ['file_upload', '*'],
-    
-    # Encryption actions
     'encrypt': ['file_encrypt', 'key_manage', '*'],
     'decrypt': ['file_decrypt', 'key_manage', '*'],
-    
-    # Management actions
     'manage': ['*'],
     'view': ['file_read', 'file_view', 'file_read_limited', 'logs_view', 'reports_view', '*'],
-    
-    # Policy actions
     'policy_read': ['policy_view', '*'],
     'policy_write': ['policy_define', 'policy_manage', '*'],
-    
     # User management
     'user_read': ['user_view', 'user_management', 'user_management_department', '*'],
     'user_write': ['user_create', 'user_management', '*'],
+}
+
+DEFAULT_ACTION_ALIASES = {
+    'read': ['read', 'download'],
+    'view': ['view', 'read', 'download'],
+    'download': ['download'],
+    'write': ['write'],
+    'create': ['create', 'write'],
+    'upload': ['upload', 'write', 'create'],
+    'delete': ['delete', 'write']
 }
 
 # Resource-specific permission prefixes
@@ -182,7 +279,8 @@ class CasbinService:
             return True, "wildcard_permission"
         
         # Get required permissions for this action
-        required_perms = ACTION_PERMISSION_MAP.get(action, [action, '*'])
+        action_map = SettingService.get_setting('ACTION_PERMISSION_MAP', DEFAULT_ACTION_PERMISSION_MAP)
+        required_perms = action_map.get(action, [action, '*'])
         
         # Add resource-specific permission
         prefix = RESOURCE_PERMISSION_PREFIX.get(resource, '')
@@ -208,7 +306,7 @@ class CasbinService:
         # Get user attributes
         attrs = self.get_user_attributes(user)
         
-        # Create a simple namespace for eval()
+        # Create a simple namespace for condition evaluation
         class AttrNamespace:
             def __init__(self, attributes):
                 for k, v in attributes.items():
@@ -222,16 +320,7 @@ class CasbinService:
         # Action aliases
         # If user requests X, check if they have policy for X OR any policy that implies X.
         # e.g. 'download' policy implies 'read' access, so if requesting 'read', check 'download' too.
-        # 'write' policy implies 'upload' access, so if requesting 'upload', check 'write' too.
-        action_aliases = {
-            'read': ['read', 'download'],  # Requesting read -> check read OR download
-            'view': ['view', 'read', 'download'],
-            'download': ['download'],  # Requesting download -> ONLY check download
-            'write': ['write'],
-            'create': ['create', 'write'],
-            'upload': ['upload', 'write', 'create'],
-            'delete': ['delete', 'write']
-        }
+        action_aliases = SettingService.get_setting('ACTION_ALIASES', DEFAULT_ACTION_ALIASES)
         
         actions_to_check = action_aliases.get(action, [action])
         
@@ -257,7 +346,7 @@ class CasbinService:
                 return None, "no_abac_policy"
                     
         except Exception as e:
-            print(f"ABAC check error: {e}")
+            logger.error(f"ABAC check error: {e}")
             return None, f"abac_error:{str(e)}"
     
     def check_access(self, user, resource: str, action: str) -> bool:
@@ -376,8 +465,19 @@ class CasbinService:
         """
         Pre-evaluates all active policies for a given user and action.
         Returns a list of AccessPolicy IDs that evaluate to 'allow' for the user.
+        Results are cached for 30 seconds per user+action combination.
         """
+        import hashlib, json
         from crypto_access.models import AccessPolicy
+        
+        # Check cache first
+        user_attrs = self.get_user_attributes(user)
+        attrs_str = json.dumps(user_attrs, sort_keys=True)
+        attrs_hash = hashlib.sha256(attrs_str.encode()).hexdigest()[:16]
+        cache_key = f"allowed_policies_{user.id}_{action}_{attrs_hash}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
         
         if user.is_superuser:
             return list(AccessPolicy.objects.filter(is_active=True).values_list('id', flat=True))
@@ -416,16 +516,15 @@ class CasbinService:
                     continue
                     
             try:
-                condition = policy.subject_condition.replace('&&', ' and ').replace('||', ' or ')
-                condition = condition.replace('!', 'not ')
-                
-                if eval(condition, {"__builtins__": {}}, eval_context):
+                if safe_eval_condition(policy.subject_condition, eval_context):
                     if policy.effect == 'allow':
                         allowed_policy_ids.append(policy.id)
             except Exception as e:
                 logger.error(f"[ABAC] Failed to evaluate policy {policy.id} condition: {e}")
                 continue
                 
+        # Cache for 30 seconds
+        cache.set(cache_key, allowed_policy_ids, timeout=30)
         return allowed_policy_ids
 
 
@@ -496,30 +595,20 @@ class CasbinService:
             
             # Evaluate the subject condition
             try:
-                # Build evaluation context
                 eval_context = {
                     'r': type('Request', (), {'sub': r_sub})(),
-                    'True': True,
-                    'False': False,
-                    'true': True,
-                    'false': False,
                 }
                 
-                condition = policy.subject_condition
-                
-                # Evaluate the condition
-                result = eval(condition, {"__builtins__": {}}, eval_context)
+                result = safe_eval_condition(policy.subject_condition, eval_context)
                 
                 if result:
-                    # Condition matched - apply effect
                     if policy.effect == 'allow':
                         return True, f"file_policy_allowed:{policy.name}"
                     else:
                         return False, f"file_policy_denied:{policy.name}"
                         
             except Exception as e:
-                # Log error but continue to next policy
-                print(f"Error evaluating policy {policy.name}: {e}")
+                logger.error(f"Error evaluating policy {policy.name}: {e}")
                 continue
         
         # No policy matched user's attributes - deny by default when file has policies

@@ -17,6 +17,9 @@ from .policy import AccessPolicy
 # Audit models (BM12, BM13)
 from .audit import AccessLog, KeyRevocation
 
+# System Settings
+from .settings import SystemSetting
+
 __all__ = [
     # Base
     'BaseModel',
@@ -38,5 +41,5 @@ __all__ = [
     # Audit (BM12, BM13)
     'AccessLog',
     'KeyRevocation',
+    'SystemSetting',
 ]
-

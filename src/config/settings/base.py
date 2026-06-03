@@ -34,6 +34,9 @@ INSTALLED_APPS = [
     
     # Local apps
     'crypto_access.apps.CryptoAccessConfig',
+    
+    # Third party widget
+    'django_json_widget',
 ]
 
 # Tailwind CSS Configuration

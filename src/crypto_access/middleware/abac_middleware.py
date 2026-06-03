@@ -7,6 +7,9 @@ import re
 import logging
 from django.http import JsonResponse
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
+from django.utils import timezone
+from crypto_access.services.setting_service import SettingService
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +65,10 @@ class ABACMiddleware:
     
     def __init__(self, get_response):
         self.get_response = get_response
-        self.protected_routes = getattr(settings, 'ABAC_PROTECTED_ROUTES', [])
         self.enable_access_logging = getattr(settings, 'ABAC_ENABLE_ACCESS_LOGGING', True)
         
-        # Compile regex patterns
-        for route in self.protected_routes:
-            route['_compiled'] = re.compile(route['pattern'])
+        # Default protected routes if not set in DB
+        self.default_routes = getattr(settings, 'ABAC_PROTECTED_ROUTES', [])
     
     def _log_access(self, request, resource, action, result, 
                     user_attributes=None, policies_matched=None, error_message=None):
@@ -139,9 +140,12 @@ class ABACMiddleware:
         # Debug: Log every request
         logger.info(f"[ABAC] Processing {request.method} {request.path}")
         
+        # Fetch protected routes dynamically
+        protected_routes = SettingService.get_setting('ABAC_PROTECTED_ROUTES', self.default_routes)
+        
         # Check if request matches any protected route
-        for route in self.protected_routes:
-            if route['_compiled'].match(request.path):
+        for route in protected_routes:
+            if re.match(route['pattern'], request.path):
                 logger.warning(f"[ABAC-MATCH] Protected route matched - {request.path}")
                 
                 resource = route['resource']

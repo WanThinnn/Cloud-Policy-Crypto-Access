@@ -7,11 +7,18 @@ import logging
 from django.db.models.signals import post_save, pre_save, pre_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
+from .models.settings import SystemSetting
+from .services.setting_service import SettingService
 
 logger = logging.getLogger(__name__)
 
-# Store old attribute values before save
-_attribute_old_values = {}
+
+@receiver(post_save, sender=SystemSetting)
+@receiver(pre_delete, sender=SystemSetting)
+def invalidate_setting_cache_handler(sender, instance, **kwargs):
+    """Invalidate setting cache when a SystemSetting is modified or deleted."""
+    SettingService.invalidate_setting_cache(instance.key)
+    logger.info(f"Invalidated cache for system setting: {instance.key}")
 
 
 @receiver(post_save, sender=User)
@@ -76,7 +83,8 @@ def capture_old_attribute_value(sender, instance, **kwargs):
     if instance.pk:
         try:
             old_instance = UserAttribute.objects.get(pk=instance.pk)
-            _attribute_old_values[instance.pk] = {
+            # Store on instance to avoid global dict memory leak
+            instance._old_attr_data = {
                 'value': old_instance.value,
                 'status': old_instance.status,
                 'user_id': old_instance.user_id,
@@ -109,7 +117,7 @@ def handle_attribute_change(sender, instance, created, **kwargs):
         return
     
     # Check if value actually changed
-    old_data = _attribute_old_values.pop(instance.pk, None)
+    old_data = getattr(instance, '_old_attr_data', None)
     if not old_data:
         return
     

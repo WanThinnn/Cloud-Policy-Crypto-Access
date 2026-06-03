@@ -128,15 +128,12 @@ class AccessLog(BaseModel):
     
     @classmethod
     def generate_log_id(cls):
-        """Generate unique log ID"""
+        """Generate unique log ID using uuid to avoid race conditions"""
+        import uuid
         now = timezone.now()
         date_str = now.strftime('%Y%m%d_%H%M%S')
-        # Get count for this second
-        count = cls.objects.filter(
-            timestamp__date=now.date(),
-            log_id__startswith=f'log_{date_str}'
-        ).count() + 1
-        return f"log_{date_str}_{count:03d}"
+        short_uuid = uuid.uuid4().hex[:8]
+        return f"log_{date_str}_{short_uuid}"
     
     @classmethod
     def log_access(

@@ -87,7 +87,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing uploaded files
     """
-    queryset = UploadedFile.objects.all()
+    queryset = UploadedFile.objects.select_related('bucket', 'uploaded_by').all()
     serializer_class = UploadedFileSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -440,19 +440,23 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def stats(self, request):
         """Get storage statistics"""
+        from django.db.models import Sum, Count
+        
         user = request.user
+        
+        size_result = UploadedFile.objects.aggregate(total_size=Sum('file_size'))
         
         stats = {
             'total_files': UploadedFile.objects.count(),
             'my_files': UploadedFile.objects.filter(uploaded_by=user).count() if user.is_authenticated else 0,
-            'total_size': sum(f.file_size for f in UploadedFile.objects.all()),
+            'total_size': size_result['total_size'] or 0,
             'by_type': {}
         }
         
-        # Count by file type
-        for file_type, _ in UploadedFile.FILE_TYPE_CHOICES:
-            count = UploadedFile.objects.filter(file_type=file_type).count()
-            stats['by_type'][file_type] = count
+        # Count by file type in a single query
+        type_counts = UploadedFile.objects.values('file_type').annotate(count=Count('id'))
+        for entry in type_counts:
+            stats['by_type'][entry['file_type']] = entry['count']
         
         return Response(stats)
     
