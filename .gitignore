@@ -498,3 +498,6 @@ tmp/
 
 # --- KEYS ---
 src/config/keys
+
+
+!src/lib/libhybrid-cp-abe.so

@@ -10,20 +10,28 @@ RUN npm ci
 RUN npm run build
 
 # Final runtime image
-FROM python:3.11-slim
+FROM ubuntu:24.04
 
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
     DJANGO_SETTINGS_MODULE=config.settings.production
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3-pip \
+    python3-venv \
     gcc \
     sqlite3 \
     libglib2.0-0 \
     libgmp10 \
     && rm -rf /var/lib/apt/lists/*
+
+# Create and activate a virtual environment
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 COPY src/requirements.txt /app/
 RUN pip install --upgrade pip && \
