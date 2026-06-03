@@ -475,6 +475,10 @@ dist/
 certs/
 secrets/
 .env
+!certs/_.cyberfortress.local.crt
+!certs/_.cyberfortress.local.key
+!certs/CyberFortress-RootCA.crt
+!certs/README.md
 
 # --- Python ---
 __pycache__/

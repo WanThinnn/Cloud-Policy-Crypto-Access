@@ -23,8 +23,8 @@ class CPABEService:
             
         self.dll_path = os.path.join(settings.BASE_DIR, 'lib', lib_name)
         self.keys_dir = os.path.join(settings.BASE_DIR, 'config', 'keys')
-        self.msk_path = os.path.join(self.keys_dir, 'master_key.key')
-        self.pk_path = os.path.join(self.keys_dir, 'public_key.key')
+        self.msk_path = os.path.join(self.keys_dir, 'cpabe_msk.key')
+        self.pk_path = os.path.join(self.keys_dir, 'cpabe_pk.key')
         
         # Load DLL
         try:
@@ -46,12 +46,46 @@ class CPABEService:
         self._lib.generateSecretKey.restype = ctypes.c_int
         
         # int AC17encrypt(const char *publicKeyFile, const char *plaintextFile, const char *policy, const char *ciphertextFile)
-        self._lib.AC17encrypt.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
-        self._lib.AC17encrypt.restype = ctypes.c_int
+        self._encrypt_func = getattr(self._lib, 'AC17encrypt', getattr(self._lib, 'hybrid_cpabe_encrypt', None))
+        if self._encrypt_func:
+            self._encrypt_func.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+            self._encrypt_func.restype = ctypes.c_int
         
         # int AC17decrypt(const char *publicKeyFile, const char *privateKeyFile, const char *ciphertextFile, const char *recovertextFile)
-        self._lib.AC17decrypt.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
-        self._lib.AC17decrypt.restype = ctypes.c_int
+        self._decrypt_func = getattr(self._lib, 'AC17decrypt', getattr(self._lib, 'hybrid_cpabe_decrypt', None))
+        if self._decrypt_func:
+            self._decrypt_func.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+            self._decrypt_func.restype = ctypes.c_int
+            
+        # Buffer-based Operations
+        self._encrypt_buffer_func = getattr(self._lib, 'AC17encryptBuffer', getattr(self._lib, 'hybrid_cpabe_encryptBuffer', None))
+        if self._encrypt_buffer_func:
+            self._encrypt_buffer_func.argtypes = [
+                ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, # publicKey, pkLen
+                ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, # plaintext, ptLen
+                ctypes.c_char_p,                                 # policy
+                ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte)), ctypes.POINTER(ctypes.c_size_t) # ciphertext, ctLen
+            ]
+            self._encrypt_buffer_func.restype = ctypes.c_int
+            
+        self._decrypt_buffer_func = getattr(self._lib, 'AC17decryptBuffer', getattr(self._lib, 'hybrid_cpabe_decryptBuffer', None))
+        if self._decrypt_buffer_func:
+            self._decrypt_buffer_func.argtypes = [
+                ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, # privateKey, skLen
+                ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, # ciphertext, ctLen
+                ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte)), ctypes.POINTER(ctypes.c_size_t) # plaintext, ptLen
+            ]
+            self._decrypt_buffer_func.restype = ctypes.c_int
+            
+        # void freeBuffer(unsigned char *buffer)
+        if hasattr(self._lib, 'freeBuffer'):
+            self._lib.freeBuffer.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
+            self._lib.freeBuffer.restype = None
+            
+        # const char* getVersion(void)
+        if hasattr(self._lib, 'getVersion'):
+            self._lib.getVersion.argtypes = []
+            self._lib.getVersion.restype = ctypes.c_char_p
         
         # const char* getErrorMessage(int errorCode)
         self._lib.getErrorMessage.argtypes = [ctypes.c_int]
@@ -133,16 +167,19 @@ class CPABEService:
             raise CPABEError("Library not loaded")
             
         logger.info(f"Encrypting file with policy: {policy}")
-        res = self._lib.AC17encrypt(
+        if not self._encrypt_func:
+            raise CPABEError("Encryption function not found in library")
+            
+        result = self._encrypt_func(
             self.pk_path.encode('utf-8'),
             input_path.encode('utf-8'),
             policy.encode('utf-8'),
             output_path.encode('utf-8')
         )
         
-        if res != 0:
-            err_msg = self._lib.getErrorMessage(res).decode('utf-8')
-            raise CPABEError(f"Encryption failed ({res}): {err_msg}")
+        if result != 0:
+            err_msg = self._lib.getErrorMessage(result).decode('utf-8')
+            raise CPABEError(f"Encryption failed ({result}): {err_msg}")
             
     def decrypt_file(self, private_key_path: str, input_path: str, output_path: str):
         """Decrypt a file using a user's private key"""
@@ -150,16 +187,94 @@ class CPABEService:
             raise CPABEError("Library not loaded")
             
         logger.info(f"Decrypting file with key: {private_key_path}")
-        res = self._lib.AC17decrypt(
+        if not self._decrypt_func:
+            raise CPABEError("Decryption function not found in library")
+            
+        result = self._decrypt_func(
             self.pk_path.encode('utf-8'),
             private_key_path.encode('utf-8'),
             input_path.encode('utf-8'),
             output_path.encode('utf-8')
         )
         
-        if res != 0:
-            err_msg = self._lib.getErrorMessage(res).decode('utf-8')
-            raise CPABEError(f"Decryption failed ({res}): {err_msg}")
+        if result != 0:
+            err_msg = self._lib.getErrorMessage(result).decode('utf-8')
+            raise CPABEError(f"Decryption failed ({result}): {err_msg}")
+
+    def get_version(self) -> str:
+        """Get the library version"""
+        if hasattr(self._lib, 'getVersion'):
+            return self._lib.getVersion().decode('utf-8')
+        return "Unknown"
+
+    def encrypt_buffer(self, plaintext: bytes, policy: str) -> bytes:
+        """Encrypt data buffer directly in memory"""
+        if not self._encrypt_buffer_func:
+            raise CPABEError("Buffer encryption function not found in library")
+
+        # Read public key file into memory
+        with open(self.pk_path, 'rb') as f:
+            pk_data = f.read()
+
+        pk_ptr = ctypes.cast(ctypes.create_string_buffer(pk_data), ctypes.POINTER(ctypes.c_ubyte))
+        pt_ptr = ctypes.cast(ctypes.create_string_buffer(plaintext), ctypes.POINTER(ctypes.c_ubyte))
+        
+        ct_ptr = ctypes.POINTER(ctypes.c_ubyte)()
+        ct_len = ctypes.c_size_t(0)
+
+        result = self._encrypt_buffer_func(
+            pk_ptr, len(pk_data),
+            pt_ptr, len(plaintext),
+            policy.encode('utf-8'),
+            ctypes.byref(ct_ptr), ctypes.byref(ct_len)
+        )
+
+        if result != 0:
+            err_msg = self._lib.getErrorMessage(result).decode('utf-8')
+            raise CPABEError(f"Buffer encryption failed ({result}): {err_msg}")
+
+        # Copy data out of C memory
+        ciphertext = bytes(ct_ptr[:ct_len.value])
+        
+        # Free C memory
+        if hasattr(self._lib, 'freeBuffer'):
+            self._lib.freeBuffer(ct_ptr)
+            
+        return ciphertext
+
+    def decrypt_buffer(self, private_key_path: str, ciphertext: bytes) -> bytes:
+        """Decrypt data buffer directly in memory"""
+        if not self._decrypt_buffer_func:
+            raise CPABEError("Buffer decryption function not found in library")
+
+        # Read private key file into memory
+        with open(private_key_path, 'rb') as f:
+            sk_data = f.read()
+
+        sk_ptr = ctypes.cast(ctypes.create_string_buffer(sk_data), ctypes.POINTER(ctypes.c_ubyte))
+        ct_ptr = ctypes.cast(ctypes.create_string_buffer(ciphertext), ctypes.POINTER(ctypes.c_ubyte))
+        
+        pt_ptr = ctypes.POINTER(ctypes.c_ubyte)()
+        pt_len = ctypes.c_size_t(0)
+
+        result = self._decrypt_buffer_func(
+            sk_ptr, len(sk_data),
+            ct_ptr, len(ciphertext),
+            ctypes.byref(pt_ptr), ctypes.byref(pt_len)
+        )
+
+        if result != 0:
+            err_msg = self._lib.getErrorMessage(result).decode('utf-8')
+            raise CPABEError(f"Buffer decryption failed ({result}): {err_msg}")
+
+        # Copy data out of C memory
+        plaintext = bytes(pt_ptr[:pt_len.value])
+        
+        # Free C memory
+        if hasattr(self._lib, 'freeBuffer'):
+            self._lib.freeBuffer(pt_ptr)
+            
+        return plaintext
 
 # Singleton instance
 cpabe_service = CPABEService()

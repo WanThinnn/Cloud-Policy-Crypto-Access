@@ -186,8 +186,15 @@ class CasbinService:
         return cls._instance
     
     def __init__(self):
+        # Enforcer is initialized lazily when first accessed
+        pass
+        
+    @property
+    def enforcer(self):
+        """Lazy initialization of enforcer"""
         if self._enforcer is None:
             self._init_enforcer()
+        return self._enforcer
     
     def _init_enforcer(self):
         """Initialize Casbin enforcer with model and policies from database"""
@@ -222,13 +229,14 @@ class CasbinService:
                     policy.action,
                     policy.effect
                 )
-        except (OperationalError, ProgrammingError) as e:
-            # This happens during makemigrations when the table/columns don't exist yet
-            print(f"Skipping policy loading (likely during migrations): {e}")
+        except Exception as e:
+            # This happens during makemigrations/collectstatic when the DB is not ready
+            print(f"Skipping policy loading (likely during setup/migrations): {e}")
     
     def reload_policies(self):
         """Reload policies from database (call after policy changes)"""
-        self._load_policies_from_db()
+        if self._enforcer is not None:
+            self._load_policies_from_db()
     
     def get_user_attributes(self, user) -> Dict[str, Any]:
         """
@@ -327,7 +335,7 @@ class CasbinService:
         try:
             # Check with Casbin enforcer for action and its aliases
             for check_action in actions_to_check:
-                result = self._enforcer.enforce(sub, resource, check_action)
+                result = self.enforcer.enforce(sub, resource, check_action)
                 if result:
                     return True, f"abac_policy_allowed:{check_action}"
             

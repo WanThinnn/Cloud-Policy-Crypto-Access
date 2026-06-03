@@ -125,17 +125,10 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         attrs_hash = hashlib.sha256(attrs_str.encode('utf-8')).hexdigest()
         cache_key = f"cpabe_key_{user.id}_{attrs_hash}"
         cached_key_data = cache.get(cache_key)
-        
-        with tempfile.NamedTemporaryFile(delete=False) as f_key, \
-             tempfile.NamedTemporaryFile(delete=False) as f_in:
+        with tempfile.NamedTemporaryFile(delete=False) as f_key:
             key_name = f_key.name
             if cached_key_data:
                 f_key.write(cached_key_data)
-            
-            f_in.write(file_data)
-            temp_in_name = f_in.name
-            
-        temp_out_name = temp_in_name + ".dec"
         
         try:
             if not cached_key_data:
@@ -144,13 +137,16 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 with open(key_name, 'rb') as f:
                     cache.set(cache_key, f.read(), timeout=3600)
                     
-            cpabe_service.decrypt_file(key_name, temp_in_name, temp_out_name)
-            with open(temp_out_name, 'rb') as f_out:
-                return f_out.read()
+            try:
+                return cpabe_service.decrypt_buffer(key_name, file_data)
+            except Exception as e:
+                logger.error(f"Decryption failed: {e}. Returning original file data.")
+                # If decryption fails (e.g. file is plaintext but has a policy),
+                # fallback to returning original data
+                return file_data
         finally:
-            if os.path.exists(key_name): os.remove(key_name)
-            if os.path.exists(temp_in_name): os.remove(temp_in_name)
-            if os.path.exists(temp_out_name): os.remove(temp_out_name)
+            if os.path.exists(key_name):
+                os.remove(key_name)
     
     def get_queryset(self):
         """Filter files by user, bucket, and ABAC policies"""
@@ -272,18 +268,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             # Encrypt if policy has cpabe_policy
             if cpabe_policy_str:
                 logger.info(f"Encrypting file with CP-ABE policy: {cpabe_policy_str}")
-                with tempfile.NamedTemporaryFile(delete=False) as f_in:
-                    f_in.write(file_data)
-                    temp_in_name = f_in.name
-                
-                temp_out_name = temp_in_name + ".enc"
-                try:
-                    cpabe_service.encrypt_file(temp_in_name, temp_out_name, cpabe_policy_str)
-                    with open(temp_out_name, 'rb') as f_out:
-                        file_data = f_out.read()
-                finally:
-                    if os.path.exists(temp_in_name): os.remove(temp_in_name)
-                    if os.path.exists(temp_out_name): os.remove(temp_out_name)
+                file_data = cpabe_service.encrypt_buffer(file_data, cpabe_policy_str)
 
             upload_result = storage.upload_file(
                 bucket_name=bucket_name,
@@ -934,16 +919,9 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     if policy.cpabe_policy:
                         # Encrypt plaintext
                         logger.info(f"Encrypting file {file_path} with policy: {policy.cpabe_policy}")
-                        with tempfile.NamedTemporaryFile(delete=False) as f_in:
-                            f_in.write(file_data)
-                            temp_in_name = f_in.name
-                        
-                        temp_out_name = temp_in_name + ".enc"
                         try:
-                            cpabe_service.encrypt_file(temp_in_name, temp_out_name, policy.cpabe_policy)
-                            with open(temp_out_name, 'rb') as f_out:
-                                enc_data = f_out.read()
-                                
+                            enc_data = cpabe_service.encrypt_buffer(file_data, policy.cpabe_policy)
+                            
                             storage.upload_file(
                                 bucket_name=bucket_name,
                                 file_path=file_path,
@@ -951,9 +929,9 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                                 content_type=file_record.mime_type or 'application/octet-stream',
                                 upsert=True
                             )
-                        finally:
-                            if os.path.exists(temp_in_name): os.remove(temp_in_name)
-                            if os.path.exists(temp_out_name): os.remove(temp_out_name)
+                        except Exception as e:
+                            logger.error(f"Failed to encrypt file data during policy assignment: {e}")
+                            raise
                     elif replace_policies:
                         # Policy has no CP-ABE, and we are replacing -> Upload plaintext
                         logger.info(f"Removing encryption for file {file_path}")

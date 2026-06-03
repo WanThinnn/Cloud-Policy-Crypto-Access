@@ -30,7 +30,7 @@ DATABASES = {
         database_url,
         conn_max_age=600,
         conn_health_checks=True,
-        ssl_require=True,  # Supabase requires SSL
+        ssl_require=database_url.startswith('postgres'),  # Only require SSL for Postgres (Supabase)
     )
 }
 
@@ -71,18 +71,29 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 X_FRAME_OPTIONS = 'DENY'
 
 
-# Cache configuration (Redis recommended for production)
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        },
-        'KEY_PREFIX': 'crypto_access',
-        'TIMEOUT': 300,
+# Cache configuration
+redis_url = os.environ.get('REDIS_URL')
+if redis_url:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': redis_url,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+            'KEY_PREFIX': 'crypto_access',
+            'TIMEOUT': 300,
+        }
     }
-}
+else:
+    # Fallback to local memory cache if no Redis URL is provided
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'crypto-access-cache',
+            'TIMEOUT': 300,
+        }
+    }
 
 
 # Session backend (use cache for better performance)
@@ -91,7 +102,7 @@ SESSION_CACHE_ALIAS = 'default'
 
 
 # Update logging for production
-LOGGING['handlers']['file']['filename'] = '/var/log/django/crypto_access.log'
+LOGGING['handlers']['file']['filename'] = '/app/logs/crypto_access.log'
 LOGGING['root']['level'] = 'WARNING'
 LOGGING['loggers']['django']['level'] = 'WARNING'
 LOGGING['loggers']['crypto_access']['level'] = 'INFO'
