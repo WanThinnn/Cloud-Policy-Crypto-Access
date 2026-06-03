@@ -291,7 +291,7 @@
                 <div class="text-center">
                     <h3 class="text-sm font-semibold text-gray-700 truncate px-2 mb-1 group-hover:text-indigo-700 transition-colors" title="${name}">${name}</h3>
                     <p class="text-xs text-gray-400">
-                        ${file.size ? formatSize(file.size) : (isFolder ? `${file.items || 0} items` : '')}
+                        ${file.size ? formatSize(file.size) : (isFolder ? (file.items !== undefined ? `${file.items} items` : '') : '')}
                     </p>
                 </div>
             </div>
