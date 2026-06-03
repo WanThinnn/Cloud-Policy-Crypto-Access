@@ -149,7 +149,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     logger.warning("Assuming file is plaintext due to format error. Returning original data.")
                     return file_data
                 # Otherwise (e.g. -4 Crypto failed), it is a real decryption failure
-                raise Exception(f"Access Denied or Crypto Error: You do not have the required attributes to decrypt this file. ({error_msg})")
+                raise Exception("Bạn không có đủ thuộc tính (quyền) để giải mã tài liệu này!")
         finally:
             if os.path.exists(key_name):
                 os.remove(key_name)
@@ -508,10 +508,22 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 limit=100
             )
             
+            # Get deleted files to filter them out
+            deleted_paths = set(UploadedFile.objects.filter(
+                bucket__name=bucket_name,
+                is_deleted=True
+            ).values_list('file_path', flat=True))
+            
             # Transform to standard format
             result = []
             for f in files:
                 is_folder = f.get('id') is None  # Folders don't have id
+                f_path = f"{path}/{f.get('name', '')}" if path else f.get('name', '')
+                
+                # Skip if file is soft-deleted
+                if not is_folder and f_path in deleted_paths:
+                    continue
+                    
                 result.append({
                     'name': f.get('name', ''),
                     'type': 'folder' if is_folder else 'file',
@@ -519,7 +531,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     'id': f.get('id'),
                     'created_at': f.get('created_at'),
                     'updated_at': f.get('updated_at'),
-                    'path': f"{path}/{f.get('name', '')}" if path else f.get('name', '')
+                    'path': f_path
                 })
             
             return Response({
@@ -597,7 +609,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             
         except Exception as e:
             return Response(
-                {'error': f"Download failed: {str(e)}"},
+                {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
             
@@ -662,7 +674,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             
         except Exception as e:
             return Response(
-                {'error': f"Preview failed: {str(e)}"},
+                {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
@@ -684,14 +696,22 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            # Delete from Supabase Storage
-            storage.delete_file(bucket_name, [file_path])
-            
-            # Also delete from database if exists
-            UploadedFile.objects.filter(
+            # Soft delete logic
+            uploaded_files = UploadedFile.objects.filter(
                 bucket__name=bucket_name,
                 file_path=file_path
-            ).delete()
+            )
+            
+            if uploaded_files.exists():
+                for f in uploaded_files:
+                    f.is_deleted = True
+                    f.deleted_at = timezone.now()
+                    f.save(update_fields=['is_deleted', 'deleted_at'])
+            else:
+                # Fallback if not in database but somehow exists in Supabase
+                # Or just do nothing, assuming we want soft delete to mean marking db records.
+                # Actually, we shouldn't touch Supabase storage until Hard Delete
+                pass
             
             return Response({
                 'message': f"File '{file_path}' deleted successfully"
