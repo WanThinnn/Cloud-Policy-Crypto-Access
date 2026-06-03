@@ -11,6 +11,7 @@ services:
              gunicorn config.wsgi:application -c gunicorn.conf.py"
     volumes:
       - ./src:/app
+      - /app/lib # Thêm dòng này để Docker sử dụng file .so bên trong image thay vì đọc từ Windows sang
       - ./docs:/docs
       - ./scripts/gunicorn.conf.py:/app/gunicorn.conf.py:ro
       - static_volume:/app/staticfiles
@@ -102,7 +103,6 @@ volumes:
   static_volume:
   sqlite_volume:
   keys_volume:
-
 
 networks:
   app-network:
