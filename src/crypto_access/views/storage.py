@@ -138,7 +138,9 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     cache.set(cache_key, f.read(), timeout=3600)
                     
             try:
-                return cpabe_service.decrypt_buffer(key_name, file_data)
+                decrypted_data = cpabe_service.decrypt_buffer(key_name, file_data)
+                logger.info(f"CP-ABE Decryption successful for file: {file_path}")
+                return decrypted_data
             except Exception as e:
                 error_msg = str(e)
                 logger.error(f"Decryption failed: {error_msg}")
