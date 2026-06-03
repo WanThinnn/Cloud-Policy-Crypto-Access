@@ -131,6 +131,49 @@
                 hideContextMenu();
             }
         });
+
+        // Modal Drop Zone logic
+        const modalDropZone = document.getElementById('modal-drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileSelectedName = document.getElementById('file-selected-name');
+
+        if (modalDropZone && fileInput) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                modalDropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                modalDropZone.addEventListener(eventName, () => {
+                    modalDropZone.classList.add('border-indigo-500', 'bg-indigo-50');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                modalDropZone.addEventListener(eventName, () => {
+                    modalDropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+                }, false);
+            });
+
+            modalDropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                if (dt.files && dt.files.length > 0) {
+                    fileInput.files = dt.files;
+                    updateFileSelectedName();
+                }
+            }, false);
+
+            modalDropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', updateFileSelectedName);
+
+            function updateFileSelectedName() {
+                if (fileInput.files && fileInput.files.length > 0) {
+                    fileSelectedName.textContent = `Đã chọn: ${fileInput.files[0].name}`;
+                    fileSelectedName.classList.remove('hidden');
+                } else {
+                    fileSelectedName.classList.add('hidden');
+                }
+            }
+        }
     }
 
     function preventDefaults(e) {
@@ -746,15 +789,16 @@
     async function openUploadModal() {
         document.getElementById('upload-modal').classList.remove('hidden');
         
-        // Reset form
-        document.getElementById('upload-form').reset();
         document.getElementById('new-policy-form-upload').classList.add('hidden');
+        if (!document.getElementById('file-input').files.length) {
+            document.getElementById('file-selected-name').classList.add('hidden');
+        }
         
-        // Load folders and policies in parallel
-        await Promise.all([
-            loadFolderList(),
-            loadPoliciesForUpload()
-        ]);
+        // Update destination folder badge
+        document.getElementById('upload-destination-folder').textContent = currentPath ? `/${currentPath}` : '/ (Root)';
+        
+        // Load policies
+        await loadPoliciesForUpload();
     }
 
     function closeUploadModal() {
@@ -1247,40 +1291,7 @@
         }
     }
 
-    async function loadFolderList() {
-        try {
-            const url = `${API_BASE}files/browse/?path=&bucket=documents`;
-            console.log('Loading folder list:', url);
-            const response = await fetch(url, { headers });
-            if (!response.ok) throw new Error('Failed to load folders');
 
-            const data = await response.json();
-            const folders = data.files.filter(f => f.type === 'folder');
-
-            availableFolders = folders.map(f => f.name.replace('/', ''));
-
-            const select = document.getElementById('folder-select');
-            select.innerHTML = `
-            <option value="">/ (Root)</option>
-            ${availableFolders.map(folder =>
-                `<option value="${folder}">${folder}/</option>`
-            ).join('')}
-        `;
-
-            // Select current folder
-            if (currentPath && availableFolders.includes(currentPath.split('/')[0])) {
-                select.value = currentPath.split('/')[0];
-            }
-
-        } catch (error) {
-            console.error('Error loading folders:', error);
-        }
-    }
-
-    function refreshFolders() {
-        loadFolderList();
-        showAlert('Đã làm mới danh sách thư mục', 'info');
-    }
 
     async function handleUpload(e) {
         e.preventDefault();
@@ -1288,7 +1299,7 @@
         const form = e.target;
         const formData = new FormData();
         const fileInput = document.getElementById('file-input');
-        const folder = document.getElementById('folder-select').value;
+        const folder = currentPath;
 
         if (!fileInput.files[0]) {
             showAlert('Vui lòng chọn file', 'error');
@@ -1393,6 +1404,11 @@
 
         if (files.length > 0) {
             document.getElementById('file-input').files = files;
+            const fileSelectedName = document.getElementById('file-selected-name');
+            if (fileSelectedName) {
+                fileSelectedName.textContent = `Đã chọn: ${files[0].name}`;
+                fileSelectedName.classList.remove('hidden');
+            }
             openUploadModal();
         }
     }

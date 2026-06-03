@@ -26,21 +26,21 @@
                 
                 <!-- Navigation Links -->
                 <div class="hidden md:flex items-center space-x-4">
-                    <a href="/" class="text-gray-300 hover:text-white transition">Trang chủ</a>
-                    <a href="/manage/files/" class="text-gray-300 hover:text-white transition">Tài liệu</a>
+                    <a href="/" class="text-gray-300 hover:text-white transition font-bold">Trang chủ</a>
+                    <a href="/manage/files/" class="text-gray-300 hover:text-white transition font-bold">Tài liệu</a>
                     <!-- Admin Dropdown (shown when logged in as admin) -->
                     <div id="admin-menu" class="hidden items-center space-x-1">
                         <!-- User Management Dropdown -->
                         <div class="relative" id="user-mgmt-dropdown-container">
-                            <button id="user-mgmt-dropdown-btn" class="text-gray-300 hover:text-white transition flex items-center px-2 py-2 text-sm">
-                                Quản lý Người dùng
+                            <button id="user-mgmt-dropdown-btn" class="text-gray-300 hover:text-white transition flex items-center px-2 py-2 font-bold">
+                                Người dùng
                                 <svg class="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                 </svg>
                             </button>
                             <div id="user-mgmt-dropdown-menu" class="hidden absolute left-0 mt-2 w-52 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 transition-opacity duration-200">
                                 <a href="/manage/users/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    Người dùng & Thuộc tính
+                                    Danh sách Người dùng
                                 </a>
                                 <a href="/manage/user-types/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                     Loại người dùng
@@ -50,8 +50,8 @@
                         
                         <!-- Policy Management Dropdown -->
                         <div class="relative" id="policy-mgmt-dropdown-container">
-                            <button id="policy-mgmt-dropdown-btn" class="text-gray-300 hover:text-white transition flex items-center px-2 py-2 text-sm">
-                                Quản lý Chính sách
+                            <button id="policy-mgmt-dropdown-btn" class="text-gray-300 hover:text-white transition flex items-center px-2 py-2 font-bold">
+                                Chính sách
                                 <svg class="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                 </svg>
@@ -68,7 +68,7 @@
                         
                         <!-- System Management Dropdown -->
                         <div class="relative" id="sys-mgmt-dropdown-container">
-                            <button id="sys-mgmt-dropdown-btn" class="text-gray-300 hover:text-white transition flex items-center px-2 py-2 text-sm">
+                            <button id="sys-mgmt-dropdown-btn" class="text-gray-300 hover:text-white transition flex items-center px-2 py-2 font-bold">
                                 Hệ thống
                                 <svg class="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -93,8 +93,8 @@
                     
                     <!-- User Info (shown when logged in) -->
                     <div id="user-section" class="hidden flex items-center space-x-4">
-                        <span id="user-info" class="text-sm text-gray-300"></span>
-                        <button id="logout-btn" class="text-red-400 hover:text-red-300 text-sm transition">
+                        <span id="user-info" class="text-sm text-gray-300 font-bold"></span>
+                        <button id="logout-btn" class="text-red-400 hover:text-red-300 text-sm transition font-bold">
                             Đăng xuất
                         </button>
                     </div>
