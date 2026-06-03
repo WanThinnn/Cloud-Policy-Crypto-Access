@@ -363,7 +363,7 @@ def user_permissions(request):
             'is_super_admin': profile.is_super_admin(),
             'can_manage_users': profile.is_admin(),
             'can_manage_policies': profile.is_super_admin(),  # Only super admin
-            'can_manage_files': user_type in ['super_admin', 'admin', 'data_owner'],
+            'can_manage_files': user_type in ['super_admin', 'admin', 'data_contributor'],
             'can_view_audit_logs': user_type in ['super_admin', 'admin', 'auditor'],
             # File permissions based on UserType permissions
             'can_upload_files': has_perm(['file_upload', 'file_create']),

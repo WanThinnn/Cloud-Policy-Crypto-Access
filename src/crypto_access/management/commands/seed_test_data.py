@@ -21,7 +21,7 @@ class Command(BaseCommand):
                 'email': 'it_owner@company.com',
                 'password': 'Test@123',
                 'full_name': 'Trần IT Manager',
-                'user_type': 'data_owner',
+                'user_type': 'data_contributor',
                 'attributes': {
                     'department': 'it',
                     'role': 'director',
@@ -45,7 +45,7 @@ class Command(BaseCommand):
                 'email': 'dev@company.com',
                 'password': 'Test@123',
                 'full_name': 'Phạm Developer',
-                'user_type': 'data_user',
+                'user_type': 'data_viewer',
                 'attributes': {
                     'department': 'it',
                     'role': 'employee',
@@ -57,7 +57,7 @@ class Command(BaseCommand):
                 'email': 'hr_user@company.com',
                 'password': 'Test@123',
                 'full_name': 'Nguyễn HR Staff',
-                'user_type': 'data_user',
+                'user_type': 'data_viewer',
                 'attributes': {
                     'department': 'hr',
                     'role': 'employee',
@@ -69,7 +69,7 @@ class Command(BaseCommand):
                 'email': 'finance@company.com',
                 'password': 'Test@123',
                 'full_name': 'Hoàng Kế Toán',
-                'user_type': 'data_user',
+                'user_type': 'data_viewer',
                 'attributes': {
                     'department': 'finance',
                     'role': 'employee',

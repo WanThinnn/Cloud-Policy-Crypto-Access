@@ -58,27 +58,27 @@ class Command(BaseCommand):
             
             # Data Owner policies
             {
-                'name': 'data_owner_document_manage',
+                'name': 'data_contributor_document_manage',
                 'description': 'Data owners can manage documents',
-                'subject_condition': "r.sub.user_type == 'data_owner'",
+                'subject_condition': "r.sub.user_type == 'data_contributor'",
                 'resource': 'document',
                 'action': 'manage',
                 'effect': 'allow',
                 'priority': 20,
             },
             {
-                'name': 'data_owner_key_manage',
+                'name': 'data_contributor_key_manage',
                 'description': 'Data owners can manage encryption keys',
-                'subject_condition': "r.sub.user_type == 'data_owner'",
+                'subject_condition': "r.sub.user_type == 'data_contributor'",
                 'resource': 'key',
                 'action': 'manage',
                 'effect': 'allow',
                 'priority': 20,
             },
             {
-                'name': 'data_owner_policy_define',
+                'name': 'data_contributor_policy_define',
                 'description': 'Data owners can define access policies for their data',
-                'subject_condition': "r.sub.user_type == 'data_owner'",
+                'subject_condition': "r.sub.user_type == 'data_contributor'",
                 'resource': 'policy',
                 'action': 'write',
                 'effect': 'allow',

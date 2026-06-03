@@ -72,8 +72,8 @@ class Command(BaseCommand):
             {
                 'name': 'Data Owner Read',
                 'description': 'Data Owners có thể đọc tài liệu',
-                'subject_condition': "r.sub.user_type == 'data_owner'",
-                'cpabe_policy': "user_type:data_owner",
+                'subject_condition': "r.sub.user_type == 'data_contributor'",
+                'cpabe_policy': "user_type:data_contributor",
                 'resource': 'document',
                 'action': 'read',
                 'effect': 'allow',
@@ -82,8 +82,8 @@ class Command(BaseCommand):
             {
                 'name': 'Data Owner Download',
                 'description': 'Data Owners có thể download tài liệu',
-                'subject_condition': "r.sub.user_type == 'data_owner'",
-                'cpabe_policy': "user_type:data_owner",
+                'subject_condition': "r.sub.user_type == 'data_contributor'",
+                'cpabe_policy': "user_type:data_contributor",
                 'resource': 'document',
                 'action': 'download',
                 'effect': 'allow',
@@ -92,7 +92,7 @@ class Command(BaseCommand):
             {
                 'name': 'Data Owner Upload',
                 'description': 'Data Owners có thể upload tài liệu',
-                'subject_condition': "r.sub.user_type == 'data_owner'",
+                'subject_condition': "r.sub.user_type == 'data_contributor'",
                 'resource': 'document',
                 'action': 'upload',
                 'effect': 'allow',
@@ -101,7 +101,7 @@ class Command(BaseCommand):
             {
                 'name': 'Data Owner Write',
                 'description': 'Data Owners có thể tạo/sửa tài liệu',
-                'subject_condition': "r.sub.user_type == 'data_owner'",
+                'subject_condition': "r.sub.user_type == 'data_contributor'",
                 'resource': 'document',
                 'action': 'write',
                 'effect': 'allow',
@@ -218,7 +218,7 @@ class Command(BaseCommand):
             {
                 'name': 'Admin Manage Policies',
                 'description': 'Admin có thể quản lý policies',
-                'subject_condition': "r.sub.user_type in ['admin', 'data_owner']",
+                'subject_condition': "r.sub.user_type in ['admin', 'data_contributor']",
                 'resource': 'policy',
                 'action': 'manage',
                 'effect': 'allow',

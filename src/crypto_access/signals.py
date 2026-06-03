@@ -201,3 +201,71 @@ def handle_attribute_deletion(sender, instance, **kwargs):
         f"[KEY-REVOKE] Key revoked for user {instance.user.username} "
         f"due to attribute deletion"
     )
+
+# =============================================================================
+# UserProfile Signals - Trigger key revocation on user_type changes
+# =============================================================================
+
+def get_user_profile_model():
+    from .models import UserProfile
+    return UserProfile
+
+@receiver(pre_save)
+def capture_old_user_type(sender, instance, **kwargs):
+    """Capture old user_type_ref before save for comparison"""
+    UserProfile = get_user_profile_model()
+    
+    if sender != UserProfile:
+        return
+        
+    if instance.pk:
+        try:
+            old_instance = UserProfile.objects.get(pk=instance.pk)
+            instance._old_user_type_code = old_instance.get_user_type_code()
+        except UserProfile.DoesNotExist:
+            pass
+
+@receiver(post_save)
+def handle_user_type_change(sender, instance, created, **kwargs):
+    """Trigger key revocation if user_type changes (e.g., from viewer to contributor)"""
+    UserProfile = get_user_profile_model()
+    KeyRevocation = get_key_revocation_model()
+    
+    if sender != UserProfile:
+        return
+        
+    if created:
+        return
+        
+    old_code = getattr(instance, '_old_user_type_code', None)
+    new_code = instance.get_user_type_code()
+    
+    if old_code and old_code != new_code:
+        logger.warning(
+            f"[USER-TYPE-CHANGE] User {instance.user.username}: "
+            f"user_type changed from '{old_code}' to '{new_code}'"
+        )
+        
+        # We need to simulate the ABAC attributes including this new user_type
+        # Since it's already saved, get_user_attributes will inject the NEW code
+        new_attrs = instance.get_abac_attributes()
+        # To get the old attributes for the log, we take current and force the old user_type
+        old_attrs = new_attrs.copy()
+        old_attrs['user_type'] = old_code
+        
+        # TODO: Get actual key_id
+        key_id = f"privkey_{instance.user.id}_placeholder"
+        
+        KeyRevocation.revoke_user_key(
+            user=instance.user,
+            key_id=key_id,
+            reason='attribute_change',
+            old_attributes=old_attrs,
+            new_attributes=new_attrs,
+            reason_detail=f"User Type upgraded/downgraded: '{old_code}' -> '{new_code}'"
+        )
+        
+        logger.warning(
+            f"[KEY-REVOKE] Key revoked for user {instance.user.username} "
+            f"due to user_type change"
+        )
