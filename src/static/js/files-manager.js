@@ -963,7 +963,7 @@
         if (oldPolicyText) oldPolicyText.textContent = 'Đang tải...';
         window.oldPolicyId = null;
         try {
-            const response = await fetch(`${API_BASE}files/assign_policy/?bucket=documents&file_path=${encodeURIComponent(filePath)}`, { headers });
+            const response = await fetch(`${API_BASE}files/file_policies/?bucket=documents&path=${encodeURIComponent(filePath)}`, { headers });
             if (response.ok) {
                 const data = await response.json();
                 if (data && data.direct_policies && data.direct_policies.length > 0) {
@@ -2426,7 +2426,6 @@
     window.clearSelection = clearSelection;
     window.bulkDownload = bulkDownload;
     window.bulkDelete = bulkDelete;
-    window.refreshFolders = refreshFolders;
     window.closePreview = closePreview;
     window.downloadFromPreview = downloadFromPreview;
     window.contextAction = contextAction;

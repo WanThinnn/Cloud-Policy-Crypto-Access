@@ -14,6 +14,7 @@ import logging
 import hashlib
 import json
 from django.core.cache import cache
+from django.db.models import Q
 import tempfile
 import os
 
