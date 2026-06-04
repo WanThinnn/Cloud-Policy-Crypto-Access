@@ -152,6 +152,18 @@
             }
         });
 
+        // Context menu item click delegation
+        const contextMenu = document.getElementById('context-menu');
+        if (contextMenu) {
+            contextMenu.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-action]');
+                if (btn) {
+                    const action = btn.dataset.action;
+                    contextAction(action);
+                }
+            });
+        }
+
         // Close alert on ESC
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
