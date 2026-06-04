@@ -637,10 +637,9 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     'path': f_path
                 })
                 
-            # 2. Get files from Database for THIS path
-            db_files = UploadedFile.objects.filter(
-                bucket__name=bucket_name,
-                is_deleted=False
+            # 2. Get files from Database for THIS path (using ABAC filtered queryset)
+            db_files = self.get_queryset().filter(
+                bucket__name=bucket_name
             )
             
             for db_file in db_files:
