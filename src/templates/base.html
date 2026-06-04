@@ -144,8 +144,9 @@
     <footer class="bg-slate-800 text-white mt-auto">
         <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center">
             <p class="text-sm text-gray-400">
-                © 2026 Crypto Access - CP-ABE Encryption & ABAC Access Control
+                © <span id="current-year"></span> Crypto Access - CP-ABE Encryption & Attribute-Based Access Control
             </p>
+            <script>document.getElementById('current-year').textContent = new Date().getFullYear();</script>
         </div>
     </footer>
 

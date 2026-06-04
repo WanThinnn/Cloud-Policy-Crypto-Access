@@ -107,7 +107,11 @@
         document.getElementById('files-list').addEventListener('contextmenu', handleContextMenu);
 
         // Upload modal
-        document.getElementById('upload-btn').addEventListener('click', openUploadModal);
+        document.getElementById('upload-btn').addEventListener('click', () => {
+            window.isVersionUpload = false;
+            window.versionUploadFilePath = null;
+            openUploadModal();
+        });
         document.getElementById('cancel-upload').addEventListener('click', closeUploadModal);
         document.getElementById('upload-form').addEventListener('submit', handleUpload);
 
@@ -176,6 +180,13 @@
                 case 'view_policies': case 'versions': case 'delete':
                     contextAction(action); break;
                 
+                case 'upload-new-version':
+                    window.isVersionUpload = true;
+                    window.versionUploadFilePath = currentContextFile;
+                    openUploadModal();
+                    hideContextMenu();
+                    break;
+                
                 // Assign policy modal
                 case 'switch-tab-existing': switchPolicyTab('existing'); break;
                 case 'switch-tab-new': switchPolicyTab('new'); break;
@@ -205,8 +216,8 @@
                 // Preview modal actions
                 case 'close-preview': closePreview(); break;
                 case 'download-preview': {
-                    if(window.downloadFile && window.currentContextFile) {
-                        window.downloadFile(window.currentContextFile);
+                    if(window.downloadFile && currentContextFile) {
+                        window.downloadFile(currentContextFile);
                     } else if(window.downloadFromPreview) {
                         window.downloadFromPreview();
                     }
@@ -256,10 +267,31 @@
             modalDropZone.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', updateFileSelectedName);
 
-            function updateFileSelectedName() {
+            async function updateFileSelectedName() {
                 if (fileInput.files && fileInput.files.length > 0) {
-                    fileSelectedName.textContent = `Đã chọn: ${fileInput.files[0].name}`;
+                    const file = fileInput.files[0];
+                    fileSelectedName.textContent = `Đã chọn: ${file.name}`;
                     fileSelectedName.classList.remove('hidden');
+                    
+                    if (!window.isVersionUpload) {
+                        const targetPath = currentPath ? `${currentPath}/${file.name}` : file.name;
+                        const exists = allFiles.some(f => f.path === targetPath);
+                        if (exists) {
+                            if (confirm(`File "${file.name}" đã tồn tại trên hệ thống.\nBạn có muốn tải lên dưới dạng phiên bản mới không?\n(OK để đồng ý tải bản mới, Cancel để chọn file khác)`)) {
+                                window.isVersionUpload = true;
+                                window.versionUploadFilePath = targetPath;
+                                
+                                const titleEl = document.querySelector('#upload-modal h3');
+                                if (titleEl) titleEl.childNodes[titleEl.childNodes.length - 1].textContent = ` Tải lên phiên bản mới: ${file.name}`;
+                                document.getElementById('upload-destination-folder').textContent = `Ghi đè file: ${targetPath}`;
+                                
+                                await preSelectExistingPolicy(targetPath);
+                            } else {
+                                fileInput.value = '';
+                                fileSelectedName.classList.add('hidden');
+                            }
+                        }
+                    }
                 } else {
                     fileSelectedName.classList.add('hidden');
                 }
@@ -874,16 +906,82 @@
     async function openUploadModal() {
         document.getElementById('upload-modal').classList.remove('hidden');
         
+        const titleEl = document.querySelector('#upload-modal h3');
+        if (titleEl) {
+            if (window.isVersionUpload && window.versionUploadFilePath) {
+                const fileName = window.versionUploadFilePath.split('/').pop();
+                titleEl.childNodes[titleEl.childNodes.length - 1].textContent = ` Tải lên phiên bản mới: ${fileName}`;
+            } else {
+                titleEl.childNodes[titleEl.childNodes.length - 1].textContent = ' Upload Tài liệu';
+            }
+        }
+        
         document.getElementById('new-policy-form-upload').classList.add('hidden');
         if (!document.getElementById('file-input').files.length) {
             document.getElementById('file-selected-name').classList.add('hidden');
         }
         
         // Update destination folder badge
-        document.getElementById('upload-destination-folder').textContent = currentPath ? `/${currentPath}` : '/ (Root)';
+        if (window.isVersionUpload && window.versionUploadFilePath) {
+            document.getElementById('upload-destination-folder').textContent = `Ghi đè file: ${window.versionUploadFilePath}`;
+            
+            // Show version policy UI
+            document.getElementById('version-policy-section').classList.remove('hidden');
+            document.getElementById('normal-policy-section').classList.add('hidden');
+            
+            // Check radio button change
+            document.querySelectorAll('input[name="version_policy_action"]').forEach(r => {
+                r.onchange = (e) => {
+                    if (e.target.value === 'update') {
+                        document.getElementById('normal-policy-section').classList.remove('hidden');
+                    } else {
+                        document.getElementById('normal-policy-section').classList.add('hidden');
+                    }
+                };
+            });
+            // Reset to keep by default
+            document.querySelector('input[name="version_policy_action"][value="keep"]').checked = true;
+            
+        } else {
+            document.getElementById('upload-destination-folder').textContent = currentPath ? `/${currentPath}` : '/ (Root)';
+            
+            document.getElementById('version-policy-section').classList.add('hidden');
+            document.getElementById('normal-policy-section').classList.remove('hidden');
+        }
         
         // Load policies
         await loadPoliciesForUpload();
+        
+        // Pre-select existing policy if it's a version upload
+        if (window.isVersionUpload && window.versionUploadFilePath) {
+            await preSelectExistingPolicy(window.versionUploadFilePath);
+        }
+    }
+    
+    async function preSelectExistingPolicy(filePath) {
+        const oldPolicyText = document.getElementById('old-policy-name');
+        if (oldPolicyText) oldPolicyText.textContent = 'Đang tải...';
+        window.oldPolicyId = null;
+        try {
+            const response = await fetch(`${API_BASE}files/assign_policy/?bucket=documents&file_path=${encodeURIComponent(filePath)}`, { headers });
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.direct_policies && data.direct_policies.length > 0) {
+                    const oldPolicy = data.direct_policies[0];
+                    window.oldPolicyId = oldPolicy.policy_id;
+                    if (oldPolicyText) {
+                        oldPolicyText.textContent = `${oldPolicy.policy_name} (${oldPolicy.policy_effect === 'allow' ? 'Allow' : 'Deny'})`;
+                    }
+                    const select = document.getElementById('upload-policy-select');
+                    if (select) select.value = oldPolicy.policy_id;
+                } else {
+                    if (oldPolicyText) oldPolicyText.textContent = 'Không có (Sử dụng ABAC mặc định)';
+                }
+            }
+        } catch (e) {
+            console.error('Lỗi lấy policy cũ:', e);
+            if (oldPolicyText) oldPolicyText.textContent = 'Lỗi không xác định';
+        }
     }
 
     function closeUploadModal() {
@@ -891,6 +989,8 @@
         document.getElementById('upload-form').reset();
         document.getElementById('upload-progress-container').classList.add('hidden');
         document.getElementById('new-policy-form-upload').classList.add('hidden');
+        window.isVersionUpload = false;
+        window.versionUploadFilePath = null;
     }
     
     async function loadPoliciesForUpload() {
@@ -1397,14 +1497,28 @@
         }
 
         const file = fileInput.files[0];
+        
+        let targetPath = folder ? `${folder}/${file.name}` : file.name;
+        
+        if (window.isVersionUpload && window.versionUploadFilePath) {
+            targetPath = window.versionUploadFilePath;
+            
+            const expectedName = targetPath.split('/').pop();
+            if (file.name !== expectedName) {
+                if (!confirm(`Tên file bạn chọn (${file.name}) khác với file gốc (${expectedName}). Bạn có chắc chắn muốn tải lên làm phiên bản mới không?`)) {
+                    return;
+                }
+            }
+            formData.append('is_new_version', 'true');
+        }
 
         // Prepare form data for API
         formData.append('file', file);
         formData.append('bucket_name', 'documents');
-        formData.append('file_path', folder ? `${folder}/${file.name}` : file.name);
+        formData.append('file_path', targetPath);
         formData.append('is_public', 'false');
 
-        console.log('Uploading file:', file.name, 'to path:', folder ? `${folder}/${file.name}` : file.name);
+        console.log('Uploading file:', file.name, 'to path:', targetPath);
 
         try {
             // Show progress bar
@@ -1454,10 +1568,25 @@
                 const uploadedFilePath = result.file_path;
                 
                 // Check if user wants to assign a policy
-                const policySelect = document.getElementById('upload-policy-select');
-                const selectedPolicyId = policySelect.value;
-                const newPolicyForm = document.getElementById('new-policy-form-upload');
-                const isCreatingNewPolicy = !newPolicyForm.classList.contains('hidden');
+                let selectedPolicyId = '';
+                let isCreatingNewPolicy = false;
+                
+                if (window.isVersionUpload) {
+                    const action = document.querySelector('input[name="version_policy_action"]:checked').value;
+                    if (action === 'keep') {
+                        // Keep old policy: No need to assign again, backend handles inheritance
+                        selectedPolicyId = null; 
+                    } else {
+                        // User wants to update policy
+                        selectedPolicyId = document.getElementById('upload-policy-select').value;
+                        const newPolicyForm = document.getElementById('new-policy-form-upload');
+                        isCreatingNewPolicy = !newPolicyForm.classList.contains('hidden');
+                    }
+                } else {
+                    selectedPolicyId = document.getElementById('upload-policy-select').value;
+                    const newPolicyForm = document.getElementById('new-policy-form-upload');
+                    isCreatingNewPolicy = !newPolicyForm.classList.contains('hidden');
+                }
                 
                 if (selectedPolicyId || isCreatingNewPolicy) {
                     // Assign policy to the uploaded file
@@ -1480,7 +1609,7 @@
         } finally {
             const submitBtn = document.getElementById('submit-upload');
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Upload';
+            submitBtn.textContent = 'Xác nhận Upload';
             setTimeout(() => {
                 document.getElementById('upload-progress-container').classList.add('hidden');
             }, 1000);
@@ -1953,6 +2082,9 @@
         div.textContent = text;
         return div.innerHTML;
     }
+
+    // Handle Version Upload has been merged into handleUpload logic
+
 
     async function deleteFile(filePath) {
         if (!confirm(`Xóa file "${filePath.split('/').pop()}"?`)) return;

@@ -273,10 +273,21 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             
         # Check if file exists for versioning
         existing_file = UploadedFile.objects.filter(bucket=bucket, file_path=file_path).first()
+        is_new_version_val = request.data.get('is_new_version', 'false')
+        print(f"DEBUG: is_new_version received = {is_new_version_val} (type: {type(is_new_version_val)})")
+        is_new_version = str(is_new_version_val).lower() == 'true'
+        print(f"DEBUG: is_new_version parsed = {is_new_version}")
+        
         version_number = 1
         physical_path = file_path
         
         if existing_file:
+            if not is_new_version:
+                return Response(
+                    {'error': 'File này đã tồn tại. Vui lòng đổi tên file để tải lên file mới, hoặc nhấp chuột phải vào file cũ và chọn "Tải lên phiên bản mới".'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
             latest_version = existing_file.get_latest_version()
             version_number = (latest_version.version_number + 1) if latest_version else 2
             physical_path = f"{file_path}_v{version_number}"
