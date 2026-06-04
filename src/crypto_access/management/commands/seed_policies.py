@@ -16,7 +16,7 @@ class Command(BaseCommand):
         admin = User.objects.filter(is_superuser=True).first()
         
         policies = [
-            # Super Admin - full access (highest priority)
+            # 1. Super Admin - full access (highest priority)
             {
                 'name': 'super_admin_full_access',
                 'description': 'Super admins have full access to all resources',
@@ -27,7 +27,7 @@ class Command(BaseCommand):
                 'priority': 1,
             },
             
-            # Admin policies
+            # 2. Admin - user management
             {
                 'name': 'admin_user_management',
                 'description': 'Admins can manage users',
@@ -37,115 +37,30 @@ class Command(BaseCommand):
                 'effect': 'allow',
                 'priority': 10,
             },
-            {
-                'name': 'admin_document_access',
-                'description': 'Admins can access all documents',
-                'subject_condition': "r.sub.user_type == 'admin'",
-                'resource': 'document',
-                'action': '*',
-                'effect': 'allow',
-                'priority': 10,
-            },
-            {
-                'name': 'admin_audit_read',
-                'description': 'Admins can read audit logs',
-                'subject_condition': "r.sub.user_type == 'admin'",
-                'resource': 'audit',
-                'action': 'read',
-                'effect': 'allow',
-                'priority': 10,
-            },
             
-            # Data Owner policies
+            # 3. Data Contributor (DO) - document management
             {
                 'name': 'data_contributor_document_manage',
-                'description': 'Data owners can manage documents',
+                'description': 'Data Contributors (DO) can manage documents',
                 'subject_condition': "r.sub.user_type == 'data_contributor'",
                 'resource': 'document',
                 'action': 'manage',
                 'effect': 'allow',
                 'priority': 20,
             },
-            {
-                'name': 'data_contributor_key_manage',
-                'description': 'Data owners can manage encryption keys',
-                'subject_condition': "r.sub.user_type == 'data_contributor'",
-                'resource': 'key',
-                'action': 'manage',
-                'effect': 'allow',
-                'priority': 20,
-            },
-            {
-                'name': 'data_contributor_policy_define',
-                'description': 'Data owners can define access policies for their data',
-                'subject_condition': "r.sub.user_type == 'data_contributor'",
-                'resource': 'policy',
-                'action': 'write',
-                'effect': 'allow',
-                'priority': 20,
-            },
             
-            # Data User policies
+            # 4. Data User (DU) - basic document read
             {
                 'name': 'data_user_document_read',
-                'description': 'Data users can read documents',
+                'description': 'Data Users (DU) can read documents',
                 'subject_condition': "r.sub.user_type == 'data_user'",
                 'resource': 'document',
                 'action': 'read',
                 'effect': 'allow',
                 'priority': 30,
             },
-            {
-                'name': 'data_user_document_download',
-                'description': 'Data users can download documents',
-                'subject_condition': "r.sub.user_type == 'data_user'",
-                'resource': 'document',
-                'action': 'download',
-                'effect': 'allow',
-                'priority': 30,
-            },
-            {
-                'name': 'data_user_decrypt',
-                'description': 'Data users can decrypt if attributes match',
-                'subject_condition': "r.sub.user_type == 'data_user'",
-                'resource': 'document',
-                'action': 'decrypt',
-                'effect': 'allow',
-                'priority': 30,
-            },
             
-            # Auditor policies
-            {
-                'name': 'auditor_audit_full',
-                'description': 'Auditors have full access to audit logs',
-                'subject_condition': "r.sub.user_type == 'auditor'",
-                'resource': 'audit',
-                'action': '*',
-                'effect': 'allow',
-                'priority': 25,
-            },
-            {
-                'name': 'auditor_document_read',
-                'description': 'Auditors can read documents for audit purposes',
-                'subject_condition': "r.sub.user_type == 'auditor'",
-                'resource': 'document',
-                'action': 'read',
-                'effect': 'allow',
-                'priority': 25,
-            },
-            
-            # Guest policies (most restrictive)
-            {
-                'name': 'guest_public_read',
-                'description': 'Guests can only read public documents',
-                'subject_condition': "r.sub.user_type == 'guest'",
-                'resource': 'document',
-                'action': 'read',
-                'effect': 'allow',
-                'priority': 50,
-            },
-            
-            # Attribute-based policies (examples)
+            # 5. IT Department Key Access
             {
                 'name': 'it_department_key_access',
                 'description': 'IT department can manage encryption keys',
@@ -155,6 +70,8 @@ class Command(BaseCommand):
                 'effect': 'allow',
                 'priority': 40,
             },
+            
+            # 6. Secret Clearance Access
             {
                 'name': 'secret_clearance_document_access',
                 'description': 'Users with secret clearance can access classified documents',
@@ -164,8 +81,56 @@ class Command(BaseCommand):
                 'effect': 'allow',
                 'priority': 35,
             },
+
+            # 7. Multi-attribute Complex 1: HR Managers
+            {
+                'name': 'hr_manager_full_access',
+                'description': 'HR Managers have full access to employee records',
+                'subject_condition': "r.sub.department == 'hr' and r.sub.role == 'manager'",
+                'resource': 'document',
+                'action': '*',
+                'effect': 'allow',
+                'priority': 45,
+            },
+
+            # 8. Multi-attribute Complex 2: Active Employee Read
+            {
+                'name': 'active_employee_read',
+                'description': 'Active employees can read basic documents',
+                'subject_condition': "r.sub.employment_status == 'active'",
+                'resource': 'document',
+                'action': 'read',
+                'effect': 'allow',
+                'priority': 50,
+            },
+
+            # 9. Multi-attribute Complex 3: Director strategic access
+            {
+                'name': 'director_strategic_access',
+                'description': 'Directors or CEOs can access strategic data',
+                'subject_condition': "r.sub.role in ['director', 'ceo']",
+                'resource': 'document',
+                'action': '*',
+                'effect': 'allow',
+                'priority': 25,
+            },
+
+            # 10. Multi-attribute Complex 4: Strict Finance Policy
+            {
+                'name': 'strict_finance_policy',
+                'description': 'Only active finance employees with full access can manage financial data',
+                'subject_condition': "r.sub.department == 'finance' and r.sub.employment_status == 'active' and r.sub.data_access == 'full'",
+                'resource': 'document',
+                'action': 'manage',
+                'effect': 'allow',
+                'priority': 15,
+            },
         ]
         
+        # Delete old policies first
+        AccessPolicy.objects.all().delete()
+        self.stdout.write("Deleted old policies")
+
         created_count = 0
         for policy_data in policies:
             policy, created = AccessPolicy.objects.get_or_create(

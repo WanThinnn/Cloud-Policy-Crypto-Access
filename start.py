@@ -205,7 +205,15 @@ def main(argv: list[str]) -> int:
             run(add_manage_args(c + ["exec", "web", "python", "manage.py", "migrate"], extra))
         elif cmd == "initdata":
             # print(f"{status_line}\n")
+            print(color_info("\n[1/4] Running database migrations..."))
+            run(add_manage_args(c + ["exec", "web", "python", "manage.py", "migrate"], []))
+            print(color_info("\n[2/4] Initializing superuser..."))
             run(c + ["exec", "web", "python", "init_data.py"])
+            print(color_info("\n[3/4] Seeding default ABAC policies..."))
+            run(add_manage_args(c + ["exec", "web", "python", "manage.py", "seed_policies"], []))
+            print(color_info("\n[4/4] Seeding test users & ABAC attributes..."))
+            run(add_manage_args(c + ["exec", "web", "python", "manage.py", "seed_test_data"], []))
+            print(color_info("\n[OK] Initialization complete!"))
         elif cmd == "initsettings":
             # print(f"{status_line}\n")
             run(add_manage_args(c + ["exec", "web", "python", "manage.py", "init_settings"], extra))

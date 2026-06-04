@@ -14,6 +14,35 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write('Creating test users...\n')
         
+        # Disconnect signals temporarily to avoid constraint errors during bulk delete
+        from django.db.models.signals import pre_delete, post_save, pre_save
+        from crypto_access.signals import (
+            user_deleted_handler, handle_attribute_change, 
+            handle_attribute_deletion, capture_old_attribute_value,
+            capture_old_profile_state, handle_profile_changes
+        )
+        from django.contrib.auth.models import User
+        
+        pre_delete.disconnect(user_deleted_handler, sender=User)
+        pre_save.disconnect(capture_old_attribute_value)
+        post_save.disconnect(handle_attribute_change)
+        pre_delete.disconnect(handle_attribute_deletion)
+        pre_save.disconnect(capture_old_profile_state)
+        post_save.disconnect(handle_profile_changes)
+        
+        # Delete old test users (exclude superusers)
+        User.objects.filter(is_superuser=False).delete()
+        self.stdout.write("Deleted old test users")
+        
+        # Reconnect signals
+        pre_delete.connect(user_deleted_handler, sender=User)
+        pre_save.connect(capture_old_attribute_value)
+        post_save.connect(handle_attribute_change)
+        pre_delete.connect(handle_attribute_deletion)
+        pre_save.connect(capture_old_profile_state)
+        post_save.connect(handle_profile_changes)
+        
+        
         # Test users configuration
         test_users = [
             {
@@ -26,6 +55,7 @@ class Command(BaseCommand):
                     'department': 'it',
                     'role': 'director',
                     'clearance_level': 'top_secret',
+                    'employment_status': 'active',
                 }
             },
             {
@@ -38,6 +68,7 @@ class Command(BaseCommand):
                     'department': 'hr',
                     'role': 'manager',
                     'clearance_level': 'secret',
+                    'employment_status': 'active',
                 }
             },
             {
@@ -45,11 +76,12 @@ class Command(BaseCommand):
                 'email': 'dev@company.com',
                 'password': 'Test@123',
                 'full_name': 'Phạm Developer',
-                'user_type': 'data_viewer',
+                'user_type': 'data_user',
                 'attributes': {
                     'department': 'it',
                     'role': 'employee',
                     'clearance_level': 'confidential',
+                    'employment_status': 'active',
                 }
             },
             {
@@ -57,11 +89,12 @@ class Command(BaseCommand):
                 'email': 'hr_user@company.com',
                 'password': 'Test@123',
                 'full_name': 'Nguyễn HR Staff',
-                'user_type': 'data_viewer',
+                'user_type': 'data_user',
                 'attributes': {
                     'department': 'hr',
                     'role': 'employee',
                     'clearance_level': 'confidential',
+                    'employment_status': 'active',
                 }
             },
             {
@@ -69,11 +102,13 @@ class Command(BaseCommand):
                 'email': 'finance@company.com',
                 'password': 'Test@123',
                 'full_name': 'Hoàng Kế Toán',
-                'user_type': 'data_viewer',
+                'user_type': 'data_user',
                 'attributes': {
                     'department': 'finance',
                     'role': 'employee',
                     'clearance_level': 'secret',
+                    'data_access': 'full',
+                    'employment_status': 'active',
                 }
             },
         ]

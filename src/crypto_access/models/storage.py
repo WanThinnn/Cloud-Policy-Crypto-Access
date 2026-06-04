@@ -50,8 +50,8 @@ class UploadedFile(models.Model):
     file_size = models.BigIntegerField(help_text="File size in bytes")
     
     # Access URLs
-    public_url = models.URLField(blank=True, null=True)
-    signed_url = models.URLField(blank=True, null=True)
+    public_url = models.URLField(max_length=1000, blank=True, null=True)
+    signed_url = models.URLField(max_length=1000, blank=True, null=True)
     signed_url_expires_at = models.DateTimeField(blank=True, null=True)
     
     # Metadata
