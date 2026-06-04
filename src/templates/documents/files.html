@@ -71,7 +71,7 @@
 
     <!-- Alert -->
     <div id="alert" class="hidden rounded-xl p-4 relative mb-6 shadow-sm">
-        <button onclick="document.getElementById('alert').classList.add('hidden')" class="absolute top-3 right-3 opacity-50 hover:opacity-100 transition-opacity">
+        <button data-action="close-alert" class="absolute top-3 right-3 opacity-50 hover:opacity-100 transition-opacity">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -92,16 +92,16 @@
             </div>
             <span class="font-medium"><span id="selected-count" class="font-bold text-lg">0</span> file đã chọn</span>
             <div class="h-6 w-px bg-white/30 mx-2"></div>
-            <button onclick="clearSelection()" class="text-sm text-indigo-100 hover:text-white hover:underline transition-colors">Bỏ chọn tất cả</button>
+            <button data-action="clear-selection" class="text-sm text-indigo-100 hover:text-white hover:underline transition-colors">Bỏ chọn tất cả</button>
         </div>
         <div class="flex gap-3">
-            <button onclick="bulkDownload()" class="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-50 font-medium transition-colors flex items-center gap-2">
+            <button data-action="bulk-download" class="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-50 font-medium transition-colors flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
                 Download
             </button>
-            <button onclick="bulkDelete()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium transition-colors flex items-center gap-2">
+            <button data-action="bulk-delete" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium transition-colors flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>
@@ -127,7 +127,7 @@
         <div class="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <!-- Breadcrumb -->
             <div class="flex items-center bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
-                <button onclick="loadFolder('')" class="text-gray-500 hover:text-indigo-600 transition-colors">
+                <button data-action="go-home" class="text-gray-500 hover:text-indigo-600 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                     </svg>
@@ -139,7 +139,7 @@
             </div>
 
             <!-- Action Buttons -->
-            <button onclick="createFolder()" class="text-gray-600 hover:text-indigo-600 hover:bg-white bg-transparent px-4 py-2 rounded-xl flex items-center gap-2 transition-all border border-transparent hover:border-gray-200 hover:shadow-sm">
+            <button data-action="create-folder" class="text-gray-600 hover:text-indigo-600 hover:bg-white bg-transparent px-4 py-2 rounded-xl flex items-center gap-2 transition-all border border-transparent hover:border-gray-200 hover:shadow-sm">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
                 </svg>
@@ -223,7 +223,7 @@
                 
                 <!-- Quick create new policy -->
                 <div class="mt-3">
-                    <button type="button" onclick="toggleNewPolicyForm()" class="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                    <button type="button" data-action="toggle-new-policy-form" class="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
@@ -233,7 +233,7 @@
                     <div id="new-policy-form-upload" class="hidden mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
                         <div class="flex justify-between items-center">
                             <label class="block text-sm font-medium text-blue-800">🔧 Tạo Policy mới</label>
-                            <button type="button" onclick="toggleUploadAdvancedMode()" id="upload-toggle-advanced" class="text-xs text-blue-600 hover:underline">
+                            <button type="button" data-action="toggle-upload-advanced" id="upload-toggle-advanced" class="text-xs text-blue-600 hover:underline">
                                 Chế độ nâng cao
                             </button>
                         </div>
@@ -266,7 +266,7 @@
                                 <!-- Rules will be added here -->
                             </div>
                             
-                            <button type="button" onclick="addUploadRule()" class="text-xs text-blue-600 hover:text-blue-800 flex items-center">
+                            <button type="button" data-action="add-upload-rule" class="text-xs text-blue-600 hover:text-blue-800 flex items-center">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                 </svg>
@@ -349,25 +349,25 @@
     <div class="bg-white rounded-lg w-full mx-4 flex flex-col" style="max-width: 90vw; max-height: 90vh;">
         <div class="flex items-center justify-between p-4 border-b relative z-10 bg-white rounded-t-lg shadow-sm">
             <h3 class="text-lg font-semibold" id="preview-title">Preview</h3>
-            <button id="btn-close-preview-top" onclick="document.getElementById('preview-modal').classList.add('hidden'); document.getElementById('preview-content').innerHTML = ''; window.currentContextFile = null;" class="text-gray-500 hover:text-gray-700">
+            <button data-action="close-preview" class="text-gray-500 hover:text-gray-700">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         </div>
-        <div id="preview-content" class="flex-1 overflow-auto p-6">
+        <div id="preview-content" class="flex-1 overflow-auto p-6 flex flex-col items-center justify-center min-h-[50vh]">
             <!-- Content here -->
         </div>
         <div class="flex justify-between items-center p-4 border-t bg-gray-50 relative z-10 rounded-b-lg shadow-inner">
             <div class="flex gap-2">
-                <button id="btn-download-preview" onclick="if(window.downloadFile && window.currentContextFile) window.downloadFile(window.currentContextFile); else if(window.downloadFromPreview) window.downloadFromPreview();" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-2">
+                <button data-action="download-preview" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>
                     Download
                 </button>
             </div>
-            <button id="btn-close-preview-bottom" onclick="document.getElementById('preview-modal').classList.add('hidden'); document.getElementById('preview-content').innerHTML = ''; window.currentContextFile = null;" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">
+            <button data-action="close-preview" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">
                 Đóng
             </button>
         </div>
@@ -433,11 +433,11 @@
         <div class="p-6 overflow-y-auto max-h-[60vh]">
             <!-- Tabs -->
             <div class="flex border-b mb-6">
-                <button id="tab-existing" onclick="switchPolicyTab('existing')" 
+                <button id="tab-existing" data-action="switch-tab-existing" 
                     class="px-4 py-2 border-b-2 border-indigo-600 text-indigo-600 font-medium">
                     Chọn Policy có sẵn
                 </button>
-                <button id="tab-new" onclick="switchPolicyTab('new')" 
+                <button id="tab-new" data-action="switch-tab-new" 
                     class="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700">
                     Tạo Policy mới
                 </button>
@@ -467,7 +467,7 @@
             <div id="panel-new" class="hidden space-y-4">
                 <div class="flex justify-between items-center">
                     <label class="block text-sm font-medium text-blue-800">🔧 Xây dựng điều kiện (Policy Builder)</label>
-                    <button type="button" onclick="toggleAssignAdvancedMode()" id="assign-toggle-advanced" class="text-xs text-blue-600 hover:underline">
+                    <button type="button" data-action="toggle-assign-advanced" id="assign-toggle-advanced" class="text-xs text-blue-600 hover:underline">
                         Chế độ nâng cao
                     </button>
                 </div>
@@ -502,7 +502,7 @@
                         <!-- Rules will be added here -->
                     </div>
                     
-                    <button type="button" onclick="addAssignRule()" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                    <button type="button" data-action="add-assign-rule" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
@@ -593,11 +593,11 @@
         </div>
         
         <div class="flex justify-end gap-3 p-6 bg-gray-50 border-t">
-            <button onclick="closeAssignPolicyModal()" 
+            <button data-action="close-assign-modal" 
                 class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                 Hủy
             </button>
-            <button onclick="submitAssignPolicy()" id="submit-assign-policy"
+            <button data-action="submit-assign-policy" id="submit-assign-policy"
                 class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -632,11 +632,11 @@
         </div>
         
         <div class="flex justify-end gap-3 p-6 bg-gray-50 border-t">
-            <button onclick="closeViewPoliciesModal()" 
+            <button data-action="close-view-policies" 
                 class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                 Đóng
             </button>
-            <button onclick="openAssignPolicyFromView()" 
+            <button data-action="open-assign-from-view" 
                 class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
@@ -650,14 +650,21 @@
 <!-- Version History Modal -->
 <div id="version-history-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden">
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
-            <h3 class="text-xl font-bold flex items-center gap-3">
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 flex items-start justify-between">
+            <div>
+                <h3 class="text-xl font-bold flex items-center gap-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Lịch sử phiên bản
+                </h3>
+                <p class="text-indigo-100 mt-1 text-sm" id="version-history-file-name">File: </p>
+            </div>
+            <button data-action="close-version-modal" class="text-white/70 hover:text-white transition-colors p-1">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
-                Lịch sử phiên bản
-            </h3>
-            <p class="text-indigo-100 mt-1 text-sm" id="version-history-file-name">File: </p>
+            </button>
         </div>
         
         <div class="p-6 overflow-y-auto max-h-[60vh]">
@@ -671,7 +678,7 @@
         </div>
         
         <div class="flex justify-end gap-3 p-6 bg-gray-50 border-t">
-            <button onclick="closeVersionHistoryModal()" 
+            <button data-action="close-version-modal" 
                 class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                 Đóng
             </button>
@@ -681,5 +688,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/files-manager.js' %}?v=4"></script>
+<script src="{% static 'js/files-manager.js' %}?v=5"></script>
 {% endblock %}

@@ -90,16 +90,8 @@
         // View toggle
         document.getElementById('grid-view-btn').addEventListener('click', () => switchView('grid'));
         document.getElementById('list-view-btn').addEventListener('click', () => switchView('list'));
-
-        // Preview modal buttons
-        const btnCloseTop = document.getElementById('btn-close-preview-top');
-        if (btnCloseTop) btnCloseTop.addEventListener('click', closePreview);
-        const btnCloseBottom = document.getElementById('btn-close-preview-bottom');
-        if (btnCloseBottom) btnCloseBottom.addEventListener('click', closePreview);
-        const btnDownloadPreview = document.getElementById('btn-download-preview');
-        if (btnDownloadPreview) btnDownloadPreview.addEventListener('click', downloadFromPreview);
-
-        // Context menu delegation
+        // File list loading
+        loadFolder('');
         const handleContextMenu = (e) => {
             const fileItem = e.target.closest('.file-item');
             if (fileItem) {
@@ -152,17 +144,76 @@
             }
         });
 
-        // Context menu item click delegation
-        const contextMenu = document.getElementById('context-menu');
-        if (contextMenu) {
-            contextMenu.addEventListener('click', (e) => {
-                const btn = e.target.closest('[data-action]');
-                if (btn) {
-                    const action = btn.dataset.action;
-                    contextAction(action);
+        // ============= GLOBAL EVENT DELEGATION =============
+        // Single handler for ALL data-action buttons across the entire page
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            
+            switch (action) {
+                // Alert
+                case 'close-alert':
+                    document.getElementById('alert').classList.add('hidden');
+                    break;
+                    
+                // Bulk actions
+                case 'clear-selection': clearSelection(); break;
+                case 'bulk-download': bulkDownload(); break;
+                case 'bulk-delete': bulkDelete(); break;
+                
+                // Breadcrumb / toolbar
+                case 'go-home': loadFolder(''); break;
+                case 'create-folder': createFolder(); break;
+                
+                // Upload modal - policy builder
+                case 'toggle-new-policy-form': toggleNewPolicyForm(); break;
+                case 'toggle-upload-advanced': toggleUploadAdvancedMode(); break;
+                case 'add-upload-rule': addUploadRule(); break;
+                
+                // Context menu items
+                case 'preview': case 'download': case 'assign_policy':
+                case 'view_policies': case 'versions': case 'delete':
+                    contextAction(action); break;
+                
+                // Assign policy modal
+                case 'switch-tab-existing': switchPolicyTab('existing'); break;
+                case 'switch-tab-new': switchPolicyTab('new'); break;
+                case 'toggle-assign-advanced': toggleAssignAdvancedMode(); break;
+                case 'add-assign-rule': addAssignRule(); break;
+                case 'close-assign-modal': closeAssignPolicyModal(); break;
+                case 'submit-assign-policy': submitAssignPolicy(); break;
+                
+                // View policies modal
+                case 'close-view-policies': closeViewPoliciesModal(); break;
+                case 'open-assign-from-view': openAssignPolicyFromView(); break;
+                
+                // Version history modal
+                case 'close-version-modal': closeVersionHistoryModal(); break;
+                case 'preview-version': {
+                    const fp = btn.dataset.filepath;
+                    const vn = parseInt(btn.dataset.version);
+                    previewFileVersion(fp, vn);
+                    break;
                 }
-            });
-        }
+                case 'download-version': {
+                    const fp = btn.dataset.filepath;
+                    const vn = parseInt(btn.dataset.version);
+                    downloadFileVersion(fp, vn);
+                    break;
+                }
+                // Preview modal actions
+                case 'close-preview': closePreview(); break;
+                case 'download-preview': {
+                    if(window.downloadFile && window.currentContextFile) {
+                        window.downloadFile(window.currentContextFile);
+                    } else if(window.downloadFromPreview) {
+                        window.downloadFromPreview();
+                    }
+                    break;
+                }
+            }
+        });
 
         // Close alert on ESC
         document.addEventListener('keydown', (e) => {
@@ -2033,14 +2084,29 @@
             </div>`;
             
         try {
-            // Find file ID
+            // Find file ID from allFiles first, fallback to API search
+            let fileId = null;
             const file = allFiles.find(f => f.path === filePath);
-            if (!file || !file.id) {
-                throw new Error("File not found or missing ID");
+            if (file && file.id) {
+                fileId = file.id;
+            } else {
+                // Fallback: search by browsing the parent directory
+                const parts = filePath.split('/');
+                const parentPath = parts.slice(0, -1).join('/');
+                const browseResp = await fetch(`${API_BASE}files/browse/?bucket=documents&path=${encodeURIComponent(parentPath)}`, { headers });
+                if (browseResp.ok) {
+                    const browseData = await browseResp.json();
+                    const found = (browseData.files || []).find(f => f.path === filePath);
+                    if (found && found.id) fileId = found.id;
+                }
             }
             
-            const response = await fetch(`${API_BASE}files/${file.id}/versions/`, { headers });
-            if (!response.ok) throw new Error("Failed to load versions");
+            if (!fileId) {
+                throw new Error("Không tìm thấy file trong hệ thống");
+            }
+            
+            const response = await fetch(`${API_BASE}files/${fileId}/versions/`, { headers });
+            if (!response.ok) throw new Error("Không thể tải lịch sử phiên bản");
             
             const data = await response.json();
             
@@ -2055,6 +2121,8 @@
                 const date = new Date(v.created_at).toLocaleString('vi-VN');
                 const size = (v.file_size / 1024).toFixed(1) + ' KB';
                 const policyText = v.cpabe_policy ? `Mã hóa CP-ABE (${v.cpabe_policy})` : 'Không mã hóa';
+                // Escape filePath for use in data attributes
+                const escapedPath = filePath.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                 
                 html += `
                 <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between ${isLatest ? 'ring-1 ring-indigo-500' : ''}">
@@ -2076,11 +2144,11 @@
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="previewFileVersion('${filePath}', ${v.version_number})" class="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1">
+                        <button data-action="preview-version" data-filepath="${escapedPath}" data-version="${v.version_number}" class="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                            Preview
+                            Xem trước
                         </button>
-                        <button onclick="downloadFileVersion('${filePath}', ${v.version_number})" class="px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 border border-indigo-100 rounded hover:bg-indigo-100 transition-colors flex items-center gap-1">
+                        <button data-action="download-version" data-filepath="${escapedPath}" data-version="${v.version_number}" class="px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 border border-indigo-100 rounded hover:bg-indigo-100 transition-colors flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             Tải xuống
                         </button>
@@ -2186,20 +2254,21 @@
             const url = window.URL.createObjectURL(blob);
 
             if (contentType.startsWith('image/')) {
-                content.innerHTML = `<img src="${url}" class="max-w-full max-h-[70vh] object-contain mx-auto rounded-lg shadow-sm" />`;
+                content.innerHTML = `<img src="${url}" class="max-w-full max-h-[80vh] object-contain mx-auto rounded-lg shadow-sm" />`;
             } else if (contentType === 'application/pdf') {
-                content.innerHTML = `<iframe src="${url}" class="w-full h-[70vh] rounded-lg shadow-sm border-0"></iframe>`;
+                content.innerHTML = `<iframe src="${url}" class="w-full h-[80vh] min-h-[600px] rounded-lg shadow-sm border-0 flex-1"></iframe>`;
             } else if (contentType.startsWith('text/')) {
                 const text = await blob.text();
                 // Escape HTML tags to prevent XSS and display properly
                 const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 content.innerHTML = `<pre class="whitespace-pre-wrap p-4 bg-gray-50 rounded-lg text-sm text-gray-800 border overflow-auto max-h-[70vh]">${escapedText}</pre>`;
             } else {
+                const escapedFp = filePath.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                 content.innerHTML = `
                 <div class="text-center py-12">
                     <div class="text-6xl mb-4">📁</div>
                     <p class="text-gray-600 mb-4">Không thể xem trước định dạng file này (${ext})</p>
-                    <button onclick="downloadFileVersion('${filePath}', ${versionNumber})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg inline-flex items-center gap-2">
+                    <button data-action="download-version" data-filepath="${escapedFp}" data-version="${versionNumber}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg inline-flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                         Tải xuống phiên bản này
                     </button>

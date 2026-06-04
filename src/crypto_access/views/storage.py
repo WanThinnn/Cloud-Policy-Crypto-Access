@@ -432,8 +432,25 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         """Get version history for a file"""
         uploaded_file = self.get_object()
         
-        # Check basic read access
         try:
+            # Auto-create v1 for legacy files that have no version records
+            if uploaded_file.versions.count() == 0:
+                # Try to get existing CP-ABE policy from FileAccessPolicy
+                existing_policy = None
+                file_policy = uploaded_file.access_policies.first()
+                if file_policy and file_policy.policy and file_policy.policy.cpabe_policy:
+                    existing_policy = file_policy.policy.cpabe_policy
+                    
+                FileVersion.objects.create(
+                    file=uploaded_file,
+                    version_number=1,
+                    physical_path=uploaded_file.file_path,
+                    file_size=uploaded_file.file_size,
+                    cpabe_policy=existing_policy,
+                    uploaded_by=uploaded_file.uploaded_by
+                )
+                logger.info(f"Auto-created v1 FileVersion for legacy file: {uploaded_file.file_name} (id={uploaded_file.id})")
+            
             versions = uploaded_file.versions.all().order_by('-version_number')
             result = []
             for v in versions:
