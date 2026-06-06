@@ -25,16 +25,36 @@ def init():
             password=admin_password
         )
         
+        # Get super_admin UserType reference
+        from crypto_access.models import UserType
+        super_admin_type = UserType.objects.filter(code='super_admin').first()
+
         # Create user profile
         UserProfile.objects.create(
             user=user,
             phone='0123456789',
             address='CyberFortress HQ',
-            bio='System Administrator'
+            bio='System Administrator',
+            user_type='super_admin',
+            user_type_ref=super_admin_type
         )
         print("Superuser created successfully.")
     else:
         print("Superuser already exists.")
+        
+    # Create default storage bucket
+    from crypto_access.models.storage import StorageBucket
+    bucket, created = StorageBucket.objects.get_or_create(
+        name='documents',
+        defaults={
+            'description': 'Default bucket for secure documents',
+            'bucket_type': 'private'
+        }
+    )
+    if created:
+        print("Created default StorageBucket: 'documents'")
+    else:
+        print("StorageBucket 'documents' already exists.")
 
     print("Data Initialization Complete.")
 

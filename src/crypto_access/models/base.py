@@ -44,7 +44,7 @@ class UserProfile(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     
     # BM1 fields
-    full_name = models.CharField(max_length=255, default='', verbose_name="Họ và tên")
+    full_name = models.CharField(max_length=255, default='', verbose_name="Full Name")
     
     # New: ForeignKey to UserType model (flexible, configurable)
     user_type_ref = models.ForeignKey(
@@ -53,7 +53,7 @@ class UserProfile(BaseModel):
         null=True,
         blank=True,
         related_name='users',
-        verbose_name="Loại người dùng"
+        verbose_name="User Type"
     )
     
     # Legacy field - kept for backward compatibility
@@ -61,19 +61,19 @@ class UserProfile(BaseModel):
         max_length=20, 
         choices=USER_TYPE_CHOICES, 
         default='data_user',
-        verbose_name="Loại người dùng (legacy)"
+        verbose_name="User Type (legacy)"
     )
     
     account_status = models.CharField(
         max_length=20,
         choices=ACCOUNT_STATUS_CHOICES,
-        default='active',  # Tạm thời active, sau này sẽ đổi thành pending
-        verbose_name="Trạng thái tài khoản"
+        default='active',  # Temporarily active, later will be changed to pending
+        verbose_name="Account Status"
     )
     account_expiry_date = models.DateTimeField(
         null=True, 
         blank=True,
-        verbose_name="Ngày hết hạn tài khoản"
+        verbose_name="Account Expiry Date"
     )
     
     # Contact info

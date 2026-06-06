@@ -1,7 +1,7 @@
 """
 Audit Models for ABAC System
-- AccessLog (BM12): Nhật ký truy cập
-- KeyRevocation (BM13): Danh sách thu hồi khóa
+- AccessLog (BM12): Access log
+- KeyRevocation (BM13): Key revocation list
 """
 
 from django.db import models
@@ -15,8 +15,8 @@ class AccessLog(BaseModel):
     Access Log Model (BM12)
     Records all access requests for audit and compliance
     
-    QĐ12: Mọi yêu cầu truy cập (bao gồm cả thành công và thất bại) 
-    đều phải được ghi lại trong hệ thống nhật ký.
+    QĐ12: All access requests (including success and failure) 
+    must be recorded in the log system.
     """
     
     RESULT_CHOICES = [
@@ -186,24 +186,24 @@ class KeyRevocation(BaseModel):
     Key Revocation List Model (BM13)
     Tracks revoked CP-ABE keys for users
     
-    QĐ13: Khi thuộc tính người dùng thay đổi hoặc phát hiện vi phạm bảo mật,
-    khóa CP-ABE hiện tại phải được thu hồi ngay lập tức.
+    QĐ13: When user attributes change or a security breach is detected,
+    the current CP-ABE key must be immediately revoked.
     """
     
     REASON_CHOICES = [
-        ('attribute_change', 'Thuộc tính người dùng thay đổi'),
-        ('security_breach', 'Vi phạm bảo mật'),
-        ('account_termination', 'Chấm dứt tài khoản'),
-        ('key_expiration', 'Khóa hết hạn'),
-        ('admin_revoke', 'Admin thu hồi thủ công'),
-        ('key_rotation', 'Luân chuyển khóa định kỳ'),
+        ('attribute_change', 'User attributes changed'),
+        ('security_breach', 'Security breach'),
+        ('account_termination', 'Account terminated'),
+        ('key_expiration', 'Key expired'),
+        ('admin_revoke', 'Admin revoked manually'),
+        ('key_rotation', 'Periodic key rotation'),
     ]
     
     STATUS_CHOICES = [
-        ('pending', 'Đang chờ xử lý'),
-        ('revoked', 'Đã thu hồi'),
-        ('reissued', 'Đã cấp khóa mới'),
-        ('cancelled', 'Đã hủy'),
+        ('pending', 'Pending'),
+        ('revoked', 'Revoked'),
+        ('reissued', 'Key reissued'),
+        ('cancelled', 'Cancelled'),
     ]
     
     # Revocation identification

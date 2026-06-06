@@ -12,6 +12,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 from datetime import timedelta
 import secrets
 import logging

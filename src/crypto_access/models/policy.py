@@ -135,13 +135,27 @@ class AccessPolicy(BaseModel):
                 return ""
             if len(values) == 1:
                 return f"{attr}:{values[0]}"
-            return "(" + " or ".join([f"{attr}:{v}" for v in values]) + ")"
+            
+            # rabe requires binary ORs! (A or B or C) -> ((A or B) or C)
+            res = f"{attr}:{values[0]}"
+            for v in values[1:]:
+                res = f"({res} or {attr}:{v})"
+            return res
             
         condition = re.sub(r"([a-zA-Z0-9_]+)\s*in\s*\[(.*?)\]", repl_in, condition)
         
         # CP-ABE lib supports 'and', 'or', and '()'. It doesn't support '&&' or '||' natively.
-        # Ensure we convert '&&' to 'and', '||' to 'or' if they exist.
         condition = condition.replace("&&", "and").replace("||", "or")
+        
+        # Fix binary tree requirement for rabe (A and B and C -> ((A and B) and C))
+        # This handles simple top-level ANDs which is what our UI generates.
+        if ' or ' not in condition or condition.startswith('('):
+            parts = [p.strip() for p in condition.split(' and ')]
+            if len(parts) > 2:
+                res = parts[0]
+                for p in parts[1:]:
+                    res = f"({res} and {p})"
+                condition = res
         
         return condition
 

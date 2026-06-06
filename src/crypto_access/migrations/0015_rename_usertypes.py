@@ -10,7 +10,7 @@ def rename_user_types(apps, schema_editor):
         ut2 = UserType.objects.get(code='data_viewer')
         ut2.code = 'data_user'
         ut2.name = 'Data User'
-        ut2.description = 'Data User - Chỉ có quyền đọc và tải file theo chính sách được cấp'
+        ut2.description = 'Data User - Only has permission to read and download files according to assigned policies'
         ut2.save()
     except UserType.DoesNotExist:
         pass
