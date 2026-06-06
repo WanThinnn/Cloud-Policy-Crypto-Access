@@ -31,12 +31,15 @@ class UserTypeSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Prevent modification of system types"""
         if self.instance and self.instance.is_system:
-            # Only allow updating description and permissions for system types
-            allowed_fields = {'description', 'permissions', 'is_active'}
-            changed_fields = set(data.keys()) - allowed_fields
-            if changed_fields:
+            # Check if protected fields are actually being changed to a different value
+            protected_fields = {'code', 'name'}
+            changed_protected = set()
+            for field in protected_fields:
+                if field in data and data[field] != getattr(self.instance, field):
+                    changed_protected.add(field)
+            if changed_protected:
                 raise serializers.ValidationError(
-                    f"Cannot modify these fields for system types: {changed_fields}"
+                    f"Cannot modify these fields for system types: {changed_protected}"
                 )
         return data
 

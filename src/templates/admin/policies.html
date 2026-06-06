@@ -162,8 +162,8 @@
             
             <div class="grid grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resource</label>
-                    <select name="resource" required
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resource (Multiple allowed)</label>
+                    <select name="resource" id="resource-select" required multiple size="5"
                         class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="document">📄 Document</option>
                         <option value="key">🔑 Key Revocation List</option>
@@ -719,7 +719,13 @@
             const form = document.getElementById('policy-form');
             form.name.value = policy.name;
             form.description.value = policy.description || '';
-            form.resource.value = policy.resource;
+            
+            // Set multiple resources
+            const resources = policy.resource.split(',');
+            Array.from(form.resource.options).forEach(opt => {
+                opt.selected = resources.includes(opt.value);
+            });
+            
             form.action.value = policy.action;
             form.effect.value = policy.effect;
             form.priority.value = policy.priority;
@@ -783,7 +789,7 @@
             name: form.name.value,
             description: form.description.value,
             subject_condition: condition,
-            resource: form.resource.value,
+            resource: Array.from(form.resource.selectedOptions).map(o => o.value).join(','),
             action: form.action.value,
             effect: form.effect.value,
             priority: parseInt(form.priority.value),

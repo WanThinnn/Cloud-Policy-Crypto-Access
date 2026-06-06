@@ -126,6 +126,27 @@
                             </label>
                         </div>
                     </div>
+                    <!-- File Permissions -->
+                    <div class="bg-white dark:bg-gray-800 rounded p-3 border">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">📄 File & Document</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="file">Select all</button>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_read" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="file">
+                                <span>View / Download file</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_write" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="file">
+                                <span>Upload / Edit file</span>
+                            </label>
+                            <label class="inline-flex items-center text-sm">
+                                <input type="checkbox" name="permissions" value="file_delete" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="file">
+                                <span>Delete file</span>
+                            </label>
+                        </div>
+                    </div>
                     
                     <!-- Encryption Permissions -->
                     <div class="bg-white dark:bg-gray-800 rounded p-3 border">
@@ -134,14 +155,6 @@
                             <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="crypto">Select all</button>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="file_encrypt" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="crypto">
-                                <span>Encrypt file</span>
-                            </label>
-                            <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="file_decrypt" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="crypto">
-                                <span>Decrypt file</span>
-                            </label>
                             <label class="inline-flex items-center text-sm">
                                 <input type="checkbox" name="permissions" value="key_manage" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="crypto">
                                 <span>Key Management</span>
@@ -153,72 +166,28 @@
                         </div>
                     </div>
                     
-                    <!-- Policy Permissions -->
+                    <!-- Admin Permissions -->
                     <div class="bg-white dark:bg-gray-800 rounded p-3 border">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">📋 Policies & Rules</span>
-                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="policy">Select all</button>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">⚙️ Admin Access</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="admin">Select all</button>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="policy_view" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="policy">
-                                <span>View policy</span>
+                                <input type="checkbox" name="permissions" value="user_manage" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="admin">
+                                <span>Manage users</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="policy_define" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="policy">
-                                <span>Define policy</span>
-                            </label>
-                            <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="policy_manage" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="policy">
+                                <input type="checkbox" name="permissions" value="policy_manage" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="admin">
                                 <span>Manage policies</span>
                             </label>
-                        </div>
-                    </div>
-                    
-                    <!-- User Management Permissions -->
-                    <div class="bg-white dark:bg-gray-800 rounded p-3 border">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">👥 User Management</span>
-                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="user">Select all</button>
-                        </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="user_view" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="user">
-                                <span>View users</span>
+                                <input type="checkbox" name="permissions" value="attribute_manage" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="admin">
+                                <span>Manage attributes</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="user_create" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="user">
-                                <span>Create User</span>
-                            </label>
-                            <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="user_management_department" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="user">
-                                <span>Department Management</span>
-                            </label>
-                            <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="user_management" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="user">
-                                <span>Full user access</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Audit Permissions -->
-                    <div class="bg-white dark:bg-gray-800 rounded p-3 border">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">📊 Audit & Reports</span>
-                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="audit">Select all</button>
-                        </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="logs_view" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="audit">
+                                <input type="checkbox" name="permissions" value="logs_read" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="admin">
                                 <span>View logs</span>
-                            </label>
-                            <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="reports_view" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="audit">
-                                <span>View reports</span>
-                            </label>
-                            <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="audit_export" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="audit">
-                                <span>Export reports</span>
                             </label>
                         </div>
                     </div>
@@ -505,7 +474,12 @@
     document.getElementById('add-btn').addEventListener('click', () => {
         editingId = null;
         document.getElementById('modal-title').textContent = 'Add User Type';
-        document.getElementById('user-type-form').reset();
+        const form = document.getElementById('user-type-form');
+        form.reset();
+        form.code.readOnly = false;
+        form.name.readOnly = false;
+        form.code.classList.remove('bg-gray-100', 'dark:bg-gray-600');
+        form.name.classList.remove('bg-gray-100', 'dark:bg-gray-600');
         document.getElementById('custom-permissions').classList.add('hidden');
         setSelectedPermissions([]);
         document.getElementById('modal').classList.remove('hidden');
@@ -527,6 +501,17 @@
             form.name.value = ut.name;
             form.description.value = ut.description || '';
             form.is_active.checked = ut.is_active;
+            
+            // Protect system types
+            form.code.readOnly = ut.is_system;
+            form.name.readOnly = ut.is_system;
+            if (ut.is_system) {
+                form.code.classList.add('bg-gray-100', 'dark:bg-gray-600');
+                form.name.classList.add('bg-gray-100', 'dark:bg-gray-600');
+            } else {
+                form.code.classList.remove('bg-gray-100', 'dark:bg-gray-600');
+                form.name.classList.remove('bg-gray-100', 'dark:bg-gray-600');
+            }
             
             // Set permissions using new builder
             setSelectedPermissions(ut.permissions);

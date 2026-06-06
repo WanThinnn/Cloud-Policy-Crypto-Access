@@ -69,8 +69,7 @@ class AccessPolicy(BaseModel):
     
     # Resource and Action
     resource = models.CharField(
-        max_length=50,
-        choices=RESOURCE_CHOICES,
+        max_length=255,
         help_text="Resource this policy applies to"
     )
     action = models.CharField(

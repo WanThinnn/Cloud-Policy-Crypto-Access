@@ -222,13 +222,20 @@ class CasbinService:
         try:
             policies = AccessPolicy.objects.filter(is_active=True).order_by('priority')
             for policy in policies:
-                # Add policy: sub_rule, obj, act, eft
-                self._enforcer.add_policy(
-                    policy.subject_condition,
-                    policy.resource,
-                    policy.action,
-                    policy.effect
-                )
+                resources = [r.strip() for r in policy.resource.split(',')]
+                actions = [a.strip() for a in policy.action.split(',')]
+                
+                for res in resources:
+                    if not res: continue
+                    for act in actions:
+                        if not act: continue
+                        # Add policy: sub_rule, obj, act, eft
+                        self._enforcer.add_policy(
+                            policy.subject_condition,
+                            res,
+                            act,
+                            policy.effect
+                        )
         except Exception as e:
             # This happens during makemigrations/collectstatic when the DB is not ready
             print(f"Skipping policy loading (likely during setup/migrations): {e}")
