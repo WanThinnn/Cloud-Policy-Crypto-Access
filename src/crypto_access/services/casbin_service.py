@@ -514,13 +514,13 @@ class CasbinService:
         
         for policy in all_policies:
             if action == 'download':
-                if policy.action not in ['download', '*']:
+                if policy.action not in ['download', 'manage', '*']:
                     continue
             elif action in ['read', 'view']:
-                if policy.action not in ['read', 'view', 'download', '*']:
+                if policy.action not in ['read', 'view', 'download', 'manage', '*']:
                     continue
             else:
-                if policy.action not in [action, '*']:
+                if policy.action not in [action, 'manage', '*']:
                     continue
                     
             try:
@@ -592,13 +592,13 @@ class CasbinService:
             # If asking for download, requires explicit download or wildcard
             # If asking for read, download policy also grants read
             if action == 'download':
-                if policy.action not in ['download', '*']:
+                if policy.action not in ['download', 'manage', '*']:
                     continue
             elif action in ['read', 'view']:
-                if policy.action not in ['read', 'view', 'download', '*']:
+                if policy.action not in ['read', 'view', 'download', 'manage', '*']:
                     continue
             else:
-                if policy.action not in [action, '*']:
+                if policy.action not in [action, 'manage', '*']:
                     continue
             
             # Evaluate the subject condition

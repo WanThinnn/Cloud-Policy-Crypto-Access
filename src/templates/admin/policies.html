@@ -165,8 +165,8 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resource</label>
                     <select name="resource" required
                         class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="document">📄 Document (Document)</option>
-                        <option value="key">🔑 Encryption Key (Key)</option>
+                        <option value="document">📄 Document</option>
+                        <option value="key">🔑 Encryption Key</option>
                         <option value="user">👤 Manage users</option>
                         <option value="policy">📋 Manage policies</option>
                         <option value="attribute">🏷️ Attribute management</option>
@@ -178,15 +178,15 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Actions</label>
                     <select name="action" required
                         class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="read">👁️ View (Read)</option>
-                        <option value="write">✏️ Create (Write)</option>
-                        <option value="update">📝 Update (Update)</option>
-                        <option value="delete">🗑️ Delete (Delete)</option>
-                        <option value="upload">⬆️ Upload (Upload)</option>
-                        <option value="download">⬇️ Download (Download)</option>
-                        <option value="encrypt">🔒 Encryption (Encrypt)</option>
+                        <option value="read">👁️ View</option>
+                        <option value="write">✏️ Create</option>
+                        <option value="update">📝 Update</option>
+                        <option value="delete">🗑️ Delete</option>
+                        <option value="upload">⬆️ Upload</option>
+                        <option value="download">⬇️ Download</option>
+                        <option value="encrypt">🔒 Encryption</option>
                         <option value="decrypt">🔓 Decrypt</option>
-                        <option value="manage">⚙️ Full Access (Manage)</option>
+                        <option value="manage">⚙️ Full Access</option>
                         <option value="*">⭐ All actions (*)</option>
                     </select>
                 </div>
@@ -254,13 +254,17 @@
     }
 
     function showAccessDenied() {
-        document.querySelector('.space-y-6').innerHTML = `
-            <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-8 text-center">
-                <div class="text-6xl mb-4">🚫</div>
-                <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">Access Denied</h2>
-                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">Only Super Admin can manage policies.</p>
-                <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">Go to Home</a>
-            </div>`;
+        const container = document.querySelector('.space-y-6');
+        if (container) {
+            container.className = 'flex items-center justify-center min-h-[70vh]';
+            container.innerHTML = `
+                <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-10 text-center max-w-md w-full shadow-sm">
+                    <div class="text-6xl mb-4">🚫</div>
+                    <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">Access Denied</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mb-6">Only Super Admin can manage policies.</p>
+                    <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md transition-colors inline-block">Go to Home</a>
+                </div>`;
+        }
     }
 
     const headers = {
