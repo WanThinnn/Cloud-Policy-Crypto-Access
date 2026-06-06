@@ -267,7 +267,7 @@ class CasbinService:
         
         return attrs
     
-
+    def _check_abac(self, user, resource: str, action: str) -> Tuple[Optional[bool], str]:
         """
         Layer 2: ABAC Check - Apply fine-grained policies
         

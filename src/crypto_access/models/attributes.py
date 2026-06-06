@@ -196,7 +196,13 @@ class UserAttribute(BaseModel):
             models.Q(expiry_date__isnull=True) | models.Q(expiry_date__gt=timezone.now())
         ).select_related('attribute')
         
-        return {attr.attribute.name: attr.value for attr in attrs}
+        result = {attr.attribute.name: attr.value for attr in attrs}
+        
+        # Always inject user_type so it can be evaluated as an attribute by CP-ABE/ABAC
+        if hasattr(user, 'profile'):
+            result['user_type'] = user.profile.get_user_type_code()
+            
+        return result
     
     @classmethod
     def set_user_attribute(cls, user, attribute_name, value, updated_by=None):
