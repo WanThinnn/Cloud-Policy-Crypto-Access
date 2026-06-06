@@ -1,7 +1,7 @@
-// Main JavaScript file for Cloud-Policy-Crypto-Access
+// Main JavaScript file for Cloud Policy Crypto Access
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Cloud-Policy-Crypto-Access application loaded');
+    console.log('Cloud Policy Crypto Access application loaded');
     
     // Add smooth scrolling
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {

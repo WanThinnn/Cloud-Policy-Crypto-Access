@@ -1,3 +1,4 @@
+name: cloud-policy-crypto-access
 services:
   web:
     ports:
