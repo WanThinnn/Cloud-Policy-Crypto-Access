@@ -134,14 +134,14 @@ python start.py up
 ```
 
 ### 6. Initialize Database & Create Super Admin
-Once the containers are successfully running (`python start.py status`), initialize the system:
+Once the containers are successfully running (`python start.py status`), initialize the system. The `initdata` command will automatically migrate the database, seed ABAC policies, and create a default super admin account.
 ```bash
-# Apply Django migrations to Supabase and seed default Casbin ABAC policies
-python start.py init
-
-# Create the first Super Admin account
-docker exec -it django_app python manage.py createsuperuser
-# Follow the prompts to enter your username, email, and password.
+# Initialize DB, seed policies, and auto-create super admin (admin/admin123)
+python start.py initdata
+```
+*(Optional)* If you wish to create a custom super admin manually:
+```bash
+python start.py createsuperuser
 ```
 
 ### 7. Access the Application
