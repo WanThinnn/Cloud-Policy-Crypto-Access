@@ -4,7 +4,7 @@ Admin Page URLs (HTML templates without /api/ prefix)
 
 from django.urls import path
 from django.shortcuts import render, redirect
-from crypto_access.views import attributes, policy, users
+from crypto_access.views import attributes, policy, users, audit
 
 app_name = 'admin_pages'
 
@@ -29,4 +29,6 @@ urlpatterns = [
     path('policies/', policy.policies_page, name='policies_page'),
     path('files/', files_page, name='files_page'),
     path('trash/', trash_page, name='trash_page'),
+    path('audit/', audit.audit_logs_page, name='audit_logs_page'),
+    path('keys/', audit.key_revocations_page, name='key_revocations_page'),
 ]

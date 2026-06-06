@@ -48,6 +48,14 @@ from .users import (
     users_page,
 )
 
+# Import audit views
+from .audit import (
+    AccessLogViewSet,
+    KeyRevocationViewSet,
+    audit_logs_page,
+    key_revocations_page,
+)
+
 __all__ = [
     # Base views
     'index',
@@ -88,5 +96,11 @@ __all__ = [
     # User management views
     'UserManagementViewSet',
     'users_page',
+    
+    # Audit views
+    'AccessLogViewSet',
+    'KeyRevocationViewSet',
+    'audit_logs_page',
+    'key_revocations_page',
 ]
 

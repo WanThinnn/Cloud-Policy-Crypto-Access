@@ -46,6 +46,12 @@ from .users import (
     UserProfileInlineSerializer,
 )
 
+# Audit serializers
+from .audit import (
+    AccessLogSerializer,
+    KeyRevocationSerializer,
+)
+
 __all__ = [
     # Base
     'UserSerializer',
@@ -81,5 +87,9 @@ __all__ = [
     'UserManagementSerializer',
     'UserCreateSerializer',
     'UserProfileInlineSerializer',
+    
+    # Audit
+    'AccessLogSerializer',
+    'KeyRevocationSerializer',
 ]
 

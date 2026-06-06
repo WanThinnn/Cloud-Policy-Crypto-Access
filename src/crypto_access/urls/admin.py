@@ -13,6 +13,11 @@ router.register(r'attributes', attributes.AttributeDefinitionViewSet, basename='
 router.register(r'policies', policy.AccessPolicyViewSet, basename='policies')
 router.register(r'users', users.UserManagementViewSet, basename='users')
 
+# Audit routers
+from ..views.audit import AccessLogViewSet, KeyRevocationViewSet
+router.register(r'audit-logs', AccessLogViewSet, basename='audit-logs')
+router.register(r'key-revocations', KeyRevocationViewSet, basename='key-revocations')
+
 urlpatterns = [
     # ViewSet routes
     path('', include(router.urls)),

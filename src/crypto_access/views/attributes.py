@@ -54,7 +54,11 @@ class UserTypeViewSet(viewsets.ModelViewSet):
     """
     queryset = UserType.objects.all()
     serializer_class = UserTypeSerializer
-    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [IsAuthenticated(), IsAdminOrSuperAdmin()]
+        return [IsAuthenticated(), IsSuperAdmin()]
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -93,7 +97,11 @@ class AttributeDefinitionViewSet(viewsets.ModelViewSet):
     """
     queryset = AttributeDefinition.objects.all()
     serializer_class = AttributeDefinitionSerializer
-    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [IsAuthenticated(), IsAdminOrSuperAdmin()]
+        return [IsAuthenticated(), IsSuperAdmin()]
     
     def get_queryset(self):
         queryset = super().get_queryset()

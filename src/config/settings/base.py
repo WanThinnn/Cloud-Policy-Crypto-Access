@@ -302,14 +302,4 @@ ABAC_PROTECTED_ROUTES = [
             'DELETE': 'delete',
         }
     },
-    {
-        'pattern': r'^/api/admin/',
-        'resource': 'policy',
-        'methods': {
-            'GET': 'read',
-            'POST': 'manage',
-            'PUT': 'manage',
-            'DELETE': 'manage',
-        }
-    },
 ]

@@ -97,6 +97,9 @@
                   <li>
                     <a href="/manage/policies/" class="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400">Access Policies</a>
                   </li>
+                  <li>
+                    <a href="/manage/keys/" class="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400">Key Revocation List</a>
+                  </li>
                 </ul>
               </div>
             </li>
@@ -110,6 +113,9 @@
               </button>
               <div class="dropdown-menu z-10 hidden font-normal bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-lg shadow w-48 absolute top-full left-1/2 -translate-x-1/2 mt-1 border border-gray-100 dark:border-gray-700">
                 <ul class="py-2 text-gray-700 dark:text-gray-300">
+                  <li id="system-logs-link" class="hidden">
+                    <a href="/manage/audit/" class="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400">System Logs</a>
+                  </li>
                   <li>
                     <a href="/manage/trash/" class="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400">Trash</a>
                   </li>
@@ -354,6 +360,7 @@
                           if (perms.is_super_admin) {
                               document.getElementById('admin-policy-mgmt')?.classList.remove('hidden');
                               document.getElementById('django-admin-link')?.classList.remove('hidden');
+                              document.getElementById('system-logs-link')?.classList.remove('hidden');
                           }
                       }
                   } else if (response.status === 401) {
