@@ -196,10 +196,10 @@ class ABACMiddleware:
                     access_reason = 'owner_bypass'
                 elif request.path.startswith('/api/storage/files/browse/'):
                     # The view handles file-level filtering for browse
-                    # We only enforce base RBAC at the middleware level
-                    access_allowed, access_reason = casbin_service._check_rbac(request.user, resource, action)
+                    # We only enforce base ABAC at the middleware level
+                    access_allowed = casbin_service.check_access(request.user, resource, action)
                     if access_allowed:
-                        access_reason = f"browse_rbac_allowed: {access_reason}"
+                        access_reason = "browse_abac_allowed"
                 elif action in ['download', 'read'] and request.GET.get('path'):
                     # Check file-specific policy
                     file_path = request.GET.get('path', '')

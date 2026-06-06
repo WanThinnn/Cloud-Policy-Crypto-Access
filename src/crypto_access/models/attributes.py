@@ -29,10 +29,7 @@ class UserType(BaseModel):
         blank=True,
         help_text="Description of this user type"
     )
-    permissions = models.JSONField(
-        default=list,
-        help_text="List of permission codes (e.g., ['user_management', 'file_management'])"
-    )
+
     is_system = models.BooleanField(
         default=False,
         help_text="System types cannot be deleted"
@@ -42,12 +39,7 @@ class UserType(BaseModel):
     def __str__(self):
         return f"{self.name} ({self.code})"
     
-    def has_permission(self, permission):
-        """Check if this user type has a specific permission"""
-        if '*' in self.permissions:
-            return True
-        return permission in self.permissions
-    
+
     class Meta:
         db_table = 'crypto_user_types'
         verbose_name = 'User Type'

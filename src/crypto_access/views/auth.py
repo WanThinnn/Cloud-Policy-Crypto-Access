@@ -380,18 +380,8 @@ def user_permissions(request):
         profile = user.profile
         user_type = profile.get_user_type_code()
         
-        # Get base permissions from UserType
-        base_permissions = []
-        if profile.user_type_ref:
-            base_permissions = profile.user_type_ref.permissions or []
-        
-        # Helper to check permission
-        def has_perm(perm_list):
-            if '*' in base_permissions:
-                return True
-            return any(p in base_permissions for p in perm_list)
-        
         # Import casbin service to evaluate ABAC policies
+        from crypto_access.services.casbin_service import casbin_service
         from crypto_access.services.casbin_service import casbin_service
         
         permissions.update({
@@ -408,11 +398,10 @@ def user_permissions(request):
             'can_manage_attributes': casbin_service.check_access(user, 'attribute', 'manage'),
             # File system generic checks
             'can_manage_files': user_type in ['super_admin', 'admin', 'data_contributor'],
-            # File permissions based on UserType permissions
-            'can_upload_files': has_perm(['file_upload', 'file_create']),
-            'can_download_files': has_perm(['file_download', 'file_read']),
-            'can_delete_files': has_perm(['file_delete']),
-            'base_permissions': base_permissions,
+            # File permissions based on ABAC
+            'can_upload_files': casbin_service.check_access(user, 'document', 'upload'),
+            'can_download_files': casbin_service.check_access(user, 'document', 'download'),
+            'can_delete_files': casbin_service.check_access(user, 'document', 'delete'),
         })
     
     return Response(permissions)

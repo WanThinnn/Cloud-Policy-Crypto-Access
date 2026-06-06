@@ -256,11 +256,6 @@ class CasbinService:
         if hasattr(user, 'profile'):
             profile = user.profile
             attrs['user_type'] = profile.get_user_type_code()
-            
-            # Add user type permissions for reference
-            if profile.user_type_ref:
-                attrs['permissions'] = profile.user_type_ref.permissions
-        
         # Get ABAC attributes from UserAttribute model
         user_attrs = UserAttribute.get_user_attributes(user)
         attrs.update(user_attrs)
@@ -272,43 +267,7 @@ class CasbinService:
         
         return attrs
     
-    def _check_rbac(self, user, resource: str, action: str) -> Tuple[bool, str]:
-        """
-        Layer 1: RBAC Check - Does user_type have base permission?
-        
-        Returns:
-            Tuple[bool, str]: (has_permission, reason)
-        """
-        # Superuser bypasses RBAC
-        if user.is_superuser:
-            return True, "superuser_bypass"
-        
-        if not hasattr(user, 'profile') or not user.profile.user_type_ref:
-            return False, "no_user_type"
-        
-        user_type = user.profile.user_type_ref
-        user_permissions = set(user_type.permissions)
-        
-        # Check for wildcard permission
-        if '*' in user_permissions:
-            return True, "wildcard_permission"
-        
-        # Get required permissions for this action
-        action_map = SettingService.get_setting('ACTION_PERMISSION_MAP', DEFAULT_ACTION_PERMISSION_MAP)
-        required_perms = action_map.get(action, [action, '*'])
-        
-        # Add resource-specific permission
-        prefix = RESOURCE_PERMISSION_PREFIX.get(resource, '')
-        if prefix:
-            required_perms = required_perms + [f"{prefix}{action}", f"{prefix}*"]
-        
-        # Check if user has any of the required permissions
-        if user_permissions.intersection(required_perms):
-            return True, f"rbac_allowed:{list(user_permissions.intersection(required_perms))[0]}"
-        
-        return False, f"rbac_denied:missing_permission_for_{action}"
-    
-    def _check_abac(self, user, resource: str, action: str) -> Tuple[Optional[bool], str]:
+
         """
         Layer 2: ABAC Check - Apply fine-grained policies
         
@@ -346,19 +305,30 @@ class CasbinService:
                 if result:
                     return True, f"abac_policy_allowed:{check_action}"
             
-            # No policy allowed - check if there's any matching policy at all
-            # If no policy matched at all, return None to defer to RBAC
+            # No policy allowed - check if there's any explicitly DENY matching policy
+            # If no explicitly DENY policy matched, return None to defer to RBAC
             all_actions = actions_to_check + ['*']
             matching_policies = AccessPolicy.objects.filter(
                 is_active=True,
-                resource__in=[resource, '*'],
-                action__in=all_actions
+                effect='deny'
             )
             
-            if matching_policies.exists():
-                return False, "abac_policy_denied"
-            else:
-                return None, "no_abac_policy"
+            # Since resource/action can be comma separated now, we just filter python-side
+            # or evaluate all deny policies to see if they apply to this resource/action
+            # Actually we can just let Casbin check deny policies! But Casbin enforcer
+            # doesn't have an easy way to check if it matched a deny.
+            # We'll manually check the DENY policies in the DB.
+            for policy in matching_policies:
+                resources = [r.strip() for r in policy.resource.split(',')]
+                actions = [a.strip() for a in policy.action.split(',')]
+                
+                if (resource in resources or '*' in resources) and \
+                   (any(act in actions for act in all_actions) or '*' in actions):
+                    # Resource and action match, check condition
+                    if safe_eval_condition(policy.subject_condition, attrs):
+                        return False, "abac_policy_explicit_deny"
+            
+            return None, "no_abac_policy"
                     
         except Exception as e:
             logger.error(f"ABAC check error: {e}")
@@ -366,40 +336,27 @@ class CasbinService:
     
     def check_access(self, user, resource: str, action: str) -> bool:
         """
-        Hybrid RBAC + ABAC Access Check
+        Pure ABAC Access Check
         
         Flow:
-        1. RBAC Check (base permission)
-           - DENY → Return False
-           - ALLOW → Continue
-        2. ABAC Check (conditional policies)  
-           - Explicit DENY → Return False
+        - Check ABAC (conditional policies)  
            - Explicit ALLOW → Return True
-           - No policy → Use RBAC result (True)
-        
-        Args:
-            user: Django User object
-            resource: Resource name (e.g., 'document', 'key')
-            action: Action name (e.g., 'read', 'write', 'delete')
-        
-        Returns:
-            bool: True if access is allowed, False otherwise
+           - Explicit DENY → Return False
+           - No policy → Return False (Default Deny)
+           
+        Superusers bypass all checks.
         """
-        # Layer 1: RBAC Check
-        rbac_allowed, rbac_reason = self._check_rbac(user, resource, action)
-        
-        # Layer 2: ABAC Check
+        if user.is_superuser:
+            return True
+            
         abac_result, abac_reason = self._check_abac(user, resource, action)
         
-        if abac_result is False:
-            # Explicit ABAC deny (RESTRICT)
-            return False
-        elif abac_result is True:
-            # Explicit ABAC allow (EXTEND)
+        if abac_result is True:
+            # Explicit ABAC allow
             return True
         else:
-            # No ABAC policy matched - use RBAC result
-            return rbac_allowed
+            # Deny if explicit deny or no policy matches
+            return False
     
     def check_access_with_context(
         self, 
@@ -426,8 +383,7 @@ class CasbinService:
         """
         attrs = self.get_user_attributes(user)
         
-        # Check each layer
-        rbac_allowed, rbac_reason = self._check_rbac(user, resource, action)
+        # Check ABAC layer
         abac_result, abac_reason = self._check_abac(user, resource, action)
         final_allowed = self.check_access(user, resource, action)
         
@@ -438,41 +394,20 @@ class CasbinService:
             action__in=[action, '*']
         ).order_by('priority')
         
-        # Get user_type permissions
-        user_type_perms = []
-        if hasattr(user, 'profile') and user.profile.user_type_ref:
-            user_type_perms = user.profile.user_type_ref.permissions
-        
         return {
             'final_decision': 'ALLOW' if final_allowed else 'DENY',
             'user': user.username,
             'resource': resource,
             'action': action,
             
-            # Layer 1: RBAC
-            'rbac_layer': {
-                'result': 'ALLOW' if rbac_allowed else 'DENY',
-                'reason': rbac_reason,
-                'user_type': attrs.get('user_type'),
-                'user_type_permissions': user_type_perms,
-            },
-            
-            # Layer 2: ABAC
+            # Layer: ABAC
             'abac_layer': {
                 'result': 'ALLOW' if abac_result is True else ('DENY' if abac_result is False else 'NO_POLICY'),
                 'reason': abac_reason,
-                'matching_policies': [
-                    {
-                        'name': p.name,
-                        'condition': p.subject_condition,
-                        'effect': p.effect,
-                        'priority': p.priority
-                    }
-                    for p in matching_policies
-                ]
             },
             
-            # User context
+            'matching_policies_count': matching_policies.count(),
+            'user_attributes': attrs
         }
 
 
@@ -637,17 +572,16 @@ class CasbinService:
         action: str = 'read'
     ) -> Tuple[bool, str]:
         """
-        Combined check: File-specific policies + general RBAC/ABAC
+        Combined check: File-specific policies + general ABAC
         
         Flow:
-        1. First check RBAC (base permission)
+        1. First check general ABAC permission
         2. Then check file-specific policies (if any)
-        3. If no file policies, fall back to general ABAC
         """
-        # Step 1: RBAC check
-        rbac_allowed, rbac_reason = self._check_rbac(user, 'document', action)
-        if not rbac_allowed:
-            return False, rbac_reason
+        # Step 1: General ABAC check
+        abac_allowed = self.check_access(user, 'document', action)
+        if not abac_allowed:
+            return False, "general_abac_denied"
         
         # Step 2: Check file-specific policies
         file_access, file_reason = self.check_file_access(user, bucket_name, file_path, action)
