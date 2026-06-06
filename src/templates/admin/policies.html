@@ -234,7 +234,7 @@
                 return false;
             }
             const perms = await res.json();
-            if (!perms.is_super_admin) {
+            if (!perms.can_manage_policies) {
                 showAccessDenied();
                 return false;
             }

@@ -127,7 +127,7 @@
                 return false;
             }
             const perms = await res.json();
-            if (!perms.is_admin) {
+            if (!perms.can_manage_attributes) {
                 showAccessDenied();
                 return false;
             }
