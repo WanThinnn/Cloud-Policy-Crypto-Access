@@ -63,7 +63,7 @@ class Command(BaseCommand):
             # 5. IT Department Key Access
             {
                 'name': 'it_department_key_access',
-                'description': 'IT department can manage encryption keys',
+                'description': 'IT department can manage key revocation list',
                 'subject_condition': "r.sub.department == 'it'",
                 'resource': 'key',
                 'action': 'manage',

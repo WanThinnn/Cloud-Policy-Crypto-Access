@@ -302,4 +302,70 @@ ABAC_PROTECTED_ROUTES = [
             'DELETE': 'delete',
         }
     },
+    {
+        'pattern': r'^/api/admin/users/',
+        'resource': 'user',
+        'methods': {
+            'GET': 'manage',
+            'POST': 'manage',
+            'PUT': 'manage',
+            'PATCH': 'manage',
+            'DELETE': 'manage',
+        }
+    },
+    {
+        'pattern': r'^/api/admin/user-types/',
+        'resource': 'attribute',
+        'methods': {
+            'GET': 'manage',
+            'POST': 'manage',
+            'PUT': 'manage',
+            'PATCH': 'manage',
+            'DELETE': 'manage',
+        }
+    },
+    {
+        'pattern': r'^/api/admin/attributes/',
+        'resource': 'attribute',
+        'methods': {
+            'GET': 'manage',
+            'POST': 'manage',
+            'PUT': 'manage',
+            'PATCH': 'manage',
+            'DELETE': 'manage',
+        }
+    },
+    {
+        'pattern': r'^/api/admin/policies/',
+        'resource': 'policy',
+        'methods': {
+            'GET': 'manage',
+            'POST': 'manage',
+            'PUT': 'manage',
+            'PATCH': 'manage',
+            'DELETE': 'manage',
+        }
+    },
+    {
+        'pattern': r'^/api/admin/audit-logs/',
+        'resource': 'audit',
+        'methods': {
+            'GET': 'read',
+            'POST': 'manage',
+            'PUT': 'manage',
+            'PATCH': 'manage',
+            'DELETE': 'manage',
+        }
+    },
+    {
+        'pattern': r'^/api/admin/key-revocations/',
+        'resource': 'key',
+        'methods': {
+            'GET': 'manage',
+            'POST': 'manage',
+            'PUT': 'manage',
+            'PATCH': 'manage',
+            'DELETE': 'manage',
+        }
+    },
 ]

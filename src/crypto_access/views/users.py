@@ -17,7 +17,6 @@ import string
 
 from ..models import UserProfile, UserType
 from ..serializers import UserManagementSerializer, UserCreateSerializer
-from ..permissions import IsSuperAdmin, IsAdminOrSuperAdmin
 
 
 # =============================================================================
@@ -50,7 +49,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
     Super Admin can manage all users
     """
     queryset = User.objects.select_related('profile', 'profile__user_type_ref').all()
-    permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
+    permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
         if self.action == 'create':

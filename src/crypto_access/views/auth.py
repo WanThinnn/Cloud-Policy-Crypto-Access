@@ -391,14 +391,23 @@ def user_permissions(request):
                 return True
             return any(p in base_permissions for p in perm_list)
         
+        # Import casbin service to evaluate ABAC policies
+        from crypto_access.services.casbin_service import casbin_service
+        
         permissions.update({
             'user_type': user_type,
             'is_admin': profile.is_admin(),
             'is_super_admin': profile.is_super_admin(),
-            'can_manage_users': profile.is_admin(),
-            'can_manage_policies': profile.is_super_admin(),  # Only super admin
+            # Base Admin UI toggles (Requires at least admin status)
+            'can_access_admin': profile.is_admin() or profile.is_super_admin(),
+            # ABAC-based Management Permissions
+            'can_manage_users': casbin_service.check_access(user, 'user', 'manage'),
+            'can_manage_policies': casbin_service.check_access(user, 'policy', 'manage'),
+            'can_manage_keys': casbin_service.check_access(user, 'key', 'manage'),
+            'can_view_audit_logs': casbin_service.check_access(user, 'audit', 'read'),
+            'can_manage_attributes': casbin_service.check_access(user, 'attribute', 'manage'),
+            # File system generic checks
             'can_manage_files': user_type in ['super_admin', 'admin', 'data_contributor'],
-            'can_view_audit_logs': user_type in ['super_admin', 'admin', 'auditor'],
             # File permissions based on UserType permissions
             'can_upload_files': has_perm(['file_upload', 'file_create']),
             'can_download_files': has_perm(['file_download', 'file_read']),

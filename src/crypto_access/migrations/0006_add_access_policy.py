@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(help_text='Policy name for identification', max_length=100, unique=True)),
                 ('description', models.TextField(blank=True, help_text='Description of what this policy does')),
                 ('subject_condition', models.TextField(help_text="ABAC condition expression using r.sub attributes. Example: r.sub.department == 'it'")),
-                ('resource', models.CharField(choices=[('document', 'Document'), ('key', 'Encryption Key'), ('user', 'User Management'), ('policy', 'Policy Management'), ('attribute', 'Attribute Management'), ('audit', 'Audit Logs'), ('*', 'All Resources')], help_text='Resource this policy applies to', max_length=50)),
+                ('resource', models.CharField(choices=[('document', 'Document'), ('key', 'Key Revocation List'), ('user', 'User Management'), ('policy', 'Policy Management'), ('attribute', 'Attribute Management'), ('audit', 'Audit Logs'), ('*', 'All Resources')], help_text='Resource this policy applies to', max_length=50)),
                 ('action', models.CharField(choices=[('read', 'Read'), ('write', 'Write/Create'), ('update', 'Update'), ('delete', 'Delete'), ('upload', 'Upload'), ('download', 'Download'), ('encrypt', 'Encrypt'), ('decrypt', 'Decrypt'), ('manage', 'Full Management'), ('*', 'All Actions')], help_text='Action this policy permits/denies', max_length=50)),
                 ('effect', models.CharField(choices=[('allow', 'Allow'), ('deny', 'Deny')], default='allow', help_text='Whether to allow or deny this access', max_length=10)),
                 ('priority', models.IntegerField(default=100, help_text='Policy priority (lower number = higher priority)')),

@@ -9,7 +9,7 @@ from django.shortcuts import render
 
 from crypto_access.models import AccessPolicy
 from crypto_access.serializers import AccessPolicySerializer, AccessPolicyListSerializer
-from crypto_access.permissions import IsSuperAdmin
+from rest_framework.permissions import IsAuthenticated
 
 
 class AccessPolicyViewSet(viewsets.ModelViewSet):
@@ -19,7 +19,7 @@ class AccessPolicyViewSet(viewsets.ModelViewSet):
     """
     queryset = AccessPolicy.objects.all().order_by('priority', 'name')
     serializer_class = AccessPolicySerializer
-    permission_classes = [IsSuperAdmin]
+    permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
         if self.action == 'list':

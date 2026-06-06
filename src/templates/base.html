@@ -72,10 +72,10 @@
               </button>
               <div class="dropdown-menu z-10 hidden font-normal bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-lg shadow w-48 absolute top-full left-1/2 -translate-x-1/2 mt-1 border border-gray-100 dark:border-gray-700">
                 <ul class="py-2 text-gray-700 dark:text-gray-300">
-                  <li>
+                  <li id="manage-users-link" class="hidden">
                     <a href="/manage/users/" class="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400">User List</a>
                   </li>
-                  <li>
+                  <li id="manage-user-types-link" class="hidden">
                     <a href="/manage/user-types/" class="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400">User Types</a>
                   </li>
                 </ul>
@@ -91,13 +91,13 @@
               </button>
               <div class="dropdown-menu z-10 hidden font-normal bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-lg shadow w-48 absolute top-full left-1/2 -translate-x-1/2 mt-1 border border-gray-100 dark:border-gray-700">
                 <ul class="py-2 text-gray-700 dark:text-gray-300">
-                  <li>
+                  <li id="manage-attributes-link" class="hidden">
                     <a href="/manage/attributes/" class="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400">Attribute Schema</a>
                   </li>
-                  <li>
+                  <li id="manage-policies-link" class="hidden">
                     <a href="/manage/policies/" class="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400">Access Policies</a>
                   </li>
-                  <li>
+                  <li id="manage-keys-link" class="hidden">
                     <a href="/manage/keys/" class="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400">Key Revocation List</a>
                   </li>
                 </ul>
@@ -352,15 +352,30 @@
                       const perms = await response.json();
                       localStorage.setItem('user_permissions', JSON.stringify(perms));
                       
-                      if (perms.is_admin) {
-                          document.getElementById('admin-user-mgmt')?.classList.remove('hidden');
+                      // Handle Admin Menus dynamically based on ABAC attributes
+                      if (perms.can_access_admin) {
                           document.getElementById('admin-sys-mgmt')?.classList.remove('hidden');
                           document.getElementById('admin-badge')?.classList.remove('hidden');
                           
-                          if (perms.is_super_admin) {
+                          if (perms.can_manage_users || perms.can_manage_attributes) {
+                              document.getElementById('admin-user-mgmt')?.classList.remove('hidden');
+                              if (perms.can_manage_users) document.getElementById('manage-users-link')?.classList.remove('hidden');
+                              if (perms.can_manage_attributes) document.getElementById('manage-user-types-link')?.classList.remove('hidden');
+                          }
+                          
+                          if (perms.can_manage_policies || perms.can_manage_keys || perms.can_manage_attributes) {
                               document.getElementById('admin-policy-mgmt')?.classList.remove('hidden');
-                              document.getElementById('django-admin-link')?.classList.remove('hidden');
+                              if (perms.can_manage_attributes) document.getElementById('manage-attributes-link')?.classList.remove('hidden');
+                              if (perms.can_manage_policies) document.getElementById('manage-policies-link')?.classList.remove('hidden');
+                              if (perms.can_manage_keys) document.getElementById('manage-keys-link')?.classList.remove('hidden');
+                          }
+                          
+                          if (perms.can_view_audit_logs) {
                               document.getElementById('system-logs-link')?.classList.remove('hidden');
+                          }
+                          
+                          if (perms.is_super_admin) {
+                              document.getElementById('django-admin-link')?.classList.remove('hidden');
                           }
                       }
                   } else if (response.status === 401) {

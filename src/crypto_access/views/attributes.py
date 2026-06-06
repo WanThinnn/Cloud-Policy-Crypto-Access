@@ -56,9 +56,7 @@ class UserTypeViewSet(viewsets.ModelViewSet):
     serializer_class = UserTypeSerializer
     
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [IsAuthenticated(), IsAdminOrSuperAdmin()]
-        return [IsAuthenticated(), IsSuperAdmin()]
+        return [IsAuthenticated()]
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -99,9 +97,7 @@ class AttributeDefinitionViewSet(viewsets.ModelViewSet):
     serializer_class = AttributeDefinitionSerializer
     
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [IsAuthenticated(), IsAdminOrSuperAdmin()]
-        return [IsAuthenticated(), IsSuperAdmin()]
+        return [IsAuthenticated()]
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -136,7 +132,7 @@ class AttributeDefinitionViewSet(viewsets.ModelViewSet):
 
 @csrf_exempt
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsAdminOrSuperAdmin])
+@permission_classes([IsAuthenticated])
 def list_user_attributes(request, user_id):
     """
     GET /api/admin/users/<user_id>/attributes/
@@ -175,7 +171,7 @@ def list_user_attributes(request, user_id):
 
 @csrf_exempt
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, CanManageAttributes])
+@permission_classes([IsAuthenticated])
 def assign_user_attribute(request, user_id):
     """
     POST /api/admin/users/<user_id>/attributes/
@@ -215,7 +211,7 @@ def assign_user_attribute(request, user_id):
 
 @csrf_exempt
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, CanManageAttributes])
+@permission_classes([IsAuthenticated])
 def bulk_assign_user_attributes(request, user_id):
     """
     POST /api/admin/users/<user_id>/attributes/bulk/
@@ -258,7 +254,7 @@ def bulk_assign_user_attributes(request, user_id):
 
 @csrf_exempt
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated, CanManageAttributes])
+@permission_classes([IsAuthenticated])
 def delete_user_attribute(request, user_id, attribute_id):
     """
     DELETE /api/admin/users/<user_id>/attributes/<attribute_id>/
@@ -277,7 +273,7 @@ def delete_user_attribute(request, user_id, attribute_id):
 
 @csrf_exempt
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsAdminOrSuperAdmin])
+@permission_classes([IsAuthenticated])
 def list_users_with_attributes(request):
     """
     GET /api/admin/users-with-attributes/

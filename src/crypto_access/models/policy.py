@@ -20,7 +20,7 @@ class AccessPolicy(BaseModel):
     
     RESOURCE_CHOICES = [
         ('document', 'Document'),
-        ('key', 'Encryption Key'),
+        ('key', 'Key Revocation List'),
         ('user', 'User Management'),
         ('policy', 'Policy Management'),
         ('attribute', 'Attribute Management'),
