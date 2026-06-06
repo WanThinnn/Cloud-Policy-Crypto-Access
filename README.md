@@ -6,6 +6,10 @@ A comprehensive enterprise-grade file storage system implementing **Hybrid Ciphe
 
 This repository contains a robust Django-based implementation of a secure file sharing system. The system shifts away from traditional role-based security by enabling fine-grained access control mathematically bound to user attributes, providing zero-trust security for sensitive data.
 
+![image](img/image.png)
+
+
+See more demo images in img/
 ### Key Features
 
 - **Hybrid CP-ABE Encryption (v3.0.0)**: Advanced attribute-based encryption utilizing high-speed in-memory buffers (RAM) for encryption/decryption, completely bypassing disk I/O bottlenecks. See more at: https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git 

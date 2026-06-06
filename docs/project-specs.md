@@ -31,7 +31,7 @@ Mục tiêu chính của đề tài bao gồm:
 
 Qua đó, đề tài hướng đến việc xây dựng một giải pháp **quản lý và kiểm soát truy cập dữ liệu an toàn, tin cậy và khả thi**, phù hợp với các doanh nghiệp đang chuyển dịch sang môi trường làm việc số trên nền tảng điện toán đám mây.
 
-![alt text](img/cp-abe.png)
+![image](img/cp-abe.png)
 
 
 ## **1.2. Danh sách các yêu cầu**
@@ -189,36 +189,14 @@ Phiên bản thuộc tính: 3
 | 5   | data_access       | enum   | advanced   | active     | 08/09/2025    |
 | 6   | employment_status | enum   | active     | active     | 01/01/2025    |
 
-### **1.3.5. Biểu mẫu 5 và qui định 5 (đã chỉnh sửa – Production-ready)**
+### **1.3.5. Quy định 5 (đã cập nhật - Sinh khóa động và Redis Cache)**
 
-**BM5: Phiếu Quản Lý Khóa Truy Cập**  
-User ID: _______  
-Loại khóa: _______  
-Thuật toán: _______  
-Ngày tạo: _______  
-Trạng thái: _______  
+**QĐ5:** Thay vì lưu trữ cố định khóa bí mật, mỗi khi người dùng có yêu cầu truy cập tài liệu mã hóa, hệ thống sẽ thực hiện **sinh khóa bí mật CP-ABE (User Private Key) động (on-the-fly)** dựa trên tập thuộc tính của người dùng tại thời điểm đó.
+Để đảm bảo an toàn tuyệt đối và tránh nguy cơ rò rỉ khóa từ cơ sở dữ liệu, **hệ thống KHÔNG LƯU TRỮ User Private Key** dưới dạng persistent. Thay vào đó, ngay sau khi sinh ra, mảng byte của khóa được lưu trữ tạm thời (ephemeral caching) vào hệ thống **Redis tập trung (Centralized Redis Cache)** nhằm mục đích tăng hiệu năng giải mã giữa các multi-worker (Gunicorn) của Django.
+- **Thời hạn sống (TTL)**: Khóa được cache trong một khoảng thời gian ngắn (mặc định 1 giờ).
+- **Thu hồi khóa (Revocation)**: Khi thuộc tính người dùng thay đổi hoặc tài khoản bị vô hiệu hóa, hệ thống chỉ cần xóa (invalidate) khóa tương ứng trên Redis. Các yêu cầu sau đó sẽ bị từ chối hoặc phải sinh khóa mới với tập thuộc tính mới nhất.
 
-**QĐ5:** Mỗi người dùng trong hệ thống được cấp một **khóa bí mật CP-ABE (User Private Key)** do CA/Attribute Authority sinh ra, gắn với tập thuộc tính của người dùng tại thời điểm cấp phát. Khóa CP-ABE không được sinh từ mật khẩu người dùng. Mật khẩu chỉ được sử dụng để bảo vệ khóa bí mật trong quá trình lưu trữ hoặc phân phối. Cụ thể, User Private Key được mã hóa bằng **AES-256-GCM**, trong đó khóa AES được dẫn xuất từ mật khẩu người dùng thông qua hàm dẫn xuất khóa an toàn (ví dụ: Argon2). Khi thuộc tính người dùng thay đổi hoặc tài khoản bị thu hồi, khóa cũ bị vô hiệu hóa và không còn khả năng giải mã các bản mã mới.
-
-
-| STT | Key ID | Phiên Bản | Thuộc Tính | Trạng Thái |
-| --- | ------ | --------- | ---------- | ---------- |
-| 1   |        |           |            |            |
-| 2   |        |           |            |            |
-
-
-
-**Ví dụ:**  
-BM5: Phiếu Quản Lý Khóa Mã Hóa  
-User ID: 22520001  
-Loại khóa: user_private_key  
-Thuật toán: AES-256-GCM  
-Ngày tạo: 08/09/2025  
-Trạng thái: active  
-
-| STT | Key ID                      | Phiên Bản | Thuộc Tính                                  | Trạng Thái |
-| --- | --------------------------- | --------- | ------------------------------------------- | ---------- |
-| 1   | privkey_22520001_1757298029 | 1         | ['clearance_level:secret', 'department:hr'] | active     |
+*(Ghi chú: Biểu mẫu quản lý khóa truyền thống - BM5 - đã được lược bỏ do hệ thống không còn quản lý kho lưu trữ khóa cố định trong DB).*
 
 ### **1.3.6 Biểu mẫu 6 và qui định 6**
 
@@ -377,22 +355,20 @@ Người cập nhật: 21520001
 **BM10.1: Báo Cáo Thống Kê Collections Database**  
 Ngày: _______  
 
-| STT | Tên Collection      | Số Documents | Ví Dụ Document ID                    |
-| --- | ------------------- | ------------ | ------------------------------------ |
-| 1   | users               | 2            | 21520001, 22520001                   |
-| 2   | shared_files        | 2            | 0ae91604-eff2-46cd-81f0-e714b5936ea3 |
-| 3   | file_versions       | 3            | 26173b83-09b7-4914-bc04-9e70376298ce |
-| 4   | user_attributes     | 2            | UA22520001, UA21520001               |
-| 5   | user_private_keys   | 4            | privkey_22520001_1757298029          |
-| 6   | access_policies     | 30           | SuperAdmin_Full_Access               |
-| 7   | super_admin         | 1            | 21520001                             |
-| 8   | system_schemas      | 1            | user_attribute_schemas               |
-| 9   | access_logs         | 156          | log_20250908_143052_001              |
-| 10  | key_revocation_list | 2            | rev_22520001_20250910                |
-| 11  | system_config       | 1            | system_config_main                   |
+| STT | Tên Collection  | Số Documents | Ví Dụ Document ID                    |
+| --- | --------------- | ------------ | ------------------------------------ |
+| 1   | users           | 2            | 21520001, 22520001                   |
+| 2   | shared_files    | 2            | 0ae91604-eff2-46cd-81f0-e714b5936ea3 |
+| 3   | file_versions   | 3            | 26173b83-09b7-4914-bc04-9e70376298ce |
+| 4   | user_attributes | 2            | UA22520001, UA21520001               |
+| 5   | access_policies | 30           | SuperAdmin_Full_Access               |
+| 6   | super_admin     | 1            | 21520001                             |
+| 7   | system_schemas  | 1            | user_attribute_schemas               |
+| 8   | access_logs     | 156          | log_20250908_143052_001              |
+| 9   | system_config   | 1            | system_config_main                   |
 
-Tổng số collections: 11  
-Tổng số documents: 204  
+Tổng số collections: 9  
+Tổng số documents: 198  
 
 #### Biểu mẫu 10.2
 
@@ -456,37 +432,13 @@ Chi tiết lỗi: null
 
 ---
 
-### **1.3.13 Biểu mẫu 13 và qui định 13**
+### **1.3.13 Quy định 13 (Thu hồi khóa thông qua Invalidation)**
 
-**BM13: Danh Sách Thu Hồi Khóa (Key Revocation List)**  
-Revocation ID: _______  
-User ID: _______  
-Key ID bị thu hồi: _______  
-Lý do thu hồi: _______  
-Ngày thu hồi: _______  
-Người thực hiện: _______  
-Trạng thái: _______  
-Key ID mới (nếu có): _______  
-
-**QĐ13:** Khi thuộc tính người dùng thay đổi (thăng chức, chuyển phòng, nghỉ việc) hoặc phát hiện vi phạm bảo mật, khóa CP-ABE hiện tại của người dùng phải được thu hồi ngay lập tức. Khóa đã thu hồi được đưa vào danh sách thu hồi (Key Revocation List) và không còn khả năng giải mã các bản mã mới. Hệ thống phải cấp phát khóa mới với tập thuộc tính cập nhật cho người dùng (nếu vẫn còn quyền sử dụng hệ thống).
-
-**Lý do thu hồi hợp lệ:**
-- `attribute_change`: Thuộc tính người dùng thay đổi
-- `security_breach`: Vi phạm bảo mật
-- `account_termination`: Chấm dứt tài khoản
-- `key_expiration`: Khóa hết hạn
-- `admin_revoke`: Admin thu hồi thủ công
-
-**Ví dụ:**  
-BM13: Danh Sách Thu Hồi Khóa  
-Revocation ID: rev_22520001_20250910  
-User ID: 22520001  
-Key ID bị thu hồi: privkey_22520001_1757298029  
-Lý do thu hồi: attribute_change  
-Ngày thu hồi: 10/09/2025  
-Người thực hiện: 21520001 (Super Admin)  
-Trạng thái: revoked  
-Key ID mới: privkey_22520001_1757384430  
+**QĐ13:** Khi thuộc tính người dùng thay đổi (thăng chức, chuyển phòng, nghỉ việc) hoặc phát hiện vi phạm bảo mật, hệ thống cần tiến hành thủ tục thu hồi (revocation) khả năng giải mã hiện tại của người dùng đối với các file mã hóa.
+Thay vì duy trì một danh sách thu hồi cố định (Key Revocation List Collection) như các hệ thống cũ, cơ chế thu hồi được thiết kế tối giản thông qua việc **xóa cache trên Redis**.
+- Cụ thể: Khi có sự thay đổi về thuộc tính hoặc trạng thái tài khoản, hệ thống sẽ gọi phương thức xóa mảng byte chứa khóa CP-ABE (User Private Key) của người dùng đó khỏi Redis cache.
+- Hiệu ứng: Ngay lập tức, người dùng mất khả năng giải mã bằng khóa cũ. Nếu người dùng tiếp tục yêu cầu tài liệu, hệ thống bắt buộc phải sinh lại khóa mới dựa trên tập hợp thuộc tính đã được cập nhật mới nhất (nếu người dùng vẫn đủ điều kiện).
+*(Do đó, không cần duy trì BM13: Key Revocation List dưới dạng form hay collection)*.
 
 ---
 
@@ -540,24 +492,23 @@ Cấu hình Audit:
 
 Cấu hình Bảo mật:  
 - IP whitelist: 192.168.0.0/16, 10.0.0.0/8  
-- Thời gian session: 8 giờ  
+- Thời gian session: 8 giờ (quản lý qua HttpOnly Cookie chứa JWT Access/Refresh Token chống XSS)
+- Cấu hình Redis: Redis tập trung thông qua django-redis để lưu RAM cho các mã byte của CP-ABE Key
 - Số lần đăng nhập sai tối đa: 5  
 
 ---
 
 ## **1.4. Tổng hợp Collections trong Firestore**
 
-| STT | Collection          | Mô tả                   | Biểu mẫu |
-| --- | ------------------- | ----------------------- | -------- |
-| 1   | users               | Thông tin người dùng    | BM1      |
-| 2   | shared_files        | Metadata file đã mã hóa | BM2      |
-| 3   | file_versions       | Phiên bản file          | BM6      |
-| 4   | user_attributes     | Thuộc tính người dùng   | BM4      |
-| 5   | user_private_keys   | Khóa bí mật CP-ABE      | BM5      |
-| 6   | access_policies     | Chính sách ABAC         | BM7      |
-| 7   | super_admin         | Thông tin Super Admin   | BM8      |
-| 8   | system_schemas      | Lược đồ thuộc tính      | BM9      |
-| 9   | access_logs         | Nhật ký truy cập        | BM12     |
-| 10  | key_revocation_list | Danh sách thu hồi khóa  | BM13     |
-| 11  | system_config       | Cấu hình hệ thống       | BM14     |
+| STT | Collection      | Mô tả                   | Biểu mẫu |
+| --- | --------------- | ----------------------- | -------- |
+| 1   | users           | Thông tin người dùng    | BM1      |
+| 2   | shared_files    | Metadata file đã mã hóa | BM2      |
+| 3   | file_versions   | Phiên bản file          | BM6      |
+| 4   | user_attributes | Thuộc tính người dùng   | BM4      |
+| 5   | access_policies | Chính sách ABAC         | BM7      |
+| 6   | super_admin     | Thông tin Super Admin   | BM8      |
+| 7   | system_schemas  | Lược đồ thuộc tính      | BM9      |
+| 8   | access_logs     | Nhật ký truy cập        | BM12     |
+| 9   | system_config   | Cấu hình hệ thống       | BM14     |
 
