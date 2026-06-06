@@ -167,7 +167,7 @@
     });
 
     async function loadAttributes() {
-        if (!accessToken) return;
+        if (!username) return;
         try {
             const response = await fetch(API_BASE, { headers });
             if (response.status === 401) {

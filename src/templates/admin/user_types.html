@@ -423,8 +423,7 @@
 
     // Load user types
     async function loadUserTypes() {
-        console.log('loadUserTypes called, accessToken:', accessToken ? 'exists' : 'null');
-        if (!accessToken) return;
+        if (!username) return;
         try {
             console.log('Fetching from:', API_BASE);
             const response = await fetch(API_BASE, { headers });
