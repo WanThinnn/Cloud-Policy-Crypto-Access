@@ -1,0 +1,73 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>404 - Page not found</title>
+    <link rel="icon" type="image/png" href="{% static 'image/favicon.png' %}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class'
+      }
+      // Apply dark mode
+      try {
+        const mode = localStorage.getItem('darkMode') || 'auto';
+        if (mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body class="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col font-sans text-gray-900 dark:text-gray-100 antialiased">
+    <div class="flex-grow flex items-center justify-center px-4">
+      <div class="text-center max-w-lg">
+        <!-- Icon -->
+        <div class="mb-8">
+          <div class="inline-flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-2xl">
+            <span class="text-6xl">🔍</span>
+          </div>
+        </div>
+        
+        <!-- Error Code -->
+        <h1 class="text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 mb-4">
+          404
+        </h1>
+        
+        <!-- Title -->
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">
+          Page not found
+        </h2>
+        
+        <!-- Description -->
+        <p class="text-gray-600 dark:text-gray-400 mb-8">
+          The page you are looking for does not exist or has been moved.
+        </p>
+        
+        <!-- Actions -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a href="/" 
+             class="inline-flex items-center justify-center px-6 py-3 text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            Go to Homepage
+          </a>
+          <button onclick="history.back()" 
+                  class="inline-flex items-center justify-center px-6 py-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl font-medium shadow hover:shadow-md transform hover:scale-105 transition-all duration-200">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Go Back
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="text-center py-6 text-gray-500 dark:text-gray-500 text-sm">
+      📚 Crypto Access System
+    </div>
+  </body>
+</html>
