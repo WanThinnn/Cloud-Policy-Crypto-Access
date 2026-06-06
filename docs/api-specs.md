@@ -1,0 +1,120 @@
+# Đặc Tả API & Luồng Hoạt Động (API Specifications & Workflows)
+
+Tài liệu này mô tả cách hệ thống **Cloud-Firestore-Crypto-Access** hoạt động, quy trình xác thực, kiến trúc bảo mật (CP-ABE kết hợp ABAC) và danh sách các endpoint REST API chính.
+
+## 1. Luồng Hoạt Động Cốt Lõi (Core Workflows)
+
+### 1.1. Luồng Xác Thực (Authentication Flow)
+Hệ thống sử dụng JWT (JSON Web Token) kết hợp HttpOnly Cookie để bảo mật session và chống lại tấn công XSS.
+1. **Login**: Client gửi request chứa `username` và `password` tới `/api/auth/login/`.
+2. **Response**: 
+   - Server xác thực thông tin.
+   - Trả về thông tin cơ bản của user trong response body.
+   - Gắn `access_token` và `refresh_token` vào HTTP response headers thông qua cơ chế `Set-Cookie` với các cờ bảo mật (HttpOnly, Secure, SameSite=Lax).
+3. **Gọi API**: Đối với các request tiếp theo tới hệ thống (ví dụ: upload/download file, fetch dữ liệu), trình duyệt (hoặc client) sẽ tự động đính kèm Cookie chứa token mà không cần can thiệp bằng JavaScript `localStorage`.
+4. **CSRF Protection**: Các thao tác thay đổi dữ liệu (POST, PUT, DELETE) bắt buộc phải truyền header `X-CSRFToken` lấy từ cookie `csrftoken`.
+
+### 1.2. Luồng Kiểm Soát Truy Cập & Giải Mã (ABAC + CP-ABE)
+Mỗi tài nguyên file (Upload) trong hệ thống đều trải qua 2 tầng bảo mật:
+- **Tầng 1 - ABAC (Attribute-Based Access Control)**:
+  - Khi user yêu cầu tải/xem file, PEP (Policy Enforcement Point) sẽ gửi request kiểm tra quyền đến PDP (Policy Decision Point sử dụng PyCasbin).
+  - PDP đánh giá thuộc tính của user (`department`, `role`, `clearance_level`, v.v.), kết hợp với chính sách (Policies) để đưa ra quyết định Allow hoặc Deny.
+- **Tầng 2 - CP-ABE (Ciphertext-Policy Attribute-Based Encryption)**:
+  - Nếu ABAC cho phép, file mã hóa mới được tải về server. 
+  - Hệ thống sinh động (on-the-fly) khóa bí mật CP-ABE dựa trên tập hợp thuộc tính hiện tại của user. Khóa này được cache tạm thời trên **Redis** (tránh lưu trữ cố định vào DB).
+  - Khóa CP-ABE dùng để giải mã khóa AES, sau đó dùng khóa AES giải mã nội dung file và trả về cho user. Nội dung file chỉ tồn tại trên RAM trong quá trình xử lý request.
+
+## 2. Đặc Tả REST API (REST API Specifications)
+
+Base URL: `http(s)://<domain>`
+
+### 2.1. Nhóm API Xác Thực (Auth API)
+Prefix: `/api/auth/`
+
+| Phương thức | Endpoint | Mô tả | Yêu cầu Auth |
+| ----------- | -------- | ----- | ------------ |
+| POST | `/login/` | Đăng nhập hệ thống. Trả về JWT Token qua HttpOnly Cookie. | Không |
+| POST | `/register/` | Đăng ký tài khoản mới (cần được Super Admin kích hoạt hoặc tự động tạo nếu cấu hình cho phép). | Không |
+| POST | `/logout/` | Xóa Access Token và Refresh Token khỏi Cookie. | Có |
+| POST | `/token/refresh/` | Cấp lại Access Token mới dựa trên Refresh Token. | Có (Cookie) |
+| GET | `/profile/` | Lấy thông tin user hiện tại (thông tin cá nhân, user type). | Có |
+| GET | `/permissions/` | Lấy danh sách quyền hệ thống của user hiện tại (is_admin, is_super_admin). | Có |
+| POST | `/change-password/` | Đổi mật khẩu. Yêu cầu `old_password` và `new_password`. | Có |
+
+### 2.2. Nhóm API Quản Trị Hệ Thống & Phân Quyền (Admin API)
+Prefix: `/api/admin/`
+
+| Phương thức | Endpoint | Mô tả | Yêu cầu Auth |
+| ----------- | -------- | ----- | ------------ |
+| GET/POST | `/user-types/` | Quản lý danh sách các loại người dùng (User Types). | Admin |
+| GET/POST | `/attributes/` | Định nghĩa lược đồ thuộc tính (Attribute Definitions). Dùng cho ABAC và CP-ABE. | Admin |
+| GET/POST | `/policies/` | Quản trị chính sách ABAC (Access Policies). Cho phép định nghĩa rules theo định dạng Casbin. | Admin |
+| GET/POST | `/users/` | Quản lý danh sách người dùng toàn hệ thống (tạo, khóa, duyệt tài khoản). | Admin |
+| GET | `/dashboard-stats/` | Lấy các số liệu tổng quan (Tổng số user, file, chính sách) hiển thị lên biểu đồ. | Admin |
+| GET | `/users/{id}/attributes/` | Liệt kê các thuộc tính hiện đang được gán cho một user cụ thể. | Admin |
+| POST | `/users/{id}/attributes/assign/`| Gán thuộc tính mới cho user. Kích hoạt tự động xóa CP-ABE Redis Cache của user. | Admin |
+| DELETE | `/users/{id}/attributes/{attr_id}/`| Thu hồi thuộc tính của user. Tự động Invalidate Redis Cache. | Admin |
+
+### 2.3. Nhóm API Lưu Trữ & Giải Mã Dữ Liệu (Storage API)
+Prefix: `/api/storage/`
+
+| Phương thức | Endpoint | Mô tả | Yêu cầu Auth |
+| ----------- | -------- | ----- | ------------ |
+| GET/POST | `/buckets/` | Quản lý Storage Buckets (Kho lưu trữ logic để nhóm file). | Có |
+| GET/POST | `/files/` | API chính xử lý Upload File. Dữ liệu POST bao gồm `file` và `policy` (Chính sách CP-ABE mong muốn). File sẽ được mã hóa AES, khóa AES mã hóa CP-ABE trước khi ghi disk. | Có |
+| GET | `/files/{id}/` | Lấy metadata của file. | Có |
+| GET | `/files/{id}/download/` | Yêu cầu tải nội dung file. Hệ thống thực hiện check ABAC -> sinh khóa CP-ABE (nếu chưa cache) -> giải mã -> trả về stream data. | Có |
+| DELETE | `/files/{id}/` | Đưa file vào thùng rác (Trash) hoặc xóa cứng (Permanent delete) nếu có quyền. | File Owner/Admin |
+
+## 3. Cách Sử Dụng API Từ Frontend
+
+Khi xây dựng giao diện hoặc gọi API từ Frontend (Sử dụng Axios hoặc Fetch):
+
+**1. Không cần quản lý Access Token thủ công**
+Do hệ thống sử dụng HttpOnly Cookie, bạn không cần phải thêm Header `Authorization: Bearer <token>` vào các request. Trình duyệt tự động lo việc đính kèm Cookie.
+
+**2. Quản lý CSRF Token (Bắt buộc với POST/PUT/DELETE)**
+Để bảo mật, bạn phải đọc giá trị của cookie `csrftoken` và thêm nó vào request headers dưới tên `X-CSRFToken`.
+
+*Ví dụ sử dụng Fetch API:*
+```javascript
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Gọi API Upload
+async function uploadFile(fileInput, policyString) {
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('policy', policyString); // e.g: 'department:it AND role:manager'
+
+    const response = await fetch('/api/storage/files/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken') // Quan trọng!
+            // Không set Content-Type, trình duyệt tự định dạng multipart/form-data
+        },
+        body: formData
+    });
+
+    return await response.json();
+}
+```
+
+## 4. Xử Lý Lỗi Cơ Bản (Error Handling)
+
+- **401 Unauthorized**: User chưa đăng nhập hoặc Token đã hết hạn (kể cả Refresh Token). Frontend nên redirect về trang `/auth/login/`.
+- **403 Forbidden**: User đã xác thực nhưng bị hệ thống ABAC chặn không cho phép thực hiện hành động do thiếu thuộc tính (Policy Deny) hoặc không đủ quyền Admin. Hoặc do CSRF Token bị sai/thiếu.
+- **404 Not Found**: Tài nguyên không tồn tại.
+- **500 Internal Server Error**: Lỗi máy chủ (ví dụ: CP-ABE không thể giải mã do sai policy, Redis server sập, ...). Mọi lỗi 500 đều được catch và ghi log cẩn thận ở backend.

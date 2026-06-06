@@ -498,10 +498,10 @@ Cấu hình Bảo mật:
 
 ---
 
-## **1.4. Tổng hợp Collections trong Firestore**
+## **1.4. Tổng hợp Bảng Dữ Liệu (Database Tables)**
 
-| STT | Collection      | Mô tả                   | Biểu mẫu |
-| --- | --------------- | ----------------------- | -------- |
+| STT | Bảng (Table)        | Mô tả                   | Biểu mẫu |
+| --- | ------------------- | ----------------------- | -------- |
 | 1   | users           | Thông tin người dùng    | BM1      |
 | 2   | shared_files    | Metadata file đã mã hóa | BM2      |
 | 3   | file_versions   | Phiên bản file          | BM6      |

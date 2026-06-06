@@ -85,13 +85,14 @@ def register(request):
         }, status=status.HTTP_201_CREATED)
         
         # Set HttpOnly cookies
+        is_secure = getattr(settings, 'SESSION_COOKIE_SECURE', False)
         response.set_cookie(
             'access_token', access_token,
-            max_age=3600, httponly=True, samesite='Lax'
+            max_age=3600, httponly=True, samesite='Lax', secure=is_secure
         )
         response.set_cookie(
             'refresh_token', refresh_token,
-            max_age=7*24*3600, httponly=True, samesite='Lax'
+            max_age=7*24*3600, httponly=True, samesite='Lax', secure=is_secure
         )
         
         return response
@@ -149,13 +150,14 @@ def login(request):
         })
         
         # Set HttpOnly cookies
+        is_secure = getattr(settings, 'SESSION_COOKIE_SECURE', False)
         response.set_cookie(
             'access_token', access_token,
-            max_age=3600, httponly=True, samesite='Lax'
+            max_age=3600, httponly=True, samesite='Lax', secure=is_secure
         )
         response.set_cookie(
             'refresh_token', refresh_token,
-            max_age=7*24*3600, httponly=True, samesite='Lax'
+            max_age=7*24*3600, httponly=True, samesite='Lax', secure=is_secure
         )
         
         return response
