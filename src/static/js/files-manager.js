@@ -432,7 +432,7 @@
             const isSelected = selectedFiles.has(filePath);
 
             return `
-            <div class="file-item group relative flex flex-col p-4 bg-white border border-gray-100 rounded-2xl transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-indigo-200 cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/50' : ''}"
+            <div class="file-item group relative flex flex-col p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-indigo-200 dark:hover:border-indigo-500 cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/30' : ''}"
                 onclick="handleFileClick('${filePath}', ${isFolder}, event)"
                 data-filepath="${filePath}"
                 data-isfolder="${isFolder}">
@@ -449,7 +449,7 @@
                 </div>
                 
                 <!-- Icon Area -->
-                <div class="h-32 mb-4 rounded-xl bg-gray-50/80 group-hover:bg-indigo-50/30 flex items-center justify-center transition-colors relative overflow-hidden">
+                <div class="h-32 mb-4 rounded-xl bg-gray-50/80 dark:bg-gray-700/50 group-hover:bg-indigo-50/30 dark:group-hover:bg-indigo-900/30 flex items-center justify-center transition-colors relative overflow-hidden">
                     <div class="transform transition-transform duration-300 group-hover:scale-110 drop-shadow-sm w-16 h-16">
                         ${icon}
                     </div>
@@ -471,7 +471,7 @@
                 
                 <!-- Info Area -->
                 <div class="text-center">
-                    <h3 class="text-sm font-semibold text-gray-700 truncate px-2 mb-1 group-hover:text-indigo-700 transition-colors" title="${name}">${name}</h3>
+                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate px-2 mb-1 group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors" title="${name}">${name}</h3>
                     <p class="text-xs text-gray-400">
                         ${file.size ? formatSize(file.size) : (isFolder ? (file.items !== undefined ? `${file.items} items` : '') : '')}
                     </p>
@@ -488,7 +488,7 @@
 
         // Header Row
         const header = `
-        <div class="flex items-center px-6 py-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <div class="flex items-center px-6 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 uppercase tracking-wider">
             <div class="w-8 ml-2">#</div>
             <div class="flex-1">Name</div>
             <div class="w-32">Size</div>
@@ -505,7 +505,7 @@
             const isSelected = selectedFiles.has(filePath);
 
             return `
-            <div class="file-item group flex items-center px-6 py-4 hover:bg-indigo-50/30 transition-colors border-b border-gray-100 last:border-0 cursor-pointer ${isSelected ? 'bg-indigo-50/60' : ''}"
+            <div class="file-item group flex items-center px-6 py-4 hover:bg-indigo-50/30 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0 cursor-pointer ${isSelected ? 'bg-indigo-50/60 dark:bg-indigo-900/30' : ''}"
                 onclick="handleFileClick('${filePath}', ${isFolder}, event)"
                 data-filepath="${filePath}"
                 data-isfolder="${isFolder}">
@@ -519,11 +519,11 @@
                 </div>
                 
                 <div class="flex-1 flex items-center gap-4">
-                    <div class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-lg text-gray-500">
+                    <div class="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400">
                         <div class="w-6 h-6">${icon}</div>
                     </div>
                     <div>
-                        <p class="font-medium text-gray-900 group-hover:text-indigo-700 transition-colors">${name}</p>
+                        <p class="font-medium text-gray-900 dark:text-gray-200 group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors">${name}</p>
                         ${isFolder ? '<p class="text-xs text-gray-500">Folder</p>' : ''}
                     </div>
                 </div>
