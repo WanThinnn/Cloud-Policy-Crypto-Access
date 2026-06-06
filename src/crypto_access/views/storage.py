@@ -246,10 +246,23 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         tags = serializer.validated_data.get('tags', [])
         is_public = serializer.validated_data.get('is_public', False)
         policy_id = serializer.validated_data.get('policy_id')
-        
         policy_obj = None
         cpabe_policy_str = None
-        if policy_id:
+        
+        if serializer.validated_data.get('create_new_policy'):
+            policy_obj = AccessPolicy.objects.create(
+                name=serializer.validated_data['new_policy_name'],
+                description=serializer.validated_data.get('new_policy_description', ''),
+                subject_condition=serializer.validated_data['new_policy_subject_condition'],
+                resource=serializer.validated_data.get('new_policy_resource', 'document'),
+                action=serializer.validated_data.get('new_policy_action', 'read'),
+                effect=serializer.validated_data.get('new_policy_effect', 'allow'),
+                priority=serializer.validated_data.get('new_policy_priority', 100),
+                created_by=request.user if request.user.is_authenticated else None
+            )
+            cpabe_policy_str = policy_obj.cpabe_policy
+            logger.info(f"Created new policy '{policy_obj.name}' during upload")
+        elif policy_id:
             try:
                 policy_obj = AccessPolicy.objects.get(id=policy_id)
                 cpabe_policy_str = policy_obj.cpabe_policy

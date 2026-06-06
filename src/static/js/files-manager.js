@@ -271,6 +271,7 @@
                 if (fileInput.files && fileInput.files.length > 0) {
                     const file = fileInput.files[0];
                     fileSelectedName.textContent = `Selected: ${file.name}`;
+                    fileSelectedName.title = file.name;
                     fileSelectedName.classList.remove('hidden');
                     
                     if (!window.isVersionUpload) {
@@ -518,12 +519,12 @@
                         ${isSelected ? 'checked' : ''}>
                 </div>
                 
-                <div class="flex-1 flex items-center gap-4">
-                    <div class="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400">
+                <div class="flex-1 flex items-center gap-4 min-w-0 pr-4">
+                    <div class="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400 flex-shrink-0">
                         <div class="w-6 h-6">${icon}</div>
                     </div>
-                    <div>
-                        <p class="font-medium text-gray-900 dark:text-gray-200 group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors">${name}</p>
+                    <div class="min-w-0">
+                        <p class="font-medium text-gray-900 dark:text-gray-200 group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors truncate" title="${name}">${name}</p>
                         ${isFolder ? '<p class="text-xs text-gray-500">Folder</p>' : ''}
                     </div>
                 </div>
@@ -1512,11 +1513,55 @@
             formData.append('is_new_version', 'true');
         }
 
+        // Check if user wants to assign a policy
+        let selectedPolicyId = '';
+        let isCreatingNewPolicy = false;
+        
+        if (window.isVersionUpload) {
+            const action = document.querySelector('input[name="version_policy_action"]:checked').value;
+            if (action !== 'keep') {
+                selectedPolicyId = document.getElementById('upload-policy-select').value;
+                const newPolicyForm = document.getElementById('new-policy-form-upload');
+                isCreatingNewPolicy = !newPolicyForm.classList.contains('hidden');
+            }
+        } else {
+            selectedPolicyId = document.getElementById('upload-policy-select').value;
+            const newPolicyForm = document.getElementById('new-policy-form-upload');
+            isCreatingNewPolicy = !newPolicyForm.classList.contains('hidden');
+        }
+
         // Prepare form data for API
         formData.append('file', file);
         formData.append('bucket_name', 'documents');
         formData.append('file_path', targetPath);
         formData.append('is_public', 'false');
+
+        if (isCreatingNewPolicy) {
+            formData.append('create_new_policy', 'true');
+            const name = document.getElementById('upload-new-policy-name').value.trim();
+            const description = document.getElementById('upload-new-policy-description').value.trim();
+            const condition = document.getElementById('upload-policy-condition-final').value.trim() 
+                || document.getElementById('upload-new-policy-condition')?.value.trim() || '';
+            const effect = document.getElementById('upload-new-policy-effect')?.value || 'allow';
+            const priority = document.getElementById('upload-new-policy-priority')?.value || 100;
+            const resource = document.getElementById('upload-new-policy-resource')?.value || 'document';
+            const action = document.getElementById('upload-new-policy-action')?.value || 'read';
+
+            if (!name || !condition) {
+                showAlert('Policy Name and Condition are required for new policy', 'error');
+                return;
+            }
+
+            formData.append('new_policy_name', name);
+            formData.append('new_policy_description', description);
+            formData.append('new_policy_subject_condition', condition);
+            formData.append('new_policy_effect', effect);
+            formData.append('new_policy_priority', priority);
+            formData.append('new_policy_resource', resource);
+            formData.append('new_policy_action', action);
+        } else if (selectedPolicyId) {
+            formData.append('policy_id', selectedPolicyId);
+        }
 
         console.log('Uploading file:', file.name, 'to path:', targetPath);
 
@@ -1564,34 +1609,8 @@
                 const result = await response.json();
                 console.log('Upload successful:', result);
                 
-                // Get the uploaded file path from the response (database path)
-                const uploadedFilePath = result.file_path;
-                
-                // Check if user wants to assign a policy
-                let selectedPolicyId = '';
-                let isCreatingNewPolicy = false;
-                
-                if (window.isVersionUpload) {
-                    const action = document.querySelector('input[name="version_policy_action"]:checked').value;
-                    if (action === 'keep') {
-                        // Keep old policy: No need to assign again, backend handles inheritance
-                        selectedPolicyId = null; 
-                    } else {
-                        // User wants to update policy
-                        selectedPolicyId = document.getElementById('upload-policy-select').value;
-                        const newPolicyForm = document.getElementById('new-policy-form-upload');
-                        isCreatingNewPolicy = !newPolicyForm.classList.contains('hidden');
-                    }
-                } else {
-                    selectedPolicyId = document.getElementById('upload-policy-select').value;
-                    const newPolicyForm = document.getElementById('new-policy-form-upload');
-                    isCreatingNewPolicy = !newPolicyForm.classList.contains('hidden');
-                }
-                
-                if (selectedPolicyId || isCreatingNewPolicy) {
-                    // Assign policy to the uploaded file
-                    await assignPolicyToUploadedFile(uploadedFilePath, selectedPolicyId, isCreatingNewPolicy);
-                }
+                // Backend now handles policy creation and assignment within the upload API itself
+                // so we don't need to call assignPolicyToUploadedFile here.
                 
                 showAlert('✅ Upload successful!', 'success');
                 closeUploadModal();
@@ -1627,6 +1646,7 @@
             const fileSelectedName = document.getElementById('file-selected-name');
             if (fileSelectedName) {
                 fileSelectedName.textContent = `Selected: ${files[0].name}`;
+                fileSelectedName.title = files[0].name;
                 fileSelectedName.classList.remove('hidden');
             }
             openUploadModal();

@@ -50,12 +50,32 @@ class FileUploadSerializer(serializers.Serializer):
     is_public = serializers.BooleanField(default=False)
     policy_id = serializers.IntegerField(required=False, help_text="Policy ID for CP-ABE encryption")
     
+    # For creating new policy (optional)
+    create_new_policy = serializers.BooleanField(default=False)
+    new_policy_name = serializers.CharField(max_length=100, required=False)
+    new_policy_description = serializers.CharField(required=False, allow_blank=True)
+    new_policy_subject_condition = serializers.CharField(required=False)
+    new_policy_effect = serializers.ChoiceField(choices=['allow', 'deny'], required=False)
+    new_policy_priority = serializers.IntegerField(required=False, default=100)
+    new_policy_resource = serializers.CharField(required=False, default='document')
+    new_policy_action = serializers.CharField(required=False, default='read')
+    
     def validate_file(self, value):
         """Validate file size and type"""
         max_size = 10 * 1024 * 1024  # 10MB default
         if value.size > max_size:
             raise serializers.ValidationError(f"File size cannot exceed {max_size / 1024 / 1024}MB")
         return value
+
+    def validate(self, data):
+        if data.get('create_new_policy'):
+            required_fields = ['new_policy_name', 'new_policy_subject_condition', 'new_policy_effect']
+            for field in required_fields:
+                if not data.get(field):
+                    raise serializers.ValidationError(
+                        f"'{field}' is required when creating new policy"
+                    )
+        return data
 
 
 class SignedUrlRequestSerializer(serializers.Serializer):

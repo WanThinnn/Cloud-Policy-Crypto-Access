@@ -114,6 +114,41 @@ class AccessPolicy(BaseModel):
     def to_casbin_policy(self):
         """Convert to Casbin policy format: [sub_rule, obj, act, eft]"""
         return [self.subject_condition, self.resource, self.action, self.effect]
+        
+    def _generate_cpabe_policy(self):
+        """Auto-generate CP-ABE policy from ABAC subject_condition"""
+        import re
+        if not self.subject_condition:
+            return ""
+            
+        condition = self.subject_condition.replace("r.sub.", "")
+        
+        # Replace == 'value' with :value
+        condition = re.sub(r"([a-zA-Z0-9_]+)\s*==\s*['\"]([^'\"]+)['\"]", r"\1:\2", condition)
+        
+        # Replace in ['val1', 'val2'] with (attr:val1 or attr:val2)
+        def repl_in(match):
+            attr = match.group(1)
+            values_str = match.group(2)
+            values = re.findall(r"['\"]([^'\"]+)['\"]", values_str)
+            if not values:
+                return ""
+            if len(values) == 1:
+                return f"{attr}:{values[0]}"
+            return "(" + " or ".join([f"{attr}:{v}" for v in values]) + ")"
+            
+        condition = re.sub(r"([a-zA-Z0-9_]+)\s*in\s*\[(.*?)\]", repl_in, condition)
+        
+        # CP-ABE lib supports 'and', 'or', and '()'. It doesn't support '&&' or '||' natively.
+        # Ensure we convert '&&' to 'and', '||' to 'or' if they exist.
+        condition = condition.replace("&&", "and").replace("||", "or")
+        
+        return condition
+
+    def save(self, *args, **kwargs):
+        if not self.cpabe_policy and self.subject_condition:
+            self.cpabe_policy = self._generate_cpabe_policy()
+        super().save(*args, **kwargs)
     
     class Meta:
         db_table = 'crypto_access_policies'
