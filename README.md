@@ -31,41 +31,49 @@ See more demo images in `img/`.
 - **Deployment**: Docker & Docker Compose
 
 ### Security & Cryptography
-- **CP-ABE**: Custom C++ `libhybrid-cp-abe` (v3.0.0) bridged via Python `ctypes`
+- **Hybrid CP-ABE**: Custom C++ `libhybrid-cp-abe` (v3.1.0) bridged via Python `ctypes`
 - **Access Control**: PyCasbin (Attribute-Based Access Control)
 - **Authentication**: JWT (JSON Web Tokens)
 
 ## Architecture
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│                    Client Applications                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
-│  │ Web Frontend│  │ Mobile Apps │  │   CLI Tools │      │
-│  └─────────────┘  └─────────────┘  └─────────────┘      │
-└─────────────────────┬───────────────────────────────────┘
-                      │ HTTPS / REST API
-┌─────────────────────▼───────────────────────────────────┐
-│                  Django API Gateway                     │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
-│  │   Casbin    │  │JWT Auth &   │  │ File & Meta-│      │
-│  │   ABAC      │  │ Middlewares │  │ data Router │      │
-│  └──────┬──────┘  └─────────────┘  └──────┬──────┘      │
-│         │                                 │             │
-│  ┌──────▼──────┐  ┌─────────────┐  ┌──────▼──────┐      │
-│  │ Redis Cache │  │ CP-ABE C++  │  │ Supabase    │      │
-│  │ (Keys/ABAC) │◄─┤ Buffer API  ├──► Storage SDK │      │
-│  └─────────────┘  └─────────────┘  └─────────────┘      │
-└───────────────────────────────────────────┬─────────────┘
-                                            │
-┌───────────────────────────────────────────▼─────────────┐
-│                 Supabase Cloud Service                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
-│  │ PostgreSQL  │  │ Storage     │  │   PostgREST │      │
-│  │ (Metadata)  │  │ (Ciphertext)│  │   API       │      │
-│  └─────────────┘  └─────────────┘  └─────────────┘      │
-└─────────────────────────────────────────────────────────┘
-```
+```mermaid
+flowchart TB
+    subgraph Clients [Client Applications]
+        direction LR
+        Web[Web Frontend]
+        Mobile[Mobile Apps]
+        CLI[CLI Tools]
+    end
+
+    subgraph API [Django API Gateway]
+        direction TB
+        Auth[JWT Auth & Middlewares]
+        Casbin[Casbin ABAC Policy Engine]
+        Controller[Storage & Metadata Controllers]
+        CPABE[CP-ABE C++ Buffer API]
+        
+        Auth --> Casbin
+        Casbin --> Controller
+        Controller <-->|Encrypt / Decrypt Buffer| CPABE
+    end
+
+    subgraph Infrastructure [Data Infrastructure]
+        direction LR
+        Redis[(Redis Cache<br/>Ephemeral Keys & Policies)]
+        DB[(Supabase PostgreSQL<br/>Metadata & Attributes)]
+        Storage[(Supabase Storage<br/>Ciphertext Files)]
+    end
+
+    Clients ==>|HTTPS / REST API<br/>X-CSRFToken & HttpOnly Cookie| Auth
+    
+    Casbin <-->|Evaluate Access| DB
+    Casbin <-->|Policy Cache| Redis
+    
+    Controller <-->|Cache / Retrieve Private Keys| Redis
+    Controller <-->|Read / Write File Metadata| DB
+    Controller <-->|Upload / Download Ciphertext| Storage
+ ```
 
 ## Quick Start
 
@@ -106,17 +114,20 @@ See more demo images in `img/`.
    docker exec -it django_app python manage.py createsuperuser
    ```
 
-## API Documentation
-The API provides endpoints for:
-- **Authentication**: JWT Login, Token Refresh
-- **Storage**: Upload, Download, Preview, File Versioning, Policy Assignment
-- **System**: Casbin Policy Management, CP-ABE Attribute Management
+## Documentation
+
+- **[Project Specifications (English)](docs/en/project-specs-en.md)**: Details the dual-layer architecture, attribute schemas, and system workflows.
+- **[API Specifications (English)](docs/en/api-specs-en.md)**: Details the authentication flow, CP-ABE encryption workflow, and REST API endpoints.
+- **[Đặc tả Dự án (Tiếng Việt)](docs/vi/project-specs.md)**
+- **[Đặc tả API (Tiếng Việt)](docs/vi/api-specs.md)**
 
 *Detailed Swagger/OpenAPI documentation is available at `/api/docs/` when the server is running.*
 
 ## Security Notice
+- **Zero Persistent Keys**: CP-ABE private keys are never stored on disk or in the database. They are generated dynamically (on-the-fly) and temporarily cached in Redis.
+- **XSS Protection**: JWT Tokens are securely stored in HttpOnly cookies, rendering them immune to XSS attacks.
 - Ensure the `keys` directory is properly secured in production. The `cpabe_msk.key` (Master Key) must never be exposed.
-- Always use `HTTPS` in production to prevent Man-in-the-Middle (MITM) attacks during JWT token transmission.
+- Always use `HTTPS` in production to prevent Man-in-the-Middle (MITM) attacks during token transmission.
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
