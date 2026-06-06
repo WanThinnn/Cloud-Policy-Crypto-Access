@@ -38,41 +38,46 @@ See more demo images in `img/`.
 ## Architecture
 
 ```mermaid
-flowchart TB
-    subgraph Clients [Client Applications]
-        direction LR
-        Web[Web Frontend]
-        Mobile[Mobile Apps]
-        CLI[CLI Tools]
+flowchart LR
+    classDef client fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef gateway fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef datalayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef core fill:#fff3e0,stroke:#f57c00,stroke-width:2px,stroke-dasharray: 5 5;
+
+    subgraph Clients ["📱 Clients"]
+        direction TB
+        Web("🌐 Web Frontend"):::client
+        Mob("📱 Mobile / CLI"):::client
     end
 
-    subgraph API [Django API Gateway]
+    subgraph Gateway ["🛡️ Django API Server"]
         direction TB
-        Auth[JWT Auth & Middlewares]
-        Casbin[Casbin ABAC Policy Engine]
-        Controller[Storage & Metadata Controllers]
-        CPABE[CP-ABE C++ Buffer API]
+        Auth("🔑 JWT Auth"):::gateway
+        Casbin("🛂 Casbin ABAC"):::gateway
+        Ctrl("📦 File Controller"):::gateway
+        CPABE("🔐 CP-ABE C++ Lib"):::core
         
         Auth --> Casbin
-        Casbin --> Controller
-        Controller <-->|Encrypt / Decrypt Buffer| CPABE
+        Casbin --> Ctrl
+        Ctrl <-->|In-Memory Buffer| CPABE
     end
 
-    subgraph Infrastructure [Data Infrastructure]
-        direction LR
-        Redis[(Redis Cache<br/>Ephemeral Keys & Policies)]
-        DB[(Supabase PostgreSQL<br/>Metadata & Attributes)]
-        Storage[(Supabase Storage<br/>Ciphertext Files)]
+    subgraph DataLayer ["🗄️ Infrastructure"]
+        direction TB
+        Redis[("⚡ Redis Cache<br/>(Keys & Policies)")]:::datalayer
+        DB[("🐘 Supabase DB<br/>(Metadata)")]:::datalayer
+        Storage[("☁️ Supabase Storage<br/>(Ciphertexts)")]:::datalayer
     end
 
-    Clients ==>|HTTPS / REST API<br/>X-CSRFToken & HttpOnly Cookie| Auth
+    Web -->|HTTPS / REST| Auth
+    Mob -->|HTTPS / REST| Auth
     
-    Casbin <-->|Evaluate Access| DB
-    Casbin <-->|Policy Cache| Redis
+    Casbin -.->|Cache| Redis
+    Casbin -.->|Verify| DB
     
-    Controller <-->|Cache / Retrieve Private Keys| Redis
-    Controller <-->|Read / Write File Metadata| DB
-    Controller <-->|Upload / Download Ciphertext| Storage
+    Ctrl <-->|Manage Keys| Redis
+    Ctrl <-->|CRUD Metadata| DB
+    Ctrl <-->|Upload/Download| Storage
 ```
 
 ### Workflow Overview
@@ -81,44 +86,68 @@ flowchart TB
 2. **Encryption/Decryption (In-Memory)**: Upon an authorized file upload/download, the **Storage Controller** dynamically generates an ephemeral CP-ABE private key based on the user's current attributes. This key is temporarily cached in **Redis**. The data buffer is passed to the **CP-ABE C++ Library** to be encrypted or decrypted directly in RAM, ensuring plaintext data is never written to disk.
 3. **Data Persistence**: File metadata, access policies, and user attributes are securely managed in **Supabase PostgreSQL**. The fully encrypted ciphertexts are uploaded to **Supabase Storage**.
 
-## Quick Start
+## Quick Start (Step-by-Step for New Environments)
 
-### Prerequisites
-- Docker and Docker Compose
-- Supabase Project (PostgreSQL URL & API Keys)
-- `libhybrid-cp-abe.so` / `libhybrid-cp-abe.dll` (v3.0.0) placed in `src/lib/`
+Follow these instructions to deploy the system from scratch on a brand new machine.
 
-### Installation & Deployment
+### 1. Prerequisites
+- **Docker** and **Docker Compose** installed.
+- **Python 3.10+** (if you want to run the management scripts locally).
+- A **Supabase Project** (You will need the PostgreSQL Database URL, Project URL, and Service Role Key).
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
-   cd Cloud-Policy-Crypto-Access
-   ```
+### 2. Get the Code & Crypto Library
+```bash
+# Clone this main repository
+git clone https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
+cd Cloud-Policy-Crypto-Access
 
-2. **Environment Configuration**
-   Copy the example environment file and configure your Supabase credentials:
-   ```bash
-   cp .env.example .env
-   # Edit .env and insert your SUPABASE_URL, SUPABASE_SERVICE_KEY, and DATABASE_URL
-   ```
+```
+*Note: The required C++ cryptography library (`libhybrid-cp-abe` v3.1.0) is already included in the `src/lib/` directory of this repository by default. You only need to visit the [Hybrid-CP-ABE-Library repository](https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git) if you wish to compile or update to a newer version.*
 
-3. **Start the System**
-   The system uses Docker Compose to spin up Django, Redis, and Nginx automatically.
-   ```bash
-   python start.py build
-   python start.py up
-   ```
+### 3. Environment Configuration
+Create the `.env` file from the example template:
+```bash
+cp .env.example .env
+```
+Open `.env` in your text editor and fill in the missing critical values:
+- `DJANGO_SECRET_KEY`: Generate a long random string.
+- `DATABASE_URL`: Get this from your Supabase Dashboard -> Settings -> Database -> Connection string (URI). Make sure it ends with `?sslmode=require` if using Supabase.
+- `SUPABASE_URL`: Your Supabase project URL (e.g., `https://xxxx.supabase.co`).
+- `SUPABASE_SERVICE_KEY`: Your Supabase Service Role Key (Dashboard -> Settings -> API). **Do not use the public anon key!**
+- `KEYS_DIR`: Keep as `./keys` to securely mount your encryption master keys outside the source code.
 
-4. **Initialize Database & Policies**
-   The `start.py` script helps you manage the system easily:
-   ```bash
-   # Apply migrations and initialize default Casbin policies
-   python start.py init
-   
-   # Create a super admin account
-   docker exec -it django_app python manage.py createsuperuser
-   ```
+### 4. Setup Supabase Storage
+Before running the system, configure your storage:
+1. Go to your Supabase Dashboard.
+2. Navigate to **Storage**.
+3. Create a new bucket (e.g., `secure-storage`).
+4. Ensure the bucket is set to **Private** (do not allow public access).
+
+### 5. Build and Start Docker Containers
+The system uses Docker Compose to orchestrate Django, Redis, and Nginx. A `start.py` script is provided to simplify commands.
+```bash
+# Build the Docker images
+python start.py build
+
+# Start all containers in detached mode
+python start.py up
+```
+
+### 6. Initialize Database & Create Super Admin
+Once the containers are successfully running (`python start.py status`), initialize the system:
+```bash
+# Apply Django migrations to Supabase and seed default Casbin ABAC policies
+python start.py init
+
+# Create the first Super Admin account
+docker exec -it django_app python manage.py createsuperuser
+# Follow the prompts to enter your username, email, and password.
+```
+
+### 7. Access the Application
+- Open your web browser and navigate to: **`http://localhost:8000/auth/login/`**
+- Log in using the Super Admin credentials you just created.
+- Upon login, navigate to the **Manage** section to start creating User Types, defining Attribute Schemas, assigning attributes to users, and uploading files!
 
 ## Documentation
 
