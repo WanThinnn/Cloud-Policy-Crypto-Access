@@ -52,7 +52,7 @@
             setupEventListeners();
         } catch (error) {
             console.error('Init error:', error);
-            showError('Không thể kết nối đến server');
+            showError('Cannot connect to server');
         }
     }
 
@@ -60,8 +60,8 @@
         document.getElementById('files-grid').innerHTML = `
         <div class="col-span-full text-center py-12">
             <div class="text-6xl mb-4">🔐</div>
-            <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
-            <a href="/auth/login/?next=${encodeURIComponent(location.pathname)}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md inline-block">Đăng nhập</a>
+            <p class="text-gray-600 mb-4">You need to log in to view this page</p>
+            <a href="/auth/login/?next=${encodeURIComponent(location.pathname)}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md inline-block">Log in</a>
         </div>`;
         // Hide upload button
         const uploadBtn = document.getElementById('upload-btn');
@@ -270,20 +270,20 @@
             async function updateFileSelectedName() {
                 if (fileInput.files && fileInput.files.length > 0) {
                     const file = fileInput.files[0];
-                    fileSelectedName.textContent = `Đã chọn: ${file.name}`;
+                    fileSelectedName.textContent = `Selected: ${file.name}`;
                     fileSelectedName.classList.remove('hidden');
                     
                     if (!window.isVersionUpload) {
                         const targetPath = currentPath ? `${currentPath}/${file.name}` : file.name;
                         const exists = allFiles.some(f => f.path === targetPath);
                         if (exists) {
-                            if (confirm(`File "${file.name}" đã tồn tại trên hệ thống.\nBạn có muốn tải lên dưới dạng phiên bản mới không?\n(OK để đồng ý tải bản mới, Cancel để chọn file khác)`)) {
+                            if (confirm(`File "${file.name}" already exists on the system.\nDo you want to upload it as a new version?\n(OK to agree to upload new version, Cancel to select another file)`)) {
                                 window.isVersionUpload = true;
                                 window.versionUploadFilePath = targetPath;
                                 
                                 const titleEl = document.querySelector('#upload-modal h3');
-                                if (titleEl) titleEl.childNodes[titleEl.childNodes.length - 1].textContent = ` Tải lên phiên bản mới: ${file.name}`;
-                                document.getElementById('upload-destination-folder').textContent = `Ghi đè file: ${targetPath}`;
+                                if (titleEl) titleEl.childNodes[titleEl.childNodes.length - 1].textContent = ` Upload new version: ${file.name}`;
+                                document.getElementById('upload-destination-folder').textContent = `Overwrite file: ${targetPath}`;
                                 
                                 await preSelectExistingPolicy(targetPath);
                             } else {
@@ -338,8 +338,8 @@
                         <svg class="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                         </svg>
-                        <p class="text-lg font-medium text-red-600">Truy cập bị từ chối</p>
-                        <p class="text-sm mt-2">${err.error || 'Bạn không có quyền xem tài liệu này'}</p>
+                        <p class="text-lg font-medium text-red-600">Access denied</p>
+                        <p class="text-sm mt-2">${err.error || 'You do not have permission to view this document'}</p>
                         <p class="text-xs mt-4 text-gray-400">Resource: ${err.resource || 'document'} | Action: ${err.action || 'read'}</p>
                     </div>`;
                     return;
@@ -357,14 +357,14 @@
 
         } catch (error) {
             console.error('Error loading files:', error);
-            showError('Không thể tải danh sách files. Vui lòng thử lại.');
+            showError('Cannot load file list. Please try again.');
             document.getElementById('files-grid').innerHTML = `
             <div class="col-span-full text-center text-gray-500 py-8">
                 <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
-                <p class="text-lg font-medium">Không có files</p>
-                <p class="text-sm mt-2">Upload file đầu tiên của bạn!</p>
+                <p class="text-lg font-medium">No files</p>
+                <p class="text-sm mt-2">Upload your first file!</p>
             </div>`;
         }
     }
@@ -408,8 +408,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
                     </svg>
                 </div>
-                <p class="text-xl font-medium text-gray-600">Thư mục trống</p>
-                <p class="text-sm mt-2 text-gray-400">Hãy upload tài liệu mới để bắt đầu</p>
+                <p class="text-xl font-medium text-gray-600">Empty folder</p>
+                <p class="text-sm mt-2 text-gray-400">Upload new documents to get started</p>
             </div>`;
             document.getElementById('files-list').innerHTML = document.getElementById('files-grid').innerHTML;
             return;
@@ -458,7 +458,7 @@
                     ${!isFolder ? `
                     <div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <button onclick="previewFile('${filePath}', event)" 
-                            class="p-2 bg-white text-gray-700 rounded-full hover:text-indigo-600 hover:scale-110 transition-transform shadow-lg" title="Xem trước">
+                            class="p-2 bg-white text-gray-700 rounded-full hover:text-indigo-600 hover:scale-110 transition-transform shadow-lg" title="Preview">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         </button>
                         <button onclick="downloadFile('${filePath}', event)" 
@@ -490,10 +490,10 @@
         const header = `
         <div class="flex items-center px-6 py-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
             <div class="w-8 ml-2">#</div>
-            <div class="flex-1">Tên</div>
-            <div class="w-32">Kích thước</div>
-            <div class="w-32">Loại</div>
-            <div class="w-24 text-right">Hành động</div>
+            <div class="flex-1">Name</div>
+            <div class="w-32">Size</div>
+            <div class="w-32">Type</div>
+            <div class="w-24 text-right">Action</div>
         </div>
     `;
 
@@ -524,7 +524,7 @@
                     </div>
                     <div>
                         <p class="font-medium text-gray-900 group-hover:text-indigo-700 transition-colors">${name}</p>
-                        ${isFolder ? '<p class="text-xs text-gray-500">Thư mục</p>' : ''}
+                        ${isFolder ? '<p class="text-xs text-gray-500">Folder</p>' : ''}
                     </div>
                 </div>
                 
@@ -595,7 +595,7 @@
                 <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
-                <p>Không tìm thấy file nào với từ khóa "<strong>${query}</strong>"</p>
+                <p>No files found with keyword "<strong>${query}</strong>"</p>
             </div>`;
         }
     }
@@ -652,7 +652,7 @@
         if (event) event.stopPropagation();
 
         try {
-            showAlert('Đang tải file...', 'info');
+            showAlert('Loading file...', 'info');
             const url = `${API_BASE}files/download_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
 
             console.log('Downloading from:', url);
@@ -660,7 +660,7 @@
 
             if (response.status === 403) {
                 const error = await response.json().catch(() => ({ error: 'Access denied' }));
-                showAlert('🚫 ' + (error.error || 'Bạn không có quyền download file này'), 'error');
+                showAlert('🚫 ' + (error.error || 'You do not have permission to download this file'), 'error');
                 return;
             }
 
@@ -688,10 +688,10 @@
             document.body.removeChild(a);
             window.URL.revokeObjectURL(downloadUrl);
 
-            showAlert('✅ Download thành công!', 'success');
+            showAlert('✅ Download successful!', 'success');
         } catch (error) {
             console.error('Download error:', error);
-            showAlert('❌ Lỗi download: ' + error.message, 'error');
+            showAlert('❌ Download error: ' + error.message, 'error');
         }
     }
 
@@ -725,7 +725,7 @@
                     <svg class="mx-auto h-16 w-16 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
-                    <p class="mt-4 text-red-600 font-medium">🚫 Không có quyền xem file này</p>
+                    <p class="mt-4 text-red-600 font-medium">🚫 No permission to view this file</p>
                     <p class="mt-2 text-sm text-gray-600">${error.error || 'Access denied'}</p>
                 </div>`;
                 return;
@@ -780,7 +780,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
                     <p class="mt-4 text-lg font-medium">File: ${fileName}</p>
-                    <p class="mt-2 text-sm text-gray-600">Không hỗ trợ xem trước định dạng .${ext}</p>
+                    <p class="mt-2 text-sm text-gray-600">Format preview not supported .${ext}</p>
                     <button onclick="downloadFromPreview()" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
                         Download
                     </button>
@@ -791,7 +791,7 @@
             console.error('Preview error:', error);
             content.innerHTML = `
             <div class="text-center py-12 text-red-600">
-                <p>❌ Không thể tải file</p>
+                <p>❌ Cannot load file</p>
                 <p class="text-sm mt-2">${error.message}</p>
             </div>`;
         }
@@ -843,7 +843,7 @@
     async function bulkDownload() {
         if (selectedFiles.size === 0) return;
 
-        showAlert(`Đang download ${selectedFiles.size} files...`, 'info');
+        showAlert(`Downloading ${selectedFiles.size} files...`, 'info');
 
         let success = 0;
         let failed = 0;
@@ -866,9 +866,9 @@
     async function bulkDelete() {
         if (selectedFiles.size === 0) return;
 
-        if (!confirm(`Chuyển ${selectedFiles.size} files đã chọn vào thùng rác?`)) return;
+        if (!confirm(`Move ${selectedFiles.size} selected files to trash?`)) return;
 
-        showAlert(`Đang chuyển ${selectedFiles.size} files vào thùng rác...`, 'info');
+        showAlert(`Moving ${selectedFiles.size} files to trash...`, 'info');
 
         let success = 0;
         let failed = 0;
@@ -885,7 +885,7 @@
                     success++;
                 } else if (response.status === 403) {
                     failed++;
-                    showAlert('🚫 Bạn không có quyền xóa một số files', 'error');
+                    showAlert('🚫 You do not have permission to delete some files', 'error');
                 } else {
                     failed++;
                 }
@@ -895,7 +895,7 @@
             await new Promise(resolve => setTimeout(resolve, 200));
         }
 
-        showAlert(`✅ Đã chuyển ${success} files vào thùng rác${failed > 0 ? `, ${failed} thất bại` : ''}`, 'success');
+        showAlert(`✅ Moved ${success} files to trash${failed > 0 ? `, ${failed} failed` : ''}`, 'success');
         clearSelection();
         folderCache.clear();
         loadFolder(currentPath);
@@ -910,9 +910,9 @@
         if (titleEl) {
             if (window.isVersionUpload && window.versionUploadFilePath) {
                 const fileName = window.versionUploadFilePath.split('/').pop();
-                titleEl.childNodes[titleEl.childNodes.length - 1].textContent = ` Tải lên phiên bản mới: ${fileName}`;
+                titleEl.childNodes[titleEl.childNodes.length - 1].textContent = ` Upload new version: ${fileName}`;
             } else {
-                titleEl.childNodes[titleEl.childNodes.length - 1].textContent = ' Upload Tài liệu';
+                titleEl.childNodes[titleEl.childNodes.length - 1].textContent = ' Upload Document';
             }
         }
         
@@ -923,7 +923,7 @@
         
         // Update destination folder badge
         if (window.isVersionUpload && window.versionUploadFilePath) {
-            document.getElementById('upload-destination-folder').textContent = `Ghi đè file: ${window.versionUploadFilePath}`;
+            document.getElementById('upload-destination-folder').textContent = `Overwrite file: ${window.versionUploadFilePath}`;
             
             // Show version policy UI
             document.getElementById('version-policy-section').classList.remove('hidden');
@@ -960,7 +960,7 @@
     
     async function preSelectExistingPolicy(filePath) {
         const oldPolicyText = document.getElementById('old-policy-name');
-        if (oldPolicyText) oldPolicyText.textContent = 'Đang tải...';
+        if (oldPolicyText) oldPolicyText.textContent = 'Loading...';
         window.oldPolicyId = null;
         try {
             const response = await fetch(`${API_BASE}files/file_policies/?bucket=documents&path=${encodeURIComponent(filePath)}`, { headers });
@@ -975,12 +975,12 @@
                     const select = document.getElementById('upload-policy-select');
                     if (select) select.value = oldPolicy.policy_id;
                 } else {
-                    if (oldPolicyText) oldPolicyText.textContent = 'Không có (Sử dụng ABAC mặc định)';
+                    if (oldPolicyText) oldPolicyText.textContent = 'None (Use default ABAC)';
                 }
             }
         } catch (e) {
-            console.error('Lỗi lấy policy cũ:', e);
-            if (oldPolicyText) oldPolicyText.textContent = 'Lỗi không xác định';
+            console.error('Error getting old policy:', e);
+            if (oldPolicyText) oldPolicyText.textContent = 'Unknown error';
         }
     }
 
@@ -995,7 +995,7 @@
     
     async function loadPoliciesForUpload() {
         const select = document.getElementById('upload-policy-select');
-        select.innerHTML = '<option value="">Đang tải policies...</option>';
+        select.innerHTML = '<option value="">Loading policies...</option>';
         
         try {
             if (policyCache && Date.now() - policyCache.timestamp < CACHE_TTL) {
@@ -1009,7 +1009,7 @@
             }
             
             select.innerHTML = `
-                <option value="">-- Không gán policy (sử dụng ABAC mặc định) --</option>
+                <option value="">-- Do not assign policy (use default ABAC) --</option>
                 ${availablePolicies.map(p => `
                     <option value="${p.id}" data-effect="${p.effect}">
                         ${escapeHtml(p.name)} (${p.effect === 'allow' ? '✓ Allow' : '✕ Deny'})
@@ -1018,7 +1018,7 @@
             `;
         } catch (error) {
             console.error('Error loading policies:', error);
-            select.innerHTML = '<option value="">-- Không gán policy --</option>';
+            select.innerHTML = '<option value="">-- Do not assign policy --</option>';
         }
     }
     
@@ -1027,10 +1027,10 @@
     let AVAILABLE_ATTRIBUTES = [];
 
     const OPERATORS = [
-        { key: '==', label: 'bằng' },
-        { key: '!=', label: 'khác' },
-        { key: 'in', label: 'thuộc danh sách' },
-        { key: 'not in', label: 'không thuộc danh sách' },
+        { key: '==', label: 'equals' },
+        { key: '!=', label: 'not equals' },
+        { key: 'in', label: 'in list' },
+        { key: 'not in', label: 'not in list' },
     ];
 
     let uploadRuleCounter = 0;
@@ -1084,12 +1084,12 @@
                 <div class="connector-row flex items-center justify-center py-1 ${ruleId === 1 ? 'hidden' : ''}" data-rule-id="${ruleId}">
                     <select class="connector-select bg-gray-100 border border-gray-300 rounded px-2 py-0.5 text-xs font-medium" 
                         data-rule-id="${ruleId}" onchange="${prefix === 'upload' ? 'updateUploadPreview()' : 'updateAssignPreview()'}">
-                        <option value="and" class="text-green-700">VÀ (AND)</option>
-                        <option value="or" class="text-orange-700">HOẶC (OR)</option>
+                        <option value="and" class="text-green-700">AND</option>
+                        <option value="or" class="text-orange-700">OR</option>
                     </select>
                 </div>
                 <div class="${prefix}-rule flex items-center gap-2 p-2 bg-white rounded border text-sm" data-rule-id="${ruleId}">
-                    <span class="text-xs text-gray-600">Nếu</span>
+                    <span class="text-xs text-gray-600">If</span>
                     <select class="attr-select border border-gray-300 rounded px-2 py-1 text-xs" data-rule-id="${ruleId}"
                         onchange="${prefix}UpdateValueSelector(${ruleId})">
                         ${attrOptions}
@@ -1119,7 +1119,7 @@
         console.log('Attributes loaded, count:', AVAILABLE_ATTRIBUTES.length);
         
         if (AVAILABLE_ATTRIBUTES.length === 0) {
-            showAlert('⚠️ Không có thuộc tính nào. Vui lòng sử dụng chế độ nâng cao.', 'warning');
+            showAlert('⚠️ No attributes. Please use advanced mode.', 'warning');
             return;
         }
         
@@ -1229,7 +1229,7 @@
             preview.classList.remove('text-gray-400');
             preview.classList.add('text-green-700');
         } else {
-            preview.textContent = '(Chưa có điều kiện nào)';
+            preview.textContent = '(No conditions)';
             preview.classList.remove('text-green-700');
             preview.classList.add('text-gray-400');
         }
@@ -1253,11 +1253,11 @@
             
             simpleMode.classList.add('hidden');
             advancedMode.classList.remove('hidden');
-            toggleBtn.textContent = 'Chế độ đơn giản';
+            toggleBtn.textContent = 'Simple mode';
         } else {
             simpleMode.classList.remove('hidden');
             advancedMode.classList.add('hidden');
-            toggleBtn.textContent = 'Chế độ nâng cao';
+            toggleBtn.textContent = 'Advanced mode';
         }
         updateUploadPreview();
     }
@@ -1268,7 +1268,7 @@
         await loadPolicyBuilderAttributes();
         
         if (AVAILABLE_ATTRIBUTES.length === 0) {
-            showAlert('⚠️ Không có thuộc tính nào. Vui lòng sử dụng chế độ nâng cao.', 'warning');
+            showAlert('⚠️ No attributes. Please use advanced mode.', 'warning');
             return;
         }
         
@@ -1373,7 +1373,7 @@
             preview.classList.remove('text-gray-400');
             preview.classList.add('text-green-700');
         } else {
-            preview.textContent = '(Chưa có điều kiện nào)';
+            preview.textContent = '(No conditions)';
             preview.classList.remove('text-green-700');
             preview.classList.add('text-gray-400');
         }
@@ -1397,11 +1397,11 @@
             
             simpleMode.classList.add('hidden');
             advancedMode.classList.remove('hidden');
-            toggleBtn.textContent = 'Chế độ đơn giản';
+            toggleBtn.textContent = 'Simple mode';
         } else {
             simpleMode.classList.remove('hidden');
             advancedMode.classList.add('hidden');
-            toggleBtn.textContent = 'Chế độ nâng cao';
+            toggleBtn.textContent = 'Advanced mode';
         }
         updateAssignPreview();
     }
@@ -1492,7 +1492,7 @@
         const folder = currentPath;
 
         if (!fileInput.files[0]) {
-            showAlert('Vui lòng chọn file', 'error');
+            showAlert('Please select a file', 'error');
             return;
         }
 
@@ -1505,7 +1505,7 @@
             
             const expectedName = targetPath.split('/').pop();
             if (file.name !== expectedName) {
-                if (!confirm(`Tên file bạn chọn (${file.name}) khác với file gốc (${expectedName}). Bạn có chắc chắn muốn tải lên làm phiên bản mới không?`)) {
+                if (!confirm(`The file name you selected (${file.name}) is different from the original file (${expectedName}). Are you sure you want to upload it as a new version?`)) {
                     return;
                 }
             }
@@ -1529,7 +1529,7 @@
 
             progressContainer.classList.remove('hidden');
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Đang upload...';
+            submitBtn.textContent = 'Uploading...';
 
             // Simulate upload progress (in real scenario, use XMLHttpRequest for progress)
             let progress = 0;
@@ -1555,7 +1555,7 @@
 
             if (response.status === 403) {
                 const err = await response.json().catch(() => ({ error: 'Access denied' }));
-                showAlert('🚫 ' + (err.error || 'Bạn không có quyền upload file'), 'error');
+                showAlert('🚫 ' + (err.error || 'You do not have permission to upload file'), 'error');
                 console.error('Upload forbidden:', err);
                 return;
             }
@@ -1593,23 +1593,23 @@
                     await assignPolicyToUploadedFile(uploadedFilePath, selectedPolicyId, isCreatingNewPolicy);
                 }
                 
-                showAlert('✅ Upload thành công!', 'success');
+                showAlert('✅ Upload successful!', 'success');
                 closeUploadModal();
                 folderCache.clear();
                 loadFolder(currentPath);
             } else {
-                const err = await response.json().catch(() => ({ error: 'Upload thất bại' }));
+                const err = await response.json().catch(() => ({ error: 'Upload failed' }));
                 console.error('Upload error:', err);
-                showAlert('❌ ' + (err.error || err.detail || 'Upload thất bại'), 'error');
+                showAlert('❌ ' + (err.error || err.detail || 'Upload failed'), 'error');
             }
 
         } catch (error) {
             console.error('Upload error:', error);
-            showAlert('❌ Lỗi upload: ' + error.message, 'error');
+            showAlert('❌ Upload error: ' + error.message, 'error');
         } finally {
             const submitBtn = document.getElementById('submit-upload');
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Xác nhận Upload';
+            submitBtn.textContent = 'Confirm Upload';
             setTimeout(() => {
                 document.getElementById('upload-progress-container').classList.add('hidden');
             }, 1000);
@@ -1626,7 +1626,7 @@
             document.getElementById('file-input').files = files;
             const fileSelectedName = document.getElementById('file-selected-name');
             if (fileSelectedName) {
-                fileSelectedName.textContent = `Đã chọn: ${files[0].name}`;
+                fileSelectedName.textContent = `Selected: ${files[0].name}`;
                 fileSelectedName.classList.remove('hidden');
             }
             openUploadModal();
@@ -1713,8 +1713,8 @@
                     <svg class="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                    <p>Chưa có policy nào.</p>
-                    <p class="text-sm">Chuyển sang tab "Tạo Policy mới" để tạo.</p>
+                    <p>No policy yet.</p>
+                    <p class="text-sm">Switch to "Create new Policy" tab to create.</p>
                 </div>
             `;
             return;
@@ -1731,7 +1731,7 @@
                                 ${policy.effect === 'allow' ? '✓ Allow' : '✕ Deny'}
                             </span>
                         </div>
-                        <p class="text-sm text-gray-500 mt-1">${escapeHtml(policy.description || 'Không có mô tả')}</p>
+                        <p class="text-sm text-gray-500 mt-1">${escapeHtml(policy.description || 'No description')}</p>
                         <div class="flex items-center gap-4 mt-2 text-xs text-gray-400">
                             <span>Resource: ${policy.resource}</span>
                             <span>Action: ${policy.action}</span>
@@ -1807,7 +1807,7 @@
         if (simpleMode) simpleMode.classList.remove('hidden');
         if (advancedMode) advancedMode.classList.add('hidden');
         const toggleBtn = document.getElementById('assign-toggle-advanced');
-        if (toggleBtn) toggleBtn.textContent = 'Chế độ nâng cao';
+        if (toggleBtn) toggleBtn.textContent = 'Advanced mode';
         
         // Reset dropdowns
         const effectSelect = document.getElementById('new-policy-effect');
@@ -1842,7 +1842,7 @@
         
         const btn = document.getElementById('submit-assign-policy');
         btn.disabled = true;
-        btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang xử lý...';
+        btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Processing...';
         
         try {
             let payload = {
@@ -1855,7 +1855,7 @@
             
             if (currentPolicyTab === 'existing') {
                 if (!selectedPolicyId) {
-                    showAlert('❌ Vui lòng chọn một policy', 'error');
+                    showAlert('❌ Please select a policy', 'error');
                     return;
                 }
                 payload.policy_id = selectedPolicyId;
@@ -1871,7 +1871,7 @@
                 const action = document.getElementById('new-policy-action')?.value || 'read';
                 
                 if (!name || !condition) {
-                    showAlert('❌ Vui lòng điền đầy đủ thông tin policy (tên và điều kiện)', 'error');
+                    showAlert('❌ Please fill in all policy information (name and conditions)', 'error');
                     return;
                 }
                 
@@ -1897,20 +1897,20 @@
             const result = await response.json();
             
             if (response.ok) {
-                showAlert('✅ Đã gán quyền thành công', 'success');
+                showAlert('✅ Permission assigned successfully', 'success');
                 closeAssignPolicyModal();
                 // Reload policies cache
                 policyCache = null;
                 await loadAvailablePolicies();
             } else {
-                showAlert('❌ ' + (result.error || 'Gán quyền thất bại'), 'error');
+                showAlert('❌ ' + (result.error || 'Failed to assign permission'), 'error');
             }
         } catch (error) {
             console.error('Assign policy error:', error);
-            showAlert('❌ Lỗi: ' + error.message, 'error');
+            showAlert('❌ Error: ' + error.message, 'error');
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Gán quyền';
+            btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Assign permission';
         }
     }
     
@@ -1926,7 +1926,7 @@
         container.innerHTML = `
             <div class="text-center py-8 text-gray-500">
                 <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                Đang tải...
+                Loading...
             </div>
         `;
         
@@ -1946,7 +1946,7 @@
             console.error('Error loading file policies:', error);
             container.innerHTML = `
                 <div class="text-center py-8 text-red-500">
-                    <p>Lỗi khi tải thông tin quyền</p>
+                    <p>Error loading permission information</p>
                     <p class="text-sm">${error.message}</p>
                 </div>
             `;
@@ -1963,8 +1963,8 @@
                     <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                     </svg>
-                    <p class="text-lg font-medium">Chưa có quyền nào được gán</p>
-                    <p class="text-sm mt-1">File này sử dụng quyền ABAC mặc định của hệ thống</p>
+                    <p class="text-lg font-medium">No permissions assigned yet</p>
+                    <p class="text-sm mt-1">This file uses the system's default ABAC permissions</p>
                 </div>
             `;
             return;
@@ -1980,7 +1980,7 @@
                         <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                         </svg>
-                        Quyền trực tiếp (${direct_policies.length})
+                        Direct permissions (${direct_policies.length})
                     </h4>
                     <div class="space-y-2">
                         ${direct_policies.map(p => renderPolicyItem(p, true)).join('')}
@@ -1997,7 +1997,7 @@
                         <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
                         </svg>
-                        Kế thừa từ thư mục (${inherited_folder_policies.length})
+                        Inherited from folder (${inherited_folder_policies.length})
                     </h4>
                     <div class="space-y-2">
                         ${inherited_folder_policies.map(p => renderPolicyItem(p, false)).join('')}
@@ -2022,14 +2022,14 @@
                         </div>
                         ${policy.policy_description ? `<p class="text-sm text-gray-500 mt-1">${escapeHtml(policy.policy_description)}</p>` : ''}
                         <div class="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                            <span>Gán bởi: ${policy.assigned_by_username || 'N/A'}</span>
-                            <span>Ngày: ${new Date(policy.assigned_at).toLocaleDateString('vi-VN')}</span>
+                            <span>Assigned by: ${policy.assigned_by_username || 'N/A'}</span>
+                            <span>Date: ${new Date(policy.assigned_at).toLocaleDateString('vi-VN')}</span>
                         </div>
                         ${policy.notes ? `<p class="text-xs text-gray-500 mt-1 italic">"${escapeHtml(policy.notes)}"</p>` : ''}
                     </div>
                     ${canRemove ? `
                         <button onclick="removePolicyAssignment(${policy.id})" 
-                            class="ml-2 p-1 text-red-500 hover:bg-red-50 rounded transition-colors" title="Xóa quyền này">
+                            class="ml-2 p-1 text-red-500 hover:bg-red-50 rounded transition-colors" title="Delete this permission">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                             </svg>
@@ -2041,7 +2041,7 @@
     }
     
     async function removePolicyAssignment(assignmentId) {
-        if (!confirm('Xác nhận xóa quyền này?')) return;
+        if (!confirm('Confirm delete this permission?')) return;
         
         try {
             const response = await fetch(
@@ -2050,7 +2050,7 @@
             );
             
             if (response.ok) {
-                showAlert('✅ Đã xóa quyền', 'success');
+                showAlert('✅ Permission deleted', 'success');
                 // Reload view
                 if (assigningFilePath) {
                     openViewPoliciesModal(assigningFilePath);
@@ -2058,10 +2058,10 @@
                 policyCache = null; // Invalidate cache
             } else {
                 const err = await response.json().catch(() => ({ error: 'Failed' }));
-                showAlert('❌ ' + (err.error || 'Xóa thất bại'), 'error');
+                showAlert('❌ ' + (err.error || 'Delete failed'), 'error');
             }
         } catch (error) {
-            showAlert('❌ Lỗi: ' + error.message, 'error');
+            showAlert('❌ Error: ' + error.message, 'error');
         }
     }
     
@@ -2087,7 +2087,7 @@
 
 
     async function deleteFile(filePath) {
-        if (!confirm(`Xóa file "${filePath.split('/').pop()}"?`)) return;
+        if (!confirm(`Delete file "${filePath.split('/').pop()}"?`)) return;
         
         try {
             const url = `${API_BASE}files/delete_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
@@ -2098,21 +2098,21 @@
             
             if (response.status === 403) {
                 const err = await response.json().catch(() => ({ error: 'Access denied' }));
-                showAlert('🚫 ' + (err.error || 'Bạn không có quyền xóa file này'), 'error');
+                showAlert('🚫 ' + (err.error || 'You do not have permission to delete this file'), 'error');
                 return;
             }
             
             if (response.ok) {
-                showAlert('✅ Đã xóa file thành công', 'success');
+                showAlert('✅ File deleted successfully', 'success');
                 folderCache.clear();
                 loadFolder(currentPath);
             } else {
                 const err = await response.json().catch(() => ({ error: 'Delete failed' }));
-                showAlert('❌ ' + (err.error || 'Xóa file thất bại'), 'error');
+                showAlert('❌ ' + (err.error || 'Delete file failed'), 'error');
             }
         } catch (error) {
             console.error('Delete error:', error);
-            showAlert('❌ Lỗi: ' + error.message, 'error');
+            showAlert('❌ Error: ' + error.message, 'error');
         }
     }
 
@@ -2156,11 +2156,11 @@
     }
 
     async function createFolder() {
-        const name = prompt('Tên thư mục mới:');
+        const name = prompt('New folder name:');
         if (!name) return;
 
         if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-            showAlert('❌ Tên thư mục chỉ được chứa chữ, số, gạch ngang và gạch dưới', 'error');
+            showAlert('❌ Folder name can only contain letters, numbers, dashes and underscores', 'error');
             return;
         }
 
@@ -2179,20 +2179,20 @@
             });
 
             if (response.status === 403) {
-                showAlert('🚫 Bạn không có quyền tạo thư mục', 'error');
+                showAlert('🚫 You do not have permission to create folder', 'error');
                 return;
             }
 
             if (response.ok) {
-                showAlert(`✅ Đã tạo thư mục "${name}"`, 'success');
+                showAlert(`✅ Folder created "${name}"`, 'success');
                 loadFolder(currentPath);
             } else {
                 const err = await response.json().catch(() => ({ error: 'Failed to create folder' }));
-                showAlert('❌ ' + (err.error || 'Tạo thư mục thất bại'), 'error');
+                showAlert('❌ ' + (err.error || 'Failed to create folder'), 'error');
             }
         } catch (error) {
             console.error('Create folder error:', error);
-            showAlert('❌ Lỗi: ' + error.message, 'error');
+            showAlert('❌ Error: ' + error.message, 'error');
         }
     }
 
@@ -2212,7 +2212,7 @@
         listContainer.innerHTML = `
             <div class="text-center py-8 text-gray-500">
                 <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                Đang tải...
+                Loading...
             </div>`;
             
         try {
@@ -2234,16 +2234,16 @@
             }
             
             if (!fileId) {
-                throw new Error("Không tìm thấy file trong hệ thống");
+                throw new Error("File not found in system");
             }
             
             const response = await fetch(`${API_BASE}files/${fileId}/versions/`, { headers });
-            if (!response.ok) throw new Error("Không thể tải lịch sử phiên bản");
+            if (!response.ok) throw new Error("Cannot load version history");
             
             const data = await response.json();
             
             if (!data.versions || data.versions.length === 0) {
-                listContainer.innerHTML = `<div class="text-center py-4 text-gray-500">Không có lịch sử phiên bản</div>`;
+                listContainer.innerHTML = `<div class="text-center py-4 text-gray-500">No version history</div>`;
                 return;
             }
             
@@ -2252,7 +2252,7 @@
                 const isLatest = index === 0;
                 const date = new Date(v.created_at).toLocaleString('vi-VN');
                 const size = (v.file_size / 1024).toFixed(1) + ' KB';
-                const policyText = v.cpabe_policy ? `Mã hóa CP-ABE (${v.cpabe_policy})` : 'Không mã hóa';
+                const policyText = v.cpabe_policy ? `CP-ABE encryption (${v.cpabe_policy})` : 'No encryption';
                 // Escape filePath for use in data attributes
                 const escapedPath = filePath.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                 
@@ -2264,8 +2264,8 @@
                         </div>
                         <div>
                             <div class="flex items-center gap-2">
-                                <h4 class="font-medium text-gray-900">Phiên bản ${v.version_number}</h4>
-                                ${isLatest ? '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full font-medium">Mới nhất</span>' : ''}
+                                <h4 class="font-medium text-gray-900">Version ${v.version_number}</h4>
+                                ${isLatest ? '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full font-medium">Latest</span>' : ''}
                             </div>
                             <p class="text-sm text-gray-500 mt-1">
                                 ${date} • ${size} • Uploaded by ${v.uploaded_by}
@@ -2278,11 +2278,11 @@
                     <div class="flex gap-2">
                         <button data-action="preview-version" data-filepath="${escapedPath}" data-version="${v.version_number}" class="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                            Xem trước
+                            Preview
                         </button>
                         <button data-action="download-version" data-filepath="${escapedPath}" data-version="${v.version_number}" class="px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 border border-indigo-100 rounded hover:bg-indigo-100 transition-colors flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                            Tải xuống
+                            Download
                         </button>
                     </div>
                 </div>`;
@@ -2290,7 +2290,7 @@
             listContainer.innerHTML = html;
         } catch (error) {
             console.error('Load versions error:', error);
-            listContainer.innerHTML = `<div class="text-center py-4 text-red-500">Lỗi: ${error.message}</div>`;
+            listContainer.innerHTML = `<div class="text-center py-4 text-red-500">Error: ${error.message}</div>`;
         }
     }
 
@@ -2301,14 +2301,14 @@
 
     async function downloadFileVersion(filePath, versionNumber) {
         try {
-            showAlert(`Đang tải phiên bản ${versionNumber}...`, 'info');
+            showAlert(`Loading version ${versionNumber}...`, 'info');
             const url = `${API_BASE}files/download_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents&version=${versionNumber}`;
 
             const response = await fetch(url, { headers });
 
             if (response.status === 403) {
                 const error = await response.json().catch(() => ({ error: 'Access denied' }));
-                showAlert('🚫 ' + (error.error || 'Bạn không có quyền download file này'), 'error');
+                showAlert('🚫 ' + (error.error || 'You do not have permission to download this file'), 'error');
                 return;
             }
 
@@ -2340,10 +2340,10 @@
             document.body.removeChild(a);
             window.URL.revokeObjectURL(downloadUrl);
 
-            showAlert('✅ Download thành công!', 'success');
+            showAlert('✅ Download successful!', 'success');
         } catch (error) {
             console.error('Download error:', error);
-            showAlert('❌ Lỗi download: ' + error.message, 'error');
+            showAlert('❌ Download error: ' + error.message, 'error');
         }
     }
 
@@ -2369,7 +2369,7 @@
         content.innerHTML = `
         <div class="flex items-center justify-center py-12">
             <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-            <span class="ml-3 text-lg text-gray-600">Đang tải và giải mã...</span>
+            <span class="ml-3 text-lg text-gray-600">Loading and decrypting...</span>
         </div>`;
 
         try {
@@ -2377,8 +2377,8 @@
             const response = await fetch(previewUrl, { headers });
 
             if (!response.ok) {
-                if (response.status === 403) throw new Error("Bạn không có quyền xem file này");
-                throw new Error("Không thể tải file preview");
+                if (response.status === 403) throw new Error("You do not have permission to view this file");
+                throw new Error("Cannot load preview file");
             }
 
             const contentType = response.headers.get('content-type');
@@ -2399,10 +2399,10 @@
                 content.innerHTML = `
                 <div class="text-center py-12">
                     <div class="text-6xl mb-4">📁</div>
-                    <p class="text-gray-600 mb-4">Không thể xem trước định dạng file này (${ext})</p>
+                    <p class="text-gray-600 mb-4">Cannot preview this file format (${ext})</p>
                     <button data-action="download-version" data-filepath="${escapedFp}" data-version="${versionNumber}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg inline-flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                        Tải xuống phiên bản này
+                        Download this version
                     </button>
                 </div>`;
             }

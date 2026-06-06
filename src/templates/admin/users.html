@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Quản lý Người Dùng & Thuộc tính - Admin{% endblock %}
+{% block title %}User & Attribute Management - Admin{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex justify-between items-center">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Quản lý Người Dùng & Thuộc tính</h1>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Tạo, chỉnh sửa và quản lý tài khoản người dùng cùng thuộc tính ABAC</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">User & Attribute Management</h1>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Create, edit and manage user accounts and ABAC attributes</p>
         </div>
         <button id="add-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
-            Create User mới
+            Create new User
         </button>
     </div>
 
@@ -24,19 +24,19 @@
     <!-- Stats Cards -->
     <div id="stats-cards" class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Tổng người dùng</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Total users</div>
             <div id="stat-total" class="text-2xl font-bold text-gray-900 dark:text-white">-</div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Đang hoạt động</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Active</div>
             <div id="stat-active" class="text-2xl font-bold text-green-600 dark:text-green-400">-</div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">No hoạt động</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Inactive</div>
             <div id="stat-inactive" class="text-2xl font-bold text-red-600 dark:text-red-400">-</div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Chờ kích hoạt</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Pending activation</div>
             <div id="stat-pending" class="text-2xl font-bold text-yellow-600">-</div>
         </div>
     </div>
@@ -45,25 +45,25 @@
     <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
         <div class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[200px]">
-                <input type="text" id="search-input" placeholder="Tìm theo username, email, họ tên..."
+                <input type="text" id="search-input" placeholder="Search by username, email, full name..."
                     class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
             </div>
             <div>
                 <select id="filter-type" class="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="">All loại người dùng</option>
+                    <option value="">All user types</option>
                 </select>
             </div>
             <div>
                 <select id="filter-status" class="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="">All trạng thái</option>
+                    <option value="">All statuses</option>
                     <option value="active">Active</option>
-                    <option value="inactive">No hoạt động</option>
-                    <option value="pending">Chờ kích hoạt</option>
-                    <option value="suspended">Bị khóa</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="pending">Pending activation</option>
+                    <option value="suspended">Locked</option>
                 </select>
             </div>
             <button id="search-btn" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 px-4 py-2 rounded-md">
-                🔍 Tìm kiếm
+                🔍 Search
             </button>
         </div>
     </div>
@@ -73,11 +73,11 @@
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Người dùng</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Loại</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Users</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Type</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Email</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Ngày tạo</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Created date</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Actions</th>
                 </tr>
             </thead>
@@ -93,7 +93,7 @@
 <!-- Create/Edit User Modal -->
 <div id="user-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
-        <h3 id="modal-title" class="text-lg font-semibold mb-4">Create User mới</h3>
+        <h3 id="modal-title" class="text-lg font-semibold mb-4">Create new User</h3>
         <form id="user-form" class="space-y-4">
             <input type="hidden" name="user_id" id="user-id">
             
@@ -113,15 +113,15 @@
             </div>
             
             <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Họ và tên</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Full name</label>
                 <input type="text" name="full_name" id="fullname-input"
                     class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Nguyễn Văn A">
+                    placeholder="John Doe">
             </div>
             
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Loại người dùng</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">User Types</label>
                     <select name="user_type" id="user-type-select"
                         class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
                     </select>
@@ -131,9 +131,9 @@
                     <select name="account_status" id="status-select"
                         class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="active">Active</option>
-                        <option value="inactive">No hoạt động</option>
-                        <option value="pending">Chờ kích hoạt</option>
-                        <option value="suspended">Bị khóa</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="pending">Pending activation</option>
+                        <option value="suspended">Locked</option>
                     </select>
                 </div>
             </div>
@@ -143,16 +143,16 @@
                 <div class="flex gap-2">
                     <input type="password" name="password" id="password-input"
                         class="flex-1 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="Để trống để tự động tạo" minlength="8">
+                        placeholder="Leave blank to auto-generate" minlength="8">
                     <button type="button" id="generate-password-btn" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 px-3 py-2 rounded-md text-sm">
-                        🎲 Tạo ngẫu nhiên
+                        🎲 Generate randomly
                     </button>
                 </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Tối thiểu 8 ký tự. Để trống để hệ thống tự động tạo mật khẩu an toàn.</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Minimum 8 characters. Leave blank for system to generate a secure password.</p>
             </div>
             
             <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Số điện thoại</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone number</label>
                 <input type="tel" name="phone" id="phone-input"
                     class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="0901234567">
@@ -175,8 +175,8 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
         <div class="text-center">
             <div class="text-4xl mb-4">🔐</div>
-            <h3 class="text-lg font-semibold mb-2">Password đã được tạo</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">Vui lòng lưu lại và gửi cho người dùng:</p>
+            <h3 class="text-lg font-semibold mb-2">Password created</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">Please save and send to users:</p>
             
             <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-4">
                 <div class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">Username:</div>
@@ -187,14 +187,14 @@
                 <div class="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">Password:</div>
                 <div id="result-password" class="font-mono font-bold text-lg text-indigo-600 dark:text-indigo-400"></div>
                 <button type="button" id="copy-password-btn" class="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
-                    📋 Sao chép
+                    📋 Copy
                 </button>
             </div>
             
-            <p class="text-xs text-red-600 dark:text-red-400 mb-4">⚠️ Password này sẽ không được hiển thị lại!</p>
+            <p class="text-xs text-red-600 dark:text-red-400 mb-4">⚠️ This password will not be shown again!</p>
             
             <button type="button" id="close-password-modal" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                Đã lưu, đóng
+                Saved, close
             </button>
         </div>
     </div>
@@ -203,16 +203,16 @@
 <!-- Reset Password Modal -->
 <div id="reset-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-        <h3 class="text-lg font-semibold mb-4">Reset mật khẩu</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">Reset mật khẩu cho: <strong id="reset-username"></strong></p>
+        <h3 class="text-lg font-semibold mb-4">Reset password</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">Reset password cho: <strong id="reset-username"></strong></p>
         
         <form id="reset-form" class="space-y-4">
             <input type="hidden" id="reset-user-id">
             <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password mới</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">New password</label>
                 <input type="password" name="password" id="reset-password-input"
                     class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2"
-                    placeholder="Để trống để tạo ngẫu nhiên" minlength="8">
+                    placeholder="Leave blank to generate randomly" minlength="8">
             </div>
             
             <div class="flex justify-end gap-2 pt-4 border-t">
@@ -220,7 +220,7 @@
                     Cancel
                 </button>
                 <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
-                    Reset mật khẩu
+                    Reset password
                 </button>
             </div>
         </form>
@@ -233,8 +233,8 @@
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-purple-50">
             <div>
-                <h3 class="text-lg font-semibold text-purple-900">🏷️ Thuộc tính ABAC</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Người dùng: <strong id="attr-modal-username"></strong></p>
+                <h3 class="text-lg font-semibold text-purple-900">🏷️ Attribute ABAC</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Users: <strong id="attr-modal-username"></strong></p>
             </div>
             <button type="button" id="close-attrs-btn" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,7 +247,7 @@
         <div class="flex-1 overflow-y-auto p-6 space-y-4">
             <!-- Active Attributes Summary -->
             <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tóm tắt thuộc tính Active</h4>
+                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Active attribute summary</h4>
                 <div id="active-attrs-summary" class="flex flex-wrap gap-2">
                     <p class="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">Loading...</p>
                 </div>
@@ -255,37 +255,37 @@
             
             <!-- Assign New Attribute -->
             <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Gán thuộc tính mới</h4>
+                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Assign new attribute</h4>
                 <form id="assign-attr-form" class="flex gap-2 items-end flex-wrap">
                     <input type="hidden" id="attr-user-id">
                     <div class="flex-1 min-w-[150px]">
-                        <label class="block text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">Thuộc tính</label>
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">Attribute</label>
                         <select id="attr-select-new" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm">
                             <option value="">-- Select --</option>
                         </select>
                     </div>
                     <div class="flex-1 min-w-[150px]" id="attr-value-container">
-                        <label class="block text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">Giá trị</label>
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">Value</label>
                         <select id="attr-value-select" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm">
                         </select>
-                        <input type="text" id="attr-value-text" class="hidden w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm" placeholder="Nhập giá trị">
+                        <input type="text" id="attr-value-text" class="hidden w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm" placeholder="Enter value">
                     </div>
                     <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm">
-                        + Gán
+                        + Assign
                     </button>
                 </form>
             </div>
             
             <!-- Current Attributes Table -->
             <div>
-                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">List thuộc tính</h4>
+                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Attribute list</h4>
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Thuộc tính</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Giá trị</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Attribute</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Value</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Status</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Phiên bản</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Version</th>
                             <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Delete</th>
                         </tr>
                     </thead>
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-8 text-center">
                 <div class="text-6xl mb-4">🚫</div>
                 <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">Access Denied</h2>
-                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">Only Admin can truy cập trang này.</p>
+                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">Only Admin can access this page.</p>
                 <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">Go to Home</a>
             </div>`;
     }
@@ -371,9 +371,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     function getStatusBadge(status) {
         const badges = {
             'active': '<span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:text-green-300">Active</span>',
-            'inactive': '<span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:text-red-300">No hoạt động</span>',
-            'pending': '<span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Chờ kích hoạt</span>',
-            'suspended': '<span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100">Bị khóa</span>',
+            'inactive': '<span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:text-red-300">Inactive</span>',
+            'pending': '<span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending activation</span>',
+            'suspended': '<span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100">Locked</span>',
         };
         return badges[status] || `<span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100">${status}</span>`;
     }
@@ -391,7 +391,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 // Populate filter dropdown
                 const filterSelect = document.getElementById('filter-type');
-                filterSelect.innerHTML = '<option value="">All loại người dùng</option>';
+                filterSelect.innerHTML = '<option value="">All user types</option>';
                 userTypes.forEach(ut => {
                     filterSelect.innerHTML += `<option value="${ut.code}">${ut.name}</option>`;
                 });
@@ -448,7 +448,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const users = Array.isArray(data) ? data : (data.results || []);
                 renderUsers(users);
             } else {
-                showAlert('No thể tải danh sách người dùng', 'error');
+                showAlert('Cannot load user list', 'error');
             }
         } catch (error) {
             console.error('Error loading users:', error);
@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const tbody = document.getElementById('users-list');
         
         if (!users || users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">No có người dùng nào</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">No users</td></tr>';
             return;
         }
         
@@ -493,16 +493,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                     ${formatDate(user.date_joined)}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <button onclick="viewAttributes(${user.id}, '${user.username}')" class="text-purple-600 hover:text-purple-900 mr-3" title="Thuộc tính ABAC">
+                    <button onclick="viewAttributes(${user.id}, '${user.username}')" class="text-purple-600 hover:text-purple-900 mr-3" title="Attribute ABAC">
                         🏷️
                     </button>
                     <button onclick="editUser(${user.id})" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 mr-3" title="Edit">
                         ✏️
                     </button>
-                    <button onclick="resetPassword(${user.id}, '${user.username}')" class="text-yellow-600 hover:text-yellow-900 mr-3" title="Reset mật khẩu">
+                    <button onclick="resetPassword(${user.id}, '${user.username}')" class="text-yellow-600 hover:text-yellow-900 mr-3" title="Reset password">
                         🔑
                     </button>
-                    <button onclick="toggleStatus(${user.id})" class="text-gray-600 dark:text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-white mr-3" title="Bật/tắt">
+                    <button onclick="toggleStatus(${user.id})" class="text-gray-600 dark:text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-white mr-3" title="Toggle">
                         ⚡
                     </button>
                     ${!user.is_superuser ? `<button onclick="deleteUser(${user.id})" class="text-red-600 dark:text-red-400 hover:text-red-900" title="Delete">🗑️</button>` : ''}
@@ -524,7 +524,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Open create modal
     document.getElementById('add-btn').addEventListener('click', () => {
         currentUserId = null;
-        document.getElementById('modal-title').textContent = 'Create User mới';
+        document.getElementById('modal-title').textContent = 'Create new User';
         document.getElementById('user-form').reset();
         document.getElementById('username-input').disabled = false;
         document.getElementById('password-section').classList.remove('hidden');
@@ -542,7 +542,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const user = await response.json();
                 currentUserId = id;
                 
-                document.getElementById('modal-title').textContent = 'Edit người dùng';
+                document.getElementById('modal-title').textContent = 'Edit users';
                 document.getElementById('user-id').value = id;
                 document.getElementById('username-input').value = user.username;
                 document.getElementById('username-input').disabled = true;
@@ -556,7 +556,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 document.getElementById('user-modal').classList.remove('hidden');
             }
         } catch (error) {
-            showAlert('Error khi tải thông tin người dùng', 'error');
+            showAlert('Error loading user information', 'error');
         }
     };
     
@@ -570,7 +570,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Toggle status
     window.toggleStatus = async function(id) {
-        if (!confirm('Bạn có chắc muốn thay đổi trạng thái tài khoản này?')) return;
+        if (!confirm('Are you sure you want to change the status of this account?')) return;
         
         try {
             const response = await fetch(`${API_BASE}/users/${id}/toggle_status/`, {
@@ -587,7 +587,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 loadUsers();
                 loadStats();
             } else {
-                showAlert('Error khi thay đổi trạng thái', 'error');
+                showAlert('Error changing status', 'error');
             }
         } catch (error) {
             showAlert('Connection error server', 'error');
@@ -596,7 +596,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Delete user
     window.deleteUser = async function(id) {
-        if (!confirm('Bạn có chắc muốn xóa người dùng này? Actions này không thể hoàn tác.')) return;
+        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
         
         try {
             const response = await fetch(`${API_BASE}/users/${id}/`, {
@@ -605,11 +605,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             });
             
             if (response.ok) {
-                showAlert('Đã xóa người dùng');
+                showAlert('Deleted users');
                 loadUsers();
                 loadStats();
             } else {
-                showAlert('Error khi xóa người dùng', 'error');
+                showAlert('Error deleting user', 'error');
             }
         } catch (error) {
             showAlert('Connection error server', 'error');
@@ -658,14 +658,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                     document.getElementById('result-password').textContent = result.generated_password;
                     document.getElementById('password-modal').classList.remove('hidden');
                 } else {
-                    showAlert(currentUserId ? 'Updated successfully người dùng' : 'Đã tạo người dùng mới');
+                    showAlert(currentUserId ? 'User updated successfully' : 'New user created');
                 }
                 
                 loadUsers();
                 loadStats();
             } else {
                 const error = await response.json();
-                showAlert(error.detail || error.username?.[0] || 'Error khi lưu', 'error');
+                showAlert(error.detail || error.username?.[0] || 'Error saving', 'error');
             }
         } catch (error) {
             showAlert('Connection error server', 'error');
@@ -701,7 +701,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     showAlert(result.message);
                 }
             } else {
-                showAlert('Error khi reset mật khẩu', 'error');
+                showAlert('Error resetting password', 'error');
             }
         } catch (error) {
             showAlert('Connection error server', 'error');
@@ -718,7 +718,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('copy-password-btn').addEventListener('click', () => {
         const password = document.getElementById('result-password').textContent;
         navigator.clipboard.writeText(password).then(() => {
-            showAlert('Đã sao chép mật khẩu');
+            showAlert('Password copied');
         });
     });
     
@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 attributeDefinitions = data.results || data;
                 
                 const select = document.getElementById('attr-select-new');
-                select.innerHTML = '<option value="">-- Select thuộc tính --</option>' +
+                select.innerHTML = '<option value="">-- Select attribute --</option>' +
                     attributeDefinitions.map(a => 
                         `<option value="${a.name}" data-type="${a.data_type}" data-values='${JSON.stringify(a.allowed_values || [])}'>${a.display_name}</option>`
                     ).join('');
@@ -813,7 +813,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 renderUserAttributes(data.attributes);
                 renderActiveSummary(data.active_attributes);
             } else {
-                showAlert('Error tải thuộc tính', 'error');
+                showAlert('Error loading attribute', 'error');
             }
         } catch (error) {
             showAlert('Error: ' + error.message, 'error');
@@ -825,7 +825,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const tbody = document.getElementById('user-attrs-list');
         
         if (!attributes || attributes.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-3 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">Chưa có thuộc tính nào</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-3 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">No attributes</td></tr>';
             return;
         }
         
@@ -857,7 +857,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const entries = Object.entries(activeAttrs || {});
         
         if (entries.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">No có thuộc tính active</p>';
+            container.innerHTML = '<p class="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">No active attributes</p>';
             return;
         }
         
@@ -871,7 +871,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Delete user attribute
     window.deleteUserAttribute = async function(attrId) {
-        if (!confirm('Delete thuộc tính này?')) return;
+        if (!confirm('Delete this attribute?')) return;
         
         try {
             const response = await fetch(`${API_BASE}/users/${currentAttrUserId}/attributes/${attrId}/`, {
@@ -880,11 +880,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             });
             
             if (response.ok) {
-                showAlert('Đã xóa thuộc tính');
+                showAlert('Attribute deleted');
                 loadUserAttributes(currentAttrUserId);
             } else {
                 const data = await response.json();
-                showAlert(data.error || 'Error xóa thuộc tính', 'error');
+                showAlert(data.error || 'Error deleting attribute', 'error');
             }
         } catch (error) {
             showAlert('Error: ' + error.message, 'error');
@@ -897,7 +897,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         const attrName = document.getElementById('attr-select-new').value;
         if (!attrName) {
-            showAlert('Vui lòng chọn thuộc tính', 'error');
+            showAlert('Please select attribute', 'error');
             return;
         }
         
@@ -906,7 +906,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const value = valueSelect.classList.contains('hidden') ? valueText.value : valueSelect.value;
         
         if (!value) {
-            showAlert('Vui lòng nhập giá trị', 'error');
+            showAlert('Please enter value', 'error');
             return;
         }
         
@@ -921,7 +921,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             });
             
             if (response.ok) {
-                showAlert('Đã gán thuộc tính');
+                showAlert('Attribute assigned');
                 document.getElementById('attr-select-new').value = '';
                 document.getElementById('attr-value-text').value = '';
                 loadUserAttributes(currentAttrUserId);

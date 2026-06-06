@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Đăng ký - Crypto Access{% endblock %}
+{% block title %}Register - Crypto Access{% endblock %}
 
 {% block body_content %}
 <div class="relative flex items-center justify-center px-4 min-h-screen pt-24 pb-12 overflow-hidden">
-  <!-- Background full không crop -->
+  <!-- Full uncropped background -->
   <div class="fixed inset-0 z-0">
     <img
       src="{% static 'image/background.webp' %}"
@@ -28,9 +28,9 @@
               </svg>
             </div>
             <div>
-              <h1 class="text-3xl font-bold mb-3">Tạo tài khoản mới</h1>
+              <h1 class="text-3xl font-bold mb-3">Create new account</h1>
               <p class="text-blue-100 text-base font-medium">Crypto Access System</p>
-              <p class="text-blue-200 text-sm mt-2 opacity-90">Đăng ký để truy cập hệ thống quản lý dữ liệu mã hóa</p>
+              <p class="text-blue-200 text-sm mt-2 opacity-90">Register to access the encrypted data management system</p>
             </div>
           </div>
         </div>
@@ -55,7 +55,7 @@
                 <!-- Full Name -->
                 <div>
                     <label for="full_name" class="block text-sm font-medium text-gray-700">
-                        Họ và tên <span class="text-red-500">*</span>
+                        Full name <span class="text-red-500">*</span>
                     </label>
                     <input 
                         id="full_name" 
@@ -63,7 +63,7 @@
                         type="text" 
                         required 
                         class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition"
-                        placeholder="Nguyễn Văn A"
+                        placeholder="John Doe"
                     >
                 </div>
 
@@ -81,7 +81,7 @@
                         class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition"
                         placeholder="nva_it"
                     >
-                    <p class="mt-1 text-xs text-gray-500">3-30 ký tự, chỉ chữ, số và dấu gạch dưới</p>
+                    <p class="mt-1 text-xs text-gray-500">3-30 characters, letters, numbers, and underscores only</p>
                 </div>
 
                 <!-- Email -->
@@ -102,7 +102,7 @@
                 <!-- Phone -->
                 <div>
                     <label for="phone" class="block text-sm font-medium text-gray-700">
-                        Số điện thoại
+                        Phone number
                     </label>
                     <input 
                         id="phone" 
@@ -127,7 +127,7 @@
                             required 
                             minlength="8"
                             class="appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition"
-                            placeholder="Ít nhất 8 ký tự"
+                            placeholder="At least 8 characters"
                         >
                         <button 
                             type="button" 
@@ -153,7 +153,7 @@
                 <!-- Confirm Password -->
                 <div>
                     <label for="password2" class="block text-sm font-medium text-gray-700">
-                        Xác nhận mật khẩu <span class="text-red-500">*</span>
+                        Confirm password <span class="text-red-500">*</span>
                     </label>
                     <div class="mt-1 relative">
                         <input 
@@ -162,7 +162,7 @@
                             type="password" 
                             required 
                             class="appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm transition"
-                            placeholder="Nhập lại mật khẩu"
+                            placeholder="Re-enter password"
                         >
                         <button 
                             type="button" 
@@ -188,7 +188,7 @@
                         class="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                     >
                     <label for="terms" class="ml-2 text-sm text-gray-700">
-                        Tôi đồng ý với <a href="#" class="text-indigo-600 hover:text-indigo-500">điều khoản sử dụng</a> và <a href="#" class="text-indigo-600 hover:text-indigo-500">chính sách bảo mật</a>
+                        I agree to the <a href="#" class="text-indigo-600 hover:text-indigo-500">terms of use</a> and <a href="#" class="text-indigo-600 hover:text-indigo-500">privacy policies</a>
                     </label>
                 </div>
             </div>
@@ -199,7 +199,7 @@
                     type="submit"
                     class="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    <span id="button-text">Đăng ký</span>
+                    <span id="button-text">Register</span>
                     <svg id="spinner" class="hidden animate-spin ml-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -209,7 +209,7 @@
 
             <!-- Login Link -->
             <div class="text-center text-sm">
-                <span class="text-gray-600">Đã có tài khoản?</span>
+                <span class="text-gray-600">Already have an account?</span>
                 <a href="/auth/login/" class="ml-1 font-medium text-indigo-600 hover:text-indigo-500">
                     Login ngay
                 </a>
@@ -263,11 +263,11 @@
         if (password.match(/[^a-zA-Z0-9]+/)) strength++;
         
         const strengthLevels = [
-            { width: '20%', color: 'bg-red-500', text: 'Rất yếu', textColor: 'text-red-600' },
-            { width: '40%', color: 'bg-orange-500', text: 'Yếu', textColor: 'text-orange-600' },
-            { width: '60%', color: 'bg-yellow-500', text: 'Trung bình', textColor: 'text-yellow-600' },
-            { width: '80%', color: 'bg-blue-500', text: 'Mạnh', textColor: 'text-blue-600' },
-            { width: '100%', color: 'bg-green-500', text: 'Rất mạnh', textColor: 'text-green-600' },
+            { width: '20%', color: 'bg-red-500', text: 'Very weak', textColor: 'text-red-600' },
+            { width: '40%', color: 'bg-orange-500', text: 'Weak', textColor: 'text-orange-600' },
+            { width: '60%', color: 'bg-yellow-500', text: 'Medium', textColor: 'text-yellow-600' },
+            { width: '80%', color: 'bg-blue-500', text: 'Strong', textColor: 'text-blue-600' },
+            { width: '100%', color: 'bg-green-500', text: 'Very strong', textColor: 'text-green-600' },
         ];
         
         const level = strengthLevels[strength - 1];
@@ -286,10 +286,10 @@
         
         passwordMatch.classList.remove('hidden');
         if (passwordInput.value === password2Input.value) {
-            passwordMatch.textContent = '✓ Password khớp';
+            passwordMatch.textContent = '✓ Passwords match';
             passwordMatch.className = 'mt-1 text-xs text-green-600';
         } else {
-            passwordMatch.textContent = '✗ Password không khớp';
+            passwordMatch.textContent = '✗ Passwords do not match';
             passwordMatch.className = 'mt-1 text-xs text-red-600';
         }
     });
@@ -311,13 +311,13 @@
         
         // Validate passwords match
         if (passwordInput.value !== password2Input.value) {
-            showAlert('Password xác nhận không khớp!');
+            showAlert('Password confirmation does not match!');
             return;
         }
         
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = true;
-        buttonText.textContent = 'Đang xử lý...';
+        buttonText.textContent = 'Processing...';
         spinner.classList.remove('hidden');
         
         const formData = {
@@ -347,7 +347,7 @@
                 localStorage.setItem('username', data.user.username);
                 localStorage.setItem('user_id', data.user.id);
                 
-                showAlert('Đăng ký thành công! Đang chuyển hướng...', 'success');
+                showAlert('Registered successfully! Redirecting...', 'success');
                 
                 setTimeout(() => {
                     window.location.href = '/';
@@ -361,15 +361,15 @@
                 } else if (data.password) {
                     showAlert(`Password: ${data.password[0]}`);
                 } else {
-                    showAlert(data.message || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.');
+                    showAlert(data.message || 'Registration failed. Please check your information.');
                 }
             }
         } catch (error) {
             console.error('Register error:', error);
-            showAlert('Yes lỗi xảy ra. Vui lòng thử lại.');
+            showAlert('An error occurred. Please try again.');
         } finally {
             submitButton.disabled = false;
-            buttonText.textContent = 'Đăng ký';
+            buttonText.textContent = 'Register';
             spinner.classList.add('hidden');
         }
     });
