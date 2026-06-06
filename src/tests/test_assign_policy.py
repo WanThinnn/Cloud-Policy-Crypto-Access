@@ -3,7 +3,7 @@ import django
 import sys
 import uuid
 
-sys.path.append(r"d:\Documents\UIT\Nam_4\Cloud-Firestore-Crypto-Access\src")
+sys.path.append(r"d:\Documents\UIT\Nam_4\Cloud-Policy-Crypto-Access\src")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
@@ -69,9 +69,9 @@ def test_assign():
     downloaded_data = storage.download_file(bucket.name, unique_path)
     
     if downloaded_data == plaintext:
-        print("‚ùå FAILED: File is still plaintext!")
+        print("‚ù?FAILED: File is still plaintext!")
     else:
-        print("‚úÖ SUCCESS: File content is different from plaintext (presumably encrypted)!")
+        print("‚ú?SUCCESS: File content is different from plaintext (presumably encrypted)!")
         print(f"Encrypted data prefix: {downloaded_data[:20]}")
         
     # Cleanup

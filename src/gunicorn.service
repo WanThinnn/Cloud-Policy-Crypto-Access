@@ -5,11 +5,11 @@ After=network.target
 [Service]
 User=www-data
 Group=www-data
-WorkingDirectory=/path/to/Cloud-Firestore-Crypto-Access/src
-EnvironmentFile=/path/to/Cloud-Firestore-Crypto-Access/src/.env
-ExecStart=/path/to/Cloud-Firestore-Crypto-Access/src/venv/bin/gunicorn \
+WorkingDirectory=/path/to/Cloud-Policy-Crypto-Access/src
+EnvironmentFile=/path/to/Cloud-Policy-Crypto-Access/src/.env
+ExecStart=/path/to/Cloud-Policy-Crypto-Access/src/venv/bin/gunicorn \
           --workers 4 \
-          --bind unix:/path/to/Cloud-Firestore-Crypto-Access/src/gunicorn.sock \
+          --bind unix:/path/to/Cloud-Policy-Crypto-Access/src/gunicorn.sock \
           config.wsgi:application
 
 [Install]

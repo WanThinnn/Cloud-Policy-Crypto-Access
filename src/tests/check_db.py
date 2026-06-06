@@ -2,7 +2,7 @@ import os
 import django
 import sys
 
-sys.path.append(r"d:\Documents\UIT\Nam_4\Cloud-Firestore-Crypto-Access\src")
+sys.path.append(r"d:\Documents\UIT\Nam_4\Cloud-Policy-Crypto-Access\src")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 

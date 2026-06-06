@@ -2,7 +2,7 @@ import os
 import django
 import sys
 
-sys.path.append(r"d:\Documents\UIT\Nam_4\Cloud-Firestore-Crypto-Access\src")
+sys.path.append(r"d:\Documents\UIT\Nam_4\Cloud-Policy-Crypto-Access\src")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
@@ -43,11 +43,11 @@ def test_flow():
             recovered = f.read()
             print(f"Recovered text: '{recovered}'")
             if recovered == plaintext:
-                print("‚úÖ Decryption SUCCESS!")
+                print("‚ú?Decryption SUCCESS!")
             else:
-                print("‚ùå Decryption FAILED (content mismatch)")
+                print("‚ù?Decryption FAILED (content mismatch)")
     except Exception as e:
-        print(f"‚ùå IT Decryption Error: {e}")
+        print(f"‚ù?IT Decryption Error: {e}")
         
     # 3. Get HR user attributes and try to decrypt
     print("\nAttempting Decryption with HR User (Should Fail)...")
@@ -58,9 +58,9 @@ def test_flow():
     try:
         cpabe_service.generate_user_key(hr_attrs, "hr_user.key")
         cpabe_service.decrypt_file("hr_user.key", "dummy.enc", "dummy_hr_recovered.txt")
-        print("‚ùå HR Decryption SUCCEEDED (This is a BUG!)")
+        print("‚ù?HR Decryption SUCCEEDED (This is a BUG!)")
     except Exception as e:
-        print(f"‚úÖ HR Decryption FAILED as expected: {e}")
+        print(f"‚ú?HR Decryption FAILED as expected: {e}")
         
     # Cleanup
     for f in ["dummy.txt", "dummy.enc", "it_user.key", "hr_user.key", "dummy_recovered.txt", "dummy_hr_recovered.txt"]:
