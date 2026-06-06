@@ -18,7 +18,7 @@
     }
 </style>
 
-<div class="space-y-6 bg-gradient-to-br from-gray-50 to-indigo-50 min-h-screen p-6">
+<div class="space-y-6 bg-gradient-to-br from-gray-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 min-h-screen p-6">
     <!-- Header with Search and View Toggle -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
         <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6">
@@ -111,8 +111,8 @@
     </div>
 
     <!-- Drag & Drop Zone -->
-    <div id="drop-zone" class="hidden border-2 border-dashed border-indigo-400 bg-indigo-50/80 backdrop-blur-sm rounded-2xl p-16 text-center mb-6 animate-pulse">
-        <div class="bg-indigo-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+    <div id="drop-zone" class="hidden border-2 border-dashed border-indigo-400 bg-indigo-50/80 dark:bg-indigo-900/20 backdrop-blur-sm rounded-2xl p-16 text-center mb-6 animate-pulse">
+        <div class="bg-indigo-100 dark:bg-indigo-900/40 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg class="h-10 w-10 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
             </svg>
@@ -214,7 +214,7 @@
                 <!-- Right Column -->
                 <div class="space-y-4 bg-gray-50/50 dark:bg-gray-900/20 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
                     <!-- Version Policy Handling (Hidden by default) -->
-                    <div id="version-policy-section" class="hidden bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+                    <div id="version-policy-section" class="hidden bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border border-yellow-200 dark:border-yellow-800">
                 <h4 class="text-sm font-medium text-yellow-900 mb-2 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     New Version Policy Handling
@@ -244,7 +244,7 @@
                     Assign access rights (optional)
                 </label>
                 
-                <select id="upload-policy-select" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm">
+                <select id="upload-policy-select" class="w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm">
                     <option value="">-- No policy (use default ABAC) --</option>
                     <!-- Policies will be loaded here -->
                 </select>
@@ -259,7 +259,7 @@
                         Create new policy for this file
                     </button>
                     
-                    <div id="new-policy-form-upload" class="hidden mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
+                    <div id="new-policy-form-upload" class="hidden mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-4">
                         <div class="flex justify-between items-center">
                             <label class="block text-sm font-medium text-blue-800">🔧 Create new Policy</label>
                             <button type="button" data-action="toggle-upload-advanced" id="upload-toggle-advanced" class="text-xs text-blue-600 hover:underline">
@@ -271,20 +271,20 @@
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Policy Name *</label>
                                 <input type="text" id="upload-new-policy-name" placeholder="e.g.: hr_read_document" pattern="[a-z][a-z0-9_]*"
-                                    class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
+                                    class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
                                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Lowercase, numbers and underscores</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Priority (1 = highest)</label>
                                 <input type="number" id="upload-new-policy-priority" value="100" min="1" max="999"
-                                    class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
+                                    class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
                             </div>
                         </div>
                         
                         <div>
                             <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Description</label>
                             <input type="text" id="upload-new-policy-description" placeholder="Policy description"
-                                class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
+                                class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
                         </div>
                         
                         <!-- Simple Mode: Policy Builder -->
@@ -319,7 +319,7 @@
                         <div id="upload-advanced-mode" class="hidden">
                             <p class="text-xs text-blue-700 mb-2">Enter ABAC expression directly:</p>
                             <textarea id="upload-new-policy-condition" rows="2"
-                                class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm font-mono"
+                                class="w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm font-mono"
                                 placeholder="r.sub.user_type == 'admin' and r.sub.department == 'it'"
                                 oninput="updateUploadPreviewFromAdvanced()"></textarea>
                             <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
@@ -332,7 +332,7 @@
                         <div class="grid grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Resource</label>
-                                <select id="upload-new-policy-resource" class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
+                                <select id="upload-new-policy-resource" class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
                                     <option value="document">📄 Document</option>
                                     <option value="key">🔑 Encryption Key</option>
                                     <option value="*">⭐ All</option>
@@ -340,7 +340,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Actions</label>
-                                <select id="upload-new-policy-action" class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
+                                <select id="upload-new-policy-action" class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
                                     <option value="read">👁️ View</option>
                                     <option value="write">✏️ Create</option>
                                     <option value="update">📝 Update</option>
@@ -351,7 +351,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Effect</label>
-                                <select id="upload-new-policy-effect" class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
+                                <select id="upload-new-policy-effect" class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
                                     <option value="allow">✅ Allow</option>
                                     <option value="deny">❌ Deny</option>
                                 </select>
@@ -513,26 +513,26 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Policy Name *</label>
                         <input type="text" id="new-policy-name" pattern="[a-z][a-z0-9_]*"
-                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
                             placeholder="e.g.: hr_read_document">
                         <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">Lowercase, numbers and underscores</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority (1 = highest)</label>
                         <input type="number" id="new-policy-priority" value="100" min="1" max="999"
-                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
                     </div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                     <input type="text" id="new-policy-description" 
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
                         placeholder="Policy description">
                 </div>
                 
                 <!-- Simple Mode: Policy Builder -->
-                <div id="assign-simple-mode" class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                <div id="assign-simple-mode" class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-3">
                     <p class="text-sm text-blue-700">Select conditions for users to apply this policy:</p>
                     
                     <div id="assign-condition-rules" class="space-y-2">
@@ -560,10 +560,10 @@
                 </div>
                 
                 <!-- Advanced Mode: Raw Expression -->
-                <div id="assign-advanced-mode" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div id="assign-advanced-mode" class="hidden bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <p class="text-sm text-blue-700 mb-2">Enter ABAC expression directly:</p>
                     <textarea id="new-policy-condition" rows="3"
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                        class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
                         placeholder="r.sub.user_type == 'admin' and r.sub.department == 'it'"
                         oninput="updateAssignPreviewFromAdvanced()"></textarea>
                     <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
@@ -581,7 +581,7 @@
                 <div class="grid grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resource</label>
-                        <select id="new-policy-resource" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                        <select id="new-policy-resource" class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
                             <option value="document">📄 Document</option>
                             <option value="key">🔑 Encryption Key</option>
                             <option value="user">👤 Manage users</option>
@@ -591,7 +591,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Actions</label>
-                        <select id="new-policy-action" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                        <select id="new-policy-action" class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
                             <option value="read">👁️ View (Read)</option>
                             <option value="write">✏️ Create (Write)</option>
                             <option value="update">📝 Update (Update)</option>
@@ -602,7 +602,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Effect</label>
-                        <select id="new-policy-effect" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                        <select id="new-policy-effect" class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
                             <option value="allow">✅ Allow (Allow)</option>
                             <option value="deny">❌ Deny (Deny)</option>
                         </select>
@@ -613,7 +613,7 @@
             <!-- Common Settings -->
             <div class="mt-4 pt-4 border-t space-y-4">
                 <!-- Replace Policy Checkbox -->
-                <div class="flex items-start bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                <div class="flex items-start bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
                     <div class="flex h-5 items-center">
                         <input id="assign-replace-policy" name="replace_policy" type="checkbox" class="h-4 w-4 rounded border-yellow-400 text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500">
                     </div>
@@ -624,7 +624,7 @@
                 </div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes (optional)</label>
                 <input type="text" id="assign-notes" 
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     placeholder="e.g.: Assign permission as requested in ticket #123">
             </div>
         </div>
