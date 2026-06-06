@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Quản lý Lược đồ Thuộc tính - Admin{% endblock %}
+{% block title %}Attribute Schema Management - Admin{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex justify-between items-center">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Quản lý Lược đồ Thuộc tính</h1>
-            <p class="mt-1 text-sm text-gray-600">Định nghĩa các thuộc tính ABAC trong hệ thống (BM9)</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Attribute Schema Management</h1>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Define ABAC attributes in the system (BM9)</p>
         </div>
         <button id="add-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
-            Thêm thuộc tính
+            Add Attribute
         </button>
     </div>
 
@@ -22,21 +22,21 @@
     <div id="alert" class="hidden rounded-md p-4"></div>
 
     <!-- Attributes Table -->
-    <div class="bg-white shadow rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên hiển thị</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loại dữ liệu</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giá trị cho phép</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bắt buộc</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Hành động</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Display Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Data Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Allowed Values</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Required</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Actions</th>
                 </tr>
             </thead>
-            <tbody id="attributes-list" class="bg-white divide-y divide-gray-200">
+            <tbody id="attributes-list" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr>
-                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">Đang tải...</td>
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">Loading...</td>
                 </tr>
             </tbody>
         </table>
@@ -45,61 +45,61 @@
 
 <!-- Modal -->
 <div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <h3 id="modal-title" class="text-lg font-semibold mb-4">Thêm thuộc tính</h3>
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <h3 id="modal-title" class="text-lg font-semibold mb-4">Add Attribute</h3>
         <form id="attribute-form" class="space-y-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700">Tên (code)</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name (code)</label>
                 <input type="text" name="name" required pattern="[a-z][a-z0-9_]*"
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="project_code">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Tên hiển thị</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Display Name</label>
                 <input type="text" name="display_name" required
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Mã dự án">
+                    class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Project code">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Loại dữ liệu</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data Type</label>
                 <select name="data_type" required
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="enum">Enum (danh sách giá trị)</option>
-                    <option value="string">String (chuỗi)</option>
-                    <option value="integer">Integer (số nguyên)</option>
-                    <option value="boolean">Boolean (đúng/sai)</option>
-                    <option value="date">Date (ngày)</option>
+                    class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="enum">Enum (list of values)</option>
+                    <option value="string">String</option>
+                    <option value="integer">Integer</option>
+                    <option value="boolean">Boolean (true/false)</option>
+                    <option value="date">Date</option>
                 </select>
             </div>
             <div id="allowed-values-group">
-                <label class="block text-sm font-medium text-gray-700">Giá trị cho phép (mỗi dòng 1 giá trị)</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Allowed Values (1 value per line)</label>
                 <textarea name="allowed_values" rows="4"
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="value1&#10;value2&#10;value3"></textarea>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Giá trị mặc định</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Default value</label>
                 <input type="text" name="default_value"
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Mô tả</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                 <textarea name="description" rows="2"
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
             </div>
             <div class="flex items-center space-x-6">
                 <label class="flex items-center">
-                    <input type="checkbox" name="is_required" checked class="h-4 w-4 text-indigo-600 rounded">
-                    <span class="ml-2 text-sm text-gray-700">Bắt buộc</span>
+                    <input type="checkbox" name="is_required" checked class="h-4 w-4 text-indigo-600 dark:text-indigo-400 rounded">
+                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Required</span>
                 </label>
                 <label class="flex items-center">
-                    <input type="checkbox" name="is_active" checked class="h-4 w-4 text-indigo-600 rounded">
-                    <span class="ml-2 text-sm text-gray-700">Kích hoạt</span>
+                    <input type="checkbox" name="is_active" checked class="h-4 w-4 text-indigo-600 dark:text-indigo-400 rounded">
+                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Active</span>
                 </label>
             </div>
             <div class="flex justify-end space-x-3 pt-4">
-                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Hủy</button>
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Lưu</button>
+                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
             </div>
         </form>
     </div>
@@ -141,18 +141,18 @@
     function showAuthRequired() {
         document.getElementById('attributes-list').innerHTML = `
             <tr><td colspan="6" class="px-6 py-8 text-center">
-                <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
-                <a href="/auth/login/?next=${encodeURIComponent(location.pathname)}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Đăng nhập</a>
+                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">You need to log in to view this page</p>
+                <a href="/auth/login/?next=${encodeURIComponent(location.pathname)}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Log in</a>
             </td></tr>`;
     }
 
     function showAccessDenied() {
         document.querySelector('.space-y-6').innerHTML = `
-            <div class="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+            <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-8 text-center">
                 <div class="text-6xl mb-4">🚫</div>
-                <h2 class="text-2xl font-bold text-red-600 mb-2">Không có quyền truy cập</h2>
-                <p class="text-gray-600 mb-4">Chỉ Admin mới có thể truy cập trang này.</p>
-                <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">Về trang chủ</a>
+                <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">Access Denied</h2>
+                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">Only Admin can truy cập trang này.</p>
+                <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">Go to Home</a>
             </div>`;
     }
 
@@ -171,15 +171,15 @@
         try {
             const response = await fetch(API_BASE, { headers });
             if (response.status === 401) {
-                showAlert('Phiên đăng nhập hết hạn', 'error');
+                showAlert('Session expired', 'error');
                 setTimeout(() => window.location.href = '/auth/login/', 2000);
                 return;
             }
             if (response.status === 403) {
                 document.getElementById('attributes-list').innerHTML = `
-                    <tr><td colspan="6" class="px-6 py-8 text-center text-red-600">
-                        <p class="font-medium">Không có quyền truy cập</p>
-                        <p class="text-sm mt-2">Chỉ Super Admin mới có thể xem trang này</p>
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-red-600 dark:text-red-400">
+                        <p class="font-medium">Access Denied</p>
+                        <p class="text-sm mt-2">Only Super Admin can xem trang này</p>
                     </td></tr>`;
                 return;
             }
@@ -188,44 +188,44 @@
             const attributes = data.results || data;
             renderAttributes(attributes);
         } catch (error) {
-            showAlert('Lỗi tải dữ liệu: ' + error.message, 'error');
+            showAlert('Error loading data: ' + error.message, 'error');
         }
     }
 
     function renderAttributes(attributes) {
         const tbody = document.getElementById('attributes-list');
         if (attributes.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Không có dữ liệu</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">No data available</td></tr>';
             return;
         }
 
         tbody.innerHTML = attributes.map(attr => `
             <tr>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-sm font-mono bg-gray-100 rounded">${attr.name}</span>
+                    <span class="px-2 py-1 text-sm font-mono bg-gray-100 dark:bg-gray-700 rounded">${attr.name}</span>
                 </td>
-                <td class="px-6 py-4 font-medium text-gray-900">${attr.display_name}</td>
+                <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${attr.display_name}</td>
                 <td class="px-6 py-4">
                     <span class="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">${attr.data_type}</span>
                 </td>
                 <td class="px-6 py-4 text-sm">
                     ${attr.allowed_values ? 
                         `<div class="flex flex-wrap gap-1 max-w-xs">
-                            ${attr.allowed_values.slice(0, 4).map(v => `<span class="px-1.5 py-0.5 text-xs bg-gray-100 rounded">${v}</span>`).join('')}
-                            ${attr.allowed_values.length > 4 ? `<span class="text-xs text-gray-500">+${attr.allowed_values.length - 4}</span>` : ''}
+                            ${attr.allowed_values.slice(0, 4).map(v => `<span class="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 rounded">${v}</span>`).join('')}
+                            ${attr.allowed_values.length > 4 ? `<span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">+${attr.allowed_values.length - 4}</span>` : ''}
                         </div>` : 
-                        '<span class="text-gray-400">-</span>'
+                        '<span class="text-gray-400 dark:text-gray-500">-</span>'
                     }
                 </td>
                 <td class="px-6 py-4">
                     ${attr.is_required ? 
-                        '<span class="text-green-600">✓ Có</span>' : 
-                        '<span class="text-gray-400">Không</span>'
+                        '<span class="text-green-600 dark:text-green-400">✓ Yes</span>' : 
+                        '<span class="text-gray-400 dark:text-gray-500">No</span>'
                     }
                 </td>
                 <td class="px-6 py-4 text-right space-x-2">
-                    <button onclick="editAttribute(${attr.id})" class="text-indigo-600 hover:text-indigo-900">Sửa</button>
-                    <button onclick="deleteAttribute(${attr.id})" class="text-red-600 hover:text-red-900">Xóa</button>
+                    <button onclick="editAttribute(${attr.id})" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900">Edit</button>
+                    <button onclick="deleteAttribute(${attr.id})" class="text-red-600 dark:text-red-400 hover:text-red-900">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -241,7 +241,7 @@
 
     document.getElementById('add-btn').addEventListener('click', () => {
         editingId = null;
-        document.getElementById('modal-title').textContent = 'Thêm thuộc tính';
+        document.getElementById('modal-title').textContent = 'Add Attribute';
         document.getElementById('attribute-form').reset();
         document.getElementById('allowed-values-group').classList.remove('hidden');
         document.getElementById('modal').classList.remove('hidden');
@@ -256,7 +256,7 @@
             const response = await fetch(`${API_BASE}${id}/`, { headers });
             const attr = await response.json();
             editingId = id;
-            document.getElementById('modal-title').textContent = 'Sửa thuộc tính';
+            document.getElementById('modal-title').textContent = 'Edit thuộc tính';
             const form = document.getElementById('attribute-form');
             form.name.value = attr.name;
             form.display_name.value = attr.display_name;
@@ -269,23 +269,23 @@
             document.getElementById('allowed-values-group').classList.toggle('hidden', attr.data_type !== 'enum');
             document.getElementById('modal').classList.remove('hidden');
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     }
 
     async function deleteAttribute(id) {
-        if (!confirm('Bạn chắc chắn muốn xóa thuộc tính này?')) return;
+        if (!confirm('Are you sure you want to delete thuộc tính này?')) return;
         try {
             const response = await fetch(`${API_BASE}${id}/`, { method: 'DELETE', headers });
             if (response.ok) {
-                showAlert('Đã xóa thành công');
+                showAlert('Successfully deleted');
                 loadAttributes();
             } else {
                 const data = await response.json();
-                showAlert(data.error || 'Lỗi xóa', 'error');
+                showAlert(data.error || 'Error xóa', 'error');
             }
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     }
 
@@ -317,7 +317,7 @@
             });
 
             if (response.ok) {
-                showAlert(editingId ? 'Đã cập nhật' : 'Đã thêm thành công');
+                showAlert(editingId ? 'Updated successfully' : 'Successfully added');
                 document.getElementById('modal').classList.add('hidden');
                 loadAttributes();
             } else {
@@ -325,7 +325,7 @@
                 showAlert(JSON.stringify(err), 'error');
             }
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     });
 

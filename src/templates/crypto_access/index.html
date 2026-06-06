@@ -1,72 +1,235 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Home - Crypto Access{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-12">
-    <!-- Hero Section -->
-    <div class="bg-white rounded-2xl shadow-xl p-12 mb-12 text-center transform hover:scale-105 transition duration-300">
-        <h1 class="text-5xl font-bold text-gray-900 mb-4">
-            Welcome to <span class="text-blue-600">Crypto Access</span>
-        </h1>
-        <p class="text-xl text-gray-600 mb-8">
-            Secure cryptographic access control system built with Django
-        </p>
-        <div class="flex justify-center gap-4 flex-wrap">
-            <a href="/admin/" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-lg shadow-lg transition duration-200 transform hover:scale-105">
-                🔑 Admin Panel
-            </a>
-            <a href="{% url 'crypto_access:health_check' %}" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-8 py-3 rounded-lg shadow-lg transition duration-200 transform hover:scale-105">
-                ✓ Health Check
-            </a>
+<!-- Auth View (Dashboard) -->
+<div id="auth-view" class="hidden">
+  <!-- Welcome Header -->
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold mb-2 flex items-center flex-wrap gap-2 text-gray-900 dark:text-gray-100">
+      Chào mừng, <span id="dashboard-username">Người dùng</span> 
+      <span id="dashboard-role-badge" class="hidden text-sm font-medium px-3 py-1 rounded-full"></span>
+    </h1>
+    <p class="text-gray-600 dark:text-gray-400">Tổng quan hệ thống Crypto Access</p>
+  </div>
+
+  <!-- Dashboard Stats -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Stat Card 1 - Người dùng -->
+    <a href="/manage/users/"
+      class="block transform hover:scale-105 transition-transform duration-200 p-6 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-lg text-white"
+    >
+      <div class="text-center">
+        <div class="text-5xl font-bold mb-2" id="stat-users">-</div>
+        <div class="text-lg opacity-90 font-medium">Người dùng</div>
+      </div>
+    </a>
+
+    <!-- Stat Card 2 - Chính sách -->
+    <a href="/manage/policies/"
+      class="block transform hover:scale-105 transition-transform duration-200 p-6 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl shadow-lg text-white"
+    >
+      <div class="text-center">
+        <div class="text-5xl font-bold mb-2" id="stat-policies">-</div>
+        <div class="text-lg opacity-90 font-medium">Chính sách</div>
+      </div>
+    </a>
+
+    <!-- Stat Card 3 - Tài liệu -->
+    <a href="/manage/files/"
+      class="block transform hover:scale-105 transition-transform duration-200 p-6 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-lg text-white"
+    >
+      <div class="text-center">
+        <div class="text-5xl font-bold mb-2" id="stat-documents">-</div>
+        <div class="text-lg opacity-90 font-medium">Tài liệu</div>
+      </div>
+    </a>
+
+    <!-- Stat Card 4 - Thùng rác -->
+    <a href="/manage/trash/"
+      class="block transform hover:scale-105 transition-transform duration-200 p-6 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl shadow-lg text-white"
+    >
+      <div class="text-center">
+        <div class="text-5xl font-bold mb-2" id="stat-trash">-</div>
+        <div class="text-lg opacity-90 font-medium">Đã xóa</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="mb-12">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">Tính năng chính</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <!-- Quản lý Người dùng -->
+      <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden" id="card-users" style="display:none;">
+        <div class="p-6">
+          <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200 border-b dark:border-gray-700 pb-2">Quản lý Người dùng</h3>
+          <div class="flex flex-col space-y-3">
+            <a href="/manage/users/" class="hover:scale-105 duration-200 transition-transform text-white bg-blue-600 dark:bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">Danh sách người dùng</a>
+            <a href="/manage/user-types/" class="hover:scale-105 duration-200 transition-transform text-blue-700 dark:text-blue-400 bg-white dark:bg-gray-800 border border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-100 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">Loại người dùng</a>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <!-- Features Section -->
-    <div class="mb-8">
-        <h2 class="text-4xl font-bold text-center text-gray-900 mb-12">Features</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- Feature Card 1 -->
-            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition duration-300 transform hover:-translate-y-2">
-                <div class="text-5xl mb-4">🔐</div>
-                <h3 class="text-2xl font-bold text-gray-900 mb-3">Secure Access</h3>
-                <p class="text-gray-600">Advanced cryptographic access control with enterprise-grade security</p>
-            </div>
-
-            <!-- Feature Card 2 -->
-            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition duration-300 transform hover:-translate-y-2">
-                <div class="text-5xl mb-4">👥</div>
-                <h3 class="text-2xl font-bold text-gray-900 mb-3">User Management</h3>
-                <p class="text-gray-600">Complete user profile management system with role-based access</p>
-            </div>
-
-            <!-- Feature Card 3 -->
-            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition duration-300 transform hover:-translate-y-2">
-                <div class="text-5xl mb-4">🚀</div>
-                <h3 class="text-2xl font-bold text-gray-900 mb-3">Production Ready</h3>
-                <p class="text-gray-600">Built with best practices for scalable deployment</p>
-            </div>
-
-            <!-- Feature Card 4 -->
-            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition duration-300 transform hover:-translate-y-2">
-                <div class="text-5xl mb-4">🔄</div>
-                <h3 class="text-2xl font-bold text-gray-900 mb-3">REST API</h3>
-                <p class="text-gray-600">Full REST API support with Django REST Framework</p>
-            </div>
+      <!-- Quản lý Chính sách -->
+      <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden" id="card-policies" style="display:none;">
+        <div class="p-6">
+          <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200 border-b dark:border-gray-700 pb-2">Quản lý Chính sách</h3>
+          <div class="flex flex-col space-y-3">
+            <a href="/manage/policies/" class="hover:scale-105 duration-200 transition-transform text-white bg-emerald-600 hover:bg-emerald-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">Chính sách truy cập</a>
+            <a href="/manage/attributes/" class="hover:scale-105 duration-200 transition-transform text-emerald-700 dark:text-emerald-400 bg-white dark:bg-gray-800 border border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-100 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">Thuộc tính (Attribute)</a>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <!-- Tech Stack Section -->
-    <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl shadow-xl p-12 text-white text-center">
-        <h2 class="text-3xl font-bold mb-6">Built with Modern Technologies</h2>
-        <div class="flex flex-wrap justify-center gap-4 text-lg">
-            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">Django 5.2</span>
-            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">Tailwind CSS</span>
-            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">REST Framework</span>
-            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">PostgreSQL</span>
-            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">Redis</span>
-            <span class="bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full hover:bg-white/30 transition duration-200">WhiteNoise</span>
+      <!-- Quản lý Tài liệu -->
+      <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+        <div class="p-6">
+          <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200 border-b dark:border-gray-700 pb-2">Quản lý Tài liệu</h3>
+          <div class="flex flex-col space-y-3">
+            <a href="/manage/files/" class="hover:scale-105 duration-200 transition-transform text-white bg-purple-600 hover:bg-purple-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">Danh sách tài liệu</a>
+            <a href="/manage/files/#upload" class="hover:scale-105 duration-200 transition-transform text-purple-700 dark:text-purple-400 bg-white dark:bg-gray-800 border border-purple-600 hover:bg-purple-50 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">Tải lên tài liệu mới</a>
+          </div>
         </div>
+      </div>
+
+      <!-- Thùng rác & Cảnh báo -->
+      <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+        <div class="p-6">
+          <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200 border-b dark:border-gray-700 pb-2">Hệ thống</h3>
+          <div class="flex flex-col space-y-3">
+            <a href="/manage/trash/" class="hover:scale-105 duration-200 transition-transform text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">Thùng rác</a>
+            <a href="{% url 'crypto_access:health_check' %}" class="hover:scale-105 duration-200 transition-transform text-red-600 dark:text-red-400 bg-white dark:bg-gray-800 border border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">System Health</a>
+          </div>
+        </div>
+      </div>
+      
     </div>
+  </div>
+
+  <!-- Admin Section -->
+  <div class="bg-[#1e293b] text-white rounded-xl shadow-lg overflow-hidden" id="admin-section" style="display:none;">
+    <div class="p-8">
+      <h2 class="text-2xl font-bold mb-6">Quản trị Hệ thống</h2>
+      <div class="flex flex-wrap gap-4">
+        <a href="/manage/policies/" class="hover:scale-105 duration-200 transition-transform text-white border border-white hover:bg-white dark:bg-gray-800 hover:text-gray-900 dark:text-gray-100 focus:ring-4 focus:ring-gray-500 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">
+          Thay đổi quy định ABAC
+        </a>
+        <a href="/manage/users/" class="hover:scale-105 duration-200 transition-transform text-white border border-white hover:bg-white dark:bg-gray-800 hover:text-gray-900 dark:text-gray-100 focus:ring-4 focus:ring-gray-500 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">
+          Quản lý người dùng
+        </a>
+        <a href="/admin/" class="hover:scale-105 duration-200 transition-transform text-white border border-white hover:bg-white dark:bg-gray-800 hover:text-gray-900 dark:text-gray-100 focus:ring-4 focus:ring-gray-500 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors">
+          Admin Panel
+        </a>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- Unauthenticated View -->
+<div id="unauth-view" class="hidden">
+  <!-- Layer 1: Solid color -->
+  <div class="fixed inset-0 -z-10 bg-solid" style="background-color: #000;"></div>
+  <!-- Layer 2: Background image -->
+  <div id="hero-bg" class="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat bg-image" style="transition: background-image 0.5s ease-in-out;"></div>
+  <!-- Layer 3: Dark overlay -->
+  <div class="fixed inset-0 -z-10 bg-black/50"></div>
+  <script>
+    (function() {
+      var bgUrl = "{% static 'image/background.webp' %}";
+      var bgEl = document.getElementById('hero-bg');
+      var img = new Image();
+      img.onload = function() {
+        bgEl.style.backgroundImage = 'url(' + bgUrl + ')';
+        bgEl.classList.add('loaded');
+      };
+      img.src = bgUrl;
+    })();
+  </script>
+
+  <div class="text-center py-20 px-4 min-h-[70vh] flex flex-col justify-center items-center">
+    <h1 class="text-4xl md:text-5xl font-extrabold mb-4 text-white tracking-tight drop-shadow-lg">
+      Crypto Access System
+    </h1>
+    <p class="text-xl text-gray-100 mb-10 max-w-2xl mx-auto drop-shadow-md">
+      Vui lòng đăng nhập để sử dụng các chức năng mã hóa và kiểm soát truy cập dữ liệu.
+    </p>
+    <div class="flex gap-4 justify-center flex-wrap">
+      <a
+        href="{% url 'login_page' %}"
+        class="hover:scale-105 duration-200 transition-transform text-white bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-lg px-8 py-3 shadow-lg transition-all"
+        >Đăng nhập</a
+      >
+      <a
+        href="/admin/"
+        class="hover:scale-105 duration-200 transition-transform text-white bg-white/15 hover:bg-white/25 border border-white/50 backdrop-blur-sm focus:ring-4 focus:ring-white/30 font-semibold rounded-lg text-lg px-8 py-3 shadow-lg transition-all"
+        >Admin Panel</a
+      >
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        // Authenticated
+        document.getElementById('auth-view').classList.remove('hidden');
+        
+        // Fetch User Info to populate Welcome Header
+        fetch('/api/auth/profile/', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.username) {
+                document.getElementById('dashboard-username').textContent = data.username;
+            }
+            if (data.is_superuser || data.is_staff) {
+                const badge = document.getElementById('dashboard-role-badge');
+                badge.classList.remove('hidden');
+                document.getElementById('card-users').style.display = 'block';
+                document.getElementById('card-policies').style.display = 'block';
+                document.getElementById('admin-section').style.display = 'block';
+                
+                if (data.is_superuser) {
+                    badge.classList.add('bg-blue-100', 'dark:bg-blue-900', 'text-blue-800', 'dark:text-blue-200');
+                    badge.textContent = 'Quản trị viên';
+                } else {
+                    badge.classList.add('bg-purple-100', 'dark:bg-purple-900', 'text-purple-800', 'dark:text-purple-200');
+                    badge.textContent = 'Nhân viên';
+                }
+            }
+        });
+
+        // Fetch Stats
+        fetch('/api/admin/dashboard-stats/', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('API Error');
+            return res.json();
+        })
+        .then(data => {
+            if(data.users !== undefined) document.getElementById('stat-users').textContent = data.users;
+            if(data.policies !== undefined) document.getElementById('stat-policies').textContent = data.policies;
+            if(data.documents !== undefined) document.getElementById('stat-documents').textContent = data.documents;
+            if(data.trash !== undefined) document.getElementById('stat-trash').textContent = data.trash;
+        })
+        .catch(e => console.error("Failed to load dashboard stats", e));
+
+    } else {
+        // Unauthenticated
+        document.getElementById('unauth-view').classList.remove('hidden');
+    }
+});
+</script>
 {% endblock %}

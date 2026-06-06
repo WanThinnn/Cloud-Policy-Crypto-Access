@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Quản lý Chính sách Truy cập - Admin{% endblock %}
+{% block title %}Access Policy Management - Admin{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex justify-between items-center">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Quản lý Chính sách Truy cập (ABAC Layer)</h1>
-            <p class="mt-1 text-sm text-gray-600">Điều kiện chi tiết cho phân quyền - Áp dụng SAU khi đã có quyền cơ bản từ Loại người dùng</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Access Policy Management (ABAC Layer)</h1>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Điều kiện chi tiết cho phân quyền - Áp dụng SAU khi đã có quyền cơ bản từ Loại người dùng</p>
         </div>
         <div class="flex gap-2">
             <button id="reload-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center">
@@ -31,44 +31,44 @@
     
     <!-- Hybrid RBAC+ABAC Explanation -->
     <div class="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-4">
-        <h3 class="text-sm font-semibold text-gray-800 mb-2">📋 Cách hoạt động của Hybrid RBAC + ABAC</h3>
+        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">📋 Cách hoạt động của Hybrid RBAC + ABAC</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div class="bg-white rounded p-3 border border-blue-100">
+            <div class="bg-white dark:bg-gray-800 rounded p-3 border border-blue-100">
                 <div class="font-medium text-blue-700 mb-1">Layer 1: RBAC (Loại người dùng)</div>
-                <p class="text-gray-600">Quyền cơ bản từ vai trò. VD: Data User có thể <code class="bg-gray-100 px-1 rounded">file_read</code>, <code class="bg-gray-100 px-1 rounded">file_download</code></p>
-                <div class="mt-1 text-blue-600">→ Nếu KHÔNG có quyền cơ bản → <span class="text-red-600 font-medium">TỪ CHỐI</span></div>
+                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500">Quyền cơ bản từ vai trò. VD: Data User có thể <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">file_read</code>, <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">file_download</code></p>
+                <div class="mt-1 text-blue-600">→ Nếu KHÔNG có quyền cơ bản → <span class="text-red-600 dark:text-red-400 font-medium">TỪ CHỐI</span></div>
             </div>
-            <div class="bg-white rounded p-3 border border-green-100">
+            <div class="bg-white dark:bg-gray-800 rounded p-3 border border-green-100">
                 <div class="font-medium text-green-700 mb-1">Layer 2: ABAC (Chính sách này)</div>
-                <p class="text-gray-600">Điều kiện chi tiết. VD: Chỉ phòng IT, mức bảo mật secret+ mới được đọc tài liệu kỹ thuật</p>
-                <div class="mt-1 text-green-600">→ Tinh chỉnh quyền theo ngữ cảnh cụ thể</div>
+                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500">Điều kiện chi tiết. VD: Chỉ phòng IT, mức bảo mật secret+ mới được đọc tài liệu kỹ thuật</p>
+                <div class="mt-1 text-green-600 dark:text-green-400">→ Tinh chỉnh quyền theo ngữ cảnh cụ thể</div>
             </div>
         </div>
-        <div class="mt-2 text-xs text-gray-500 flex items-center">
+        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 flex items-center">
             <svg class="w-4 h-4 mr-1 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
             </svg>
-            <strong>Lưu ý:</strong> Policy DENY luôn được ưu tiên hơn ALLOW. Không có policy → dùng kết quả RBAC.
+            <strong>Save ý:</strong> Policy DENY luôn được ưu tiên hơn ALLOW. No có policy → dùng kết quả RBAC.
         </div>
     </div>
 
     <!-- Policies Table -->
-    <div class="bg-white shadow rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Điều kiện</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tài nguyên</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hành động</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hiệu lực</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ưu tiên</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Điều kiện</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Resource</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Effect</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Ưu tiên</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Thao tác</th>
                 </tr>
             </thead>
-            <tbody id="policies-list" class="bg-white divide-y divide-gray-200">
-                <tr><td colspan="8" class="px-6 py-4 text-center text-gray-500">Đang tải...</td></tr>
+            <tbody id="policies-list" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr><td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">Loading...</td></tr>
             </tbody>
         </table>
     </div>
@@ -76,42 +76,42 @@
 
 <!-- Add/Edit Modal -->
 <div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
         <h3 id="modal-title" class="text-lg font-semibold mb-4">Thêm chính sách</h3>
         <form id="policy-form" class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Tên chính sách</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Policy Name</label>
                     <input type="text" name="name" required pattern="[a-z][a-z0-9_]*"
-                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="vd: it_read_document">
-                    <p class="mt-1 text-xs text-gray-500">Chữ thường, số và gạch dưới</p>
+                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="e.g.: it_read_document">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Lowercase, numbers and underscores</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Ưu tiên (1 = cao nhất)</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority (1 = highest)</label>
                     <input type="number" name="priority" value="100" min="1" max="999"
-                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Mô tả</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                 <input type="text" name="description"
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Mô tả chính sách">
+                    class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Policy description">
             </div>
             
             <!-- Policy Builder Section -->
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div class="flex justify-between items-center mb-3">
-                    <label class="block text-sm font-medium text-blue-800">🔧 Xây dựng điều kiện (Policy Builder)</label>
+                    <label class="block text-sm font-medium text-blue-800">🔧 Build conditions (Policy Builder)</label>
                     <button type="button" id="toggle-advanced" class="text-xs text-blue-600 hover:underline">
-                        Chế độ nâng cao
+                        Advanced mode
                     </button>
                 </div>
                 
                 <!-- Simple Mode: Natural Language Builder -->
                 <div id="simple-mode" class="space-y-3">
-                    <p class="text-sm text-blue-700 mb-2">Chọn điều kiện cho người dùng được áp dụng chính sách này:</p>
+                    <p class="text-sm text-blue-700 mb-2">Select conditions for users to apply this policy:</p>
                     
                     <!-- Condition Rules Container -->
                     <div id="condition-rules" class="space-y-2">
@@ -122,18 +122,18 @@
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
-                        Thêm điều kiện
+                        Add condition
                     </button>
                     
                     <!-- Hướng dẫn -->
-                    <div class="text-xs text-gray-500 pt-2">
-                        💡 <strong>Gợi ý:</strong> Chọn <span class="text-green-600 font-medium">VÀ</span> nếu cần thỏa tất cả điều kiện, 
-                        <span class="text-orange-600 font-medium">HOẶC</span> nếu chỉ cần 1 trong các điều kiện.
+                    <div class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 pt-2">
+                        💡 <strong>Hint:</strong> Select <span class="text-green-600 dark:text-green-400 font-medium">AND</span> if all conditions must be met, 
+                        <span class="text-orange-600 font-medium">OR</span> if only 1 of the conditions must be met.
                     </div>
                     
                     <!-- Preview -->
-                    <div class="mt-3 p-2 bg-white rounded border">
-                        <span class="text-xs text-gray-500">Xem trước câu điều kiện:</span>
+                    <div class="mt-3 p-2 bg-white dark:bg-gray-800 rounded border">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Condition preview:</span>
                         <div id="condition-preview" class="font-mono text-sm text-green-700 mt-1">
                             <!-- Preview will be shown here -->
                         </div>
@@ -142,16 +142,16 @@
                 
                 <!-- Advanced Mode: Raw Expression -->
                 <div id="advanced-mode" class="hidden">
-                    <p class="text-sm text-blue-700 mb-2">Nhập biểu thức ABAC trực tiếp:</p>
+                    <p class="text-sm text-blue-700 mb-2">Enter ABAC expression directly:</p>
                     <textarea name="subject_condition" id="subject_condition_input" rows="3"
-                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                        class="block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
                         placeholder="r.sub.user_type == 'admin' and r.sub.department == 'it'"></textarea>
-                    <div class="mt-2 text-xs text-gray-500">
-                        <p><strong>Cú pháp:</strong></p>
+                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                        <p><strong>Syntax:</strong></p>
                         <ul class="list-disc ml-4 space-y-1">
-                            <li><code>r.sub.attribute == 'value'</code> - So sánh bằng</li>
-                            <li><code>r.sub.attribute in ['val1', 'val2']</code> - Thuộc danh sách</li>
-                            <li><code>and</code>, <code>or</code> - Kết hợp điều kiện</li>
+                            <li><code>r.sub.attribute == 'value'</code> - Equals</li>
+                            <li><code>r.sub.attribute in ['val1', 'val2']</code> - In list</li>
+                            <li><code>and</code>, <code>or</code> - Combine conditions</li>
                         </ul>
                     </div>
                 </div>
@@ -162,51 +162,51 @@
             
             <div class="grid grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Tài nguyên</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resource</label>
                     <select name="resource" required
-                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="document">📄 Tài liệu (Document)</option>
-                        <option value="key">🔑 Khóa mã hóa (Key)</option>
-                        <option value="user">👤 Quản lý người dùng</option>
-                        <option value="policy">📋 Quản lý chính sách</option>
+                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="document">📄 Document (Document)</option>
+                        <option value="key">🔑 Encryption Key (Key)</option>
+                        <option value="user">👤 Manage users</option>
+                        <option value="policy">📋 Manage policies</option>
                         <option value="attribute">🏷️ Quản lý thuộc tính</option>
                         <option value="audit">📊 Nhật ký hệ thống</option>
-                        <option value="*">⭐ Tất cả tài nguyên (*)</option>
+                        <option value="*">⭐ All resources (*)</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Hành động</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Actions</label>
                     <select name="action" required
-                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="read">👁️ Xem (Read)</option>
-                        <option value="write">✏️ Tạo mới (Write)</option>
-                        <option value="update">📝 Cập nhật (Update)</option>
-                        <option value="delete">🗑️ Xóa (Delete)</option>
-                        <option value="upload">⬆️ Tải lên (Upload)</option>
-                        <option value="download">⬇️ Tải xuống (Download)</option>
+                        <option value="write">✏️ Create (Write)</option>
+                        <option value="update">📝 Update (Update)</option>
+                        <option value="delete">🗑️ Delete (Delete)</option>
+                        <option value="upload">⬆️ Upload (Upload)</option>
+                        <option value="download">⬇️ Download (Download)</option>
                         <option value="encrypt">🔒 Mã hóa (Encrypt)</option>
                         <option value="decrypt">🔓 Giải mã (Decrypt)</option>
                         <option value="manage">⚙️ Toàn quyền (Manage)</option>
-                        <option value="*">⭐ Tất cả hành động (*)</option>
+                        <option value="*">⭐ All actions (*)</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Hiệu lực</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Effect</label>
                     <select name="effect" required
-                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="allow">✅ Cho phép (Allow)</option>
-                        <option value="deny">❌ Từ chối (Deny)</option>
+                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="allow">✅ Allow (Allow)</option>
+                        <option value="deny">❌ Deny (Deny)</option>
                     </select>
                 </div>
             </div>
             <div class="flex items-center">
                 <input type="checkbox" name="is_active" id="is_active" checked
-                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                <label for="is_active" class="ml-2 text-sm text-gray-700">Kích hoạt policy</label>
+                    class="h-4 w-4 text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded">
+                <label for="is_active" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Active policy</label>
             </div>
             <div class="flex justify-end space-x-3 pt-4 border-t">
-                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Hủy</button>
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Lưu</button>
+                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
             </div>
         </form>
     </div>
@@ -248,18 +248,18 @@
     function showAuthRequired() {
         document.getElementById('policies-list').innerHTML = `
             <tr><td colspan="8" class="px-6 py-8 text-center">
-                <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
-                <a href="/auth/login/?next=${encodeURIComponent(location.pathname)}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Đăng nhập</a>
+                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">You need to log in to view this page</p>
+                <a href="/auth/login/?next=${encodeURIComponent(location.pathname)}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Log in</a>
             </td></tr>`;
     }
 
     function showAccessDenied() {
         document.querySelector('.space-y-6').innerHTML = `
-            <div class="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+            <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-8 text-center">
                 <div class="text-6xl mb-4">🚫</div>
-                <h2 class="text-2xl font-bold text-red-600 mb-2">Không có quyền truy cập</h2>
-                <p class="text-gray-600 mb-4">Chỉ Super Admin mới có thể quản lý chính sách.</p>
-                <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">Về trang chủ</a>
+                <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">Access Denied</h2>
+                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">Only Super Admin can quản lý chính sách.</p>
+                <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">Go to Home</a>
             </div>`;
     }
 
@@ -283,24 +283,24 @@
             const policies = data.results || data;
             renderPolicies(policies);
         } catch (error) {
-            showAlert('Lỗi tải dữ liệu: ' + error.message, 'error');
+            showAlert('Error loading data: ' + error.message, 'error');
         }
     }
 
     function renderPolicies(policies) {
         const tbody = document.getElementById('policies-list');
         if (policies.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-4 text-center text-gray-500">Chưa có chính sách nào</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">Chưa có chính sách nào</td></tr>';
             return;
         }
 
         tbody.innerHTML = policies.map(p => `
             <tr>
                 <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900">${p.name}</div>
+                    <div class="font-medium text-gray-900 dark:text-white">${p.name}</div>
                 </td>
                 <td class="px-6 py-4">
-                    <code class="text-xs bg-gray-100 px-2 py-1 rounded">${escapeHtml(p.subject_condition)}</code>
+                    <code class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">${escapeHtml(p.subject_condition)}</code>
                 </td>
                 <td class="px-6 py-4">
                     <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">${p.resource}</span>
@@ -309,19 +309,19 @@
                     <span class="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">${p.action}</span>
                 </td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs rounded ${p.effect === 'allow' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                    <span class="px-2 py-1 text-xs rounded ${p.effect === 'allow' ? 'bg-green-100 text-green-800 dark:text-green-300' : 'bg-red-100 text-red-800 dark:text-red-300'}">
                         ${p.effect}
                     </span>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-500">${p.priority}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">${p.priority}</td>
                 <td class="px-6 py-4">
-                    <button onclick="toggleActive(${p.id})" class="px-2 py-1 text-xs rounded-full ${p.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">
+                    <button onclick="toggleActive(${p.id})" class="px-2 py-1 text-xs rounded-full ${p.is_active ? 'bg-green-100 text-green-800 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 dark:text-gray-500'}">
                         ${p.is_active ? 'Active' : 'Inactive'}
                     </button>
                 </td>
                 <td class="px-6 py-4 text-right space-x-2">
-                    <button onclick="editPolicy(${p.id})" class="text-indigo-600 hover:text-indigo-900">Sửa</button>
-                    <button onclick="deletePolicy(${p.id})" class="text-red-600 hover:text-red-900">Xóa</button>
+                    <button onclick="editPolicy(${p.id})" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900">Edit</button>
+                    <button onclick="deletePolicy(${p.id})" class="text-red-600 dark:text-red-400 hover:text-red-900">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -391,17 +391,17 @@
             <div class="condition-rule-wrapper" data-rule-id="${ruleId}">
                 <!-- Connector to previous rule (hidden for first rule) -->
                 <div class="connector-row flex items-center justify-center py-1 ${ruleId === 1 ? 'hidden' : ''}" data-rule-id="${ruleId}">
-                    <select class="connector-select bg-gray-100 border border-gray-300 rounded px-3 py-1 text-sm font-medium" data-rule-id="${ruleId}">
-                        <option value="and" class="text-green-700">VÀ (AND)</option>
-                        <option value="or" class="text-orange-700">HOẶC (OR)</option>
+                    <select class="connector-select bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-sm font-medium" data-rule-id="${ruleId}">
+                        <option value="and" class="text-green-700">AND (AND)</option>
+                        <option value="or" class="text-orange-700">OR (OR)</option>
                     </select>
                 </div>
-                <div class="condition-rule flex items-center gap-2 p-2 bg-white rounded border" data-rule-id="${ruleId}">
-                    <span class="text-sm text-gray-600">Nếu</span>
-                    <select class="attr-select border border-gray-300 rounded px-2 py-1 text-sm" data-rule-id="${ruleId}">
+                <div class="condition-rule flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded border" data-rule-id="${ruleId}">
+                    <span class="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Nếu</span>
+                    <select class="attr-select border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm" data-rule-id="${ruleId}">
                         ${attrOptions}
                     </select>
-                    <select class="op-select border border-gray-300 rounded px-2 py-1 text-sm" data-rule-id="${ruleId}">
+                    <select class="op-select border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm" data-rule-id="${ruleId}">
                         ${opOptions}
                     </select>
                     <div class="value-container flex-1" data-rule-id="${ruleId}">
@@ -433,7 +433,7 @@
             valueContainer.innerHTML = `
                 <div class="flex flex-wrap gap-1">
                     ${attrValues.map(v => `
-                        <label class="inline-flex items-center bg-gray-100 rounded px-2 py-1 text-xs">
+                        <label class="inline-flex items-center bg-gray-100 dark:bg-gray-700 rounded px-2 py-1 text-xs">
                             <input type="checkbox" class="value-checkbox mr-1" value="${v}">
                             ${v}
                         </label>
@@ -442,7 +442,7 @@
             `;
         } else {
             valueContainer.innerHTML = `
-                <select class="value-select border border-gray-300 rounded px-2 py-1 text-sm">
+                <select class="value-select border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm">
                     ${attrValues.map(v => `<option value="${v}">${v}</option>`).join('')}
                 </select>
             `;
@@ -539,7 +539,7 @@
             preview.classList.remove('text-gray-400');
             preview.classList.add('text-green-700');
         } else {
-            preview.textContent = '(Chưa có điều kiện nào)';
+            preview.textContent = '(No conditions yet)';
             preview.classList.remove('text-green-700');
             preview.classList.add('text-gray-400');
         }
@@ -565,7 +565,7 @@
         } else {
             simpleMode.classList.remove('hidden');
             advancedMode.classList.add('hidden');
-            toggleBtn.textContent = 'Chế độ nâng cao';
+            toggleBtn.textContent = 'Advanced mode';
         }
         updatePreview();
     }
@@ -643,7 +643,7 @@
         await loadPolicyBuilderAttributes();
         
         if (AVAILABLE_ATTRIBUTES.length === 0) {
-            showAlert('Không thể tải danh sách thuộc tính. Vui lòng sử dụng chế độ nâng cao.', 'error');
+            showAlert('No thể tải danh sách thuộc tính. Vui lòng sử dụng chế độ nâng cao.', 'error');
             isAdvancedMode = true;
         } else {
             isAdvancedMode = false;
@@ -660,7 +660,7 @@
         } else {
             document.getElementById('simple-mode').classList.remove('hidden');
             document.getElementById('advanced-mode').classList.add('hidden');
-            document.getElementById('toggle-advanced').textContent = 'Chế độ nâng cao';
+            document.getElementById('toggle-advanced').textContent = 'Advanced mode';
         }
         
         // Initialize with one rule
@@ -690,10 +690,10 @@
             if (response.ok) {
                 showAlert('Đã reload Casbin policies');
             } else {
-                showAlert('Lỗi reload', 'error');
+                showAlert('Error reload', 'error');
             }
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     });
 
@@ -707,10 +707,10 @@
             editingId = id;
             isAdvancedMode = false;
             
-            document.getElementById('modal-title').textContent = 'Sửa chính sách';
+            document.getElementById('modal-title').textContent = 'Edit chính sách';
             document.getElementById('simple-mode').classList.remove('hidden');
             document.getElementById('advanced-mode').classList.add('hidden');
-            document.getElementById('toggle-advanced').textContent = 'Chế độ nâng cao';
+            document.getElementById('toggle-advanced').textContent = 'Advanced mode';
             
             const form = document.getElementById('policy-form');
             form.name.value = policy.name;
@@ -727,12 +727,12 @@
             
             document.getElementById('modal').classList.remove('hidden');
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     }
 
     async function deletePolicy(id) {
-        if (!confirm('Xóa chính sách này?')) return;
+        if (!confirm('Delete chính sách này?')) return;
         try {
             const response = await fetch(`${API_BASE}${id}/`, {
                 method: 'DELETE', headers
@@ -741,10 +741,10 @@
                 showAlert('Đã xóa');
                 loadPolicies();
             } else {
-                showAlert('Lỗi xóa', 'error');
+                showAlert('Error xóa', 'error');
             }
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     }
 
@@ -757,7 +757,7 @@
                 loadPolicies();
             }
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     }
 
@@ -795,7 +795,7 @@
             });
 
             if (response.ok) {
-                showAlert(editingId ? 'Đã cập nhật' : 'Đã tạo');
+                showAlert(editingId ? 'Updated successfully' : 'Đã tạo');
                 document.getElementById('modal').classList.add('hidden');
                 loadPolicies();
             } else {
@@ -803,7 +803,7 @@
                 showAlert(JSON.stringify(err), 'error');
             }
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     });
 

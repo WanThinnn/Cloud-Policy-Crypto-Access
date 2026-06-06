@@ -7,8 +7,8 @@
     <!-- Header -->
     <div class="flex justify-between items-center">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Quản lý Loại Người Dùng</h1>
-            <p class="mt-1 text-sm text-gray-600">Quản lý các loại người dùng trong hệ thống (QĐ1)</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Quản lý Loại Người Dùng</h1>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Quản lý các loại người dùng trong hệ thống (QĐ1)</p>
         </div>
         <button id="add-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,21 +22,21 @@
     <div id="alert" class="hidden rounded-md p-4"></div>
 
     <!-- User Types Table -->
-    <div class="bg-white shadow rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mô tả</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quyền</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Hành động</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Code</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Description</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Quyền</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase">Actions</th>
                 </tr>
             </thead>
-            <tbody id="user-types-list" class="bg-white divide-y divide-gray-200">
+            <tbody id="user-types-list" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr>
-                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">Đang tải...</td>
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">Loading...</td>
                 </tr>
             </tbody>
         </table>
@@ -45,29 +45,29 @@
 
 <!-- Modal -->
 <div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        <h3 id="modal-title" class="text-lg font-semibold mb-4">Thêm loại người dùng</h3>
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <h3 id="modal-title" class="text-lg font-semibold mb-4">Add User Type</h3>
         <form id="user-type-form" class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Code</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Code</label>
                     <input type="text" name="code" required pattern="[a-z][a-z0-9_]*"
-                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="data_analyst">
-                    <p class="mt-1 text-xs text-gray-500">Chỉ chữ thường, số và dấu gạch dưới</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Chỉ chữ thường, số và dấu gạch dưới</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Tên hiển thị</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Display Name</label>
                     <input type="text" name="name" required
-                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="Data Analyst">
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Mô tả</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                 <textarea name="description" rows="2"
-                    class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Mô tả ngắn về vai trò của loại người dùng này"></textarea>
+                    class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Description ngắn về vai trò của loại người dùng này"></textarea>
             </div>
             
             <!-- Permissions Builder -->
@@ -76,148 +76,148 @@
                     <label class="block text-sm font-medium text-blue-800">🔐 Quyền cơ bản (RBAC Layer)</label>
                     <div class="flex items-center gap-2">
                         <label class="inline-flex items-center text-xs">
-                            <input type="checkbox" id="full-access-checkbox" class="text-red-600 rounded mr-1">
-                            <span class="text-red-600 font-medium">⭐ Toàn quyền (*)</span>
+                            <input type="checkbox" id="full-access-checkbox" class="text-red-600 dark:text-red-400 rounded mr-1">
+                            <span class="text-red-600 dark:text-red-400 font-medium">⭐ Toàn quyền (*)</span>
                         </label>
                     </div>
                 </div>
                 
                 <!-- Explanation -->
-                <div class="mb-3 p-2 bg-white rounded border border-blue-100">
-                    <p class="text-xs text-gray-600">
+                <div class="mb-3 p-2 bg-white dark:bg-gray-800 rounded border border-blue-100">
+                    <p class="text-xs text-gray-600 dark:text-gray-400 dark:text-gray-500">
                         <strong>💡 Hybrid RBAC + ABAC:</strong><br>
                         • <span class="text-blue-600 font-medium">Quyền cơ bản (ở đây)</span> = Khả năng TỐI ĐA mà loại người dùng này CÓ THỂ làm<br>
-                        • <span class="text-green-600 font-medium">Chính sách ABAC</span> = Điều kiện CHI TIẾT (phòng ban, thời gian, v.v.) để được thực hiện quyền
+                        • <span class="text-green-600 dark:text-green-400 font-medium">Chính sách ABAC</span> = Điều kiện CHI TIẾT (phòng ban, thời gian, v.v.) để được thực hiện quyền
                     </p>
                 </div>
                 
                 <!-- Permission Groups -->
                 <div id="permission-groups" class="space-y-3">
                     <!-- File Permissions -->
-                    <div class="bg-white rounded p-3 border">
+                    <div class="bg-white dark:bg-gray-800 rounded p-3 border">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700">📄 Quản lý File</span>
-                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="file">Chọn tất cả</button>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">📄 Quản lý File</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="file">Select tất cả</button>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="file_read" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <input type="checkbox" name="permissions" value="file_read" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="file">
                                 <span>Xem file</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="file_create" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <input type="checkbox" name="permissions" value="file_create" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="file">
                                 <span>Tạo file</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="file_upload" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <input type="checkbox" name="permissions" value="file_upload" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="file">
                                 <span>Upload file</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="file_download" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <input type="checkbox" name="permissions" value="file_download" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="file">
                                 <span>Download file</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="file_delete" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
-                                <span>Xóa file</span>
+                                <input type="checkbox" name="permissions" value="file_delete" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="file">
+                                <span>Delete file</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="file_share" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="file">
+                                <input type="checkbox" name="permissions" value="file_share" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="file">
                                 <span>Chia sẻ file</span>
                             </label>
                         </div>
                     </div>
                     
                     <!-- Encryption Permissions -->
-                    <div class="bg-white rounded p-3 border">
+                    <div class="bg-white dark:bg-gray-800 rounded p-3 border">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700">🔒 Mã hóa & Bảo mật</span>
-                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="crypto">Chọn tất cả</button>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">🔒 Mã hóa & Bảo mật</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="crypto">Select tất cả</button>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="file_encrypt" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="crypto">
+                                <input type="checkbox" name="permissions" value="file_encrypt" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="crypto">
                                 <span>Mã hóa file</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="file_decrypt" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="crypto">
+                                <input type="checkbox" name="permissions" value="file_decrypt" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="crypto">
                                 <span>Giải mã file</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="key_manage" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="crypto">
+                                <input type="checkbox" name="permissions" value="key_manage" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="crypto">
                                 <span>Quản lý khóa</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="key_revoke" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="crypto">
+                                <input type="checkbox" name="permissions" value="key_revoke" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="crypto">
                                 <span>Thu hồi khóa</span>
                             </label>
                         </div>
                     </div>
                     
                     <!-- Policy Permissions -->
-                    <div class="bg-white rounded p-3 border">
+                    <div class="bg-white dark:bg-gray-800 rounded p-3 border">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700">📋 Chính sách & Quy định</span>
-                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="policy">Chọn tất cả</button>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">📋 Chính sách & Quy định</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="policy">Select tất cả</button>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="policy_view" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="policy">
+                                <input type="checkbox" name="permissions" value="policy_view" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="policy">
                                 <span>Xem chính sách</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="policy_define" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="policy">
+                                <input type="checkbox" name="permissions" value="policy_define" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="policy">
                                 <span>Định nghĩa chính sách</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="policy_manage" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="policy">
-                                <span>Quản lý chính sách</span>
+                                <input type="checkbox" name="permissions" value="policy_manage" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="policy">
+                                <span>Manage policies</span>
                             </label>
                         </div>
                     </div>
                     
                     <!-- User Management Permissions -->
-                    <div class="bg-white rounded p-3 border">
+                    <div class="bg-white dark:bg-gray-800 rounded p-3 border">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700">👥 Quản lý Người dùng</span>
-                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="user">Chọn tất cả</button>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">👥 User Management</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="user">Select tất cả</button>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="user_view" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="user">
+                                <input type="checkbox" name="permissions" value="user_view" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="user">
                                 <span>Xem người dùng</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="user_create" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="user">
-                                <span>Tạo người dùng</span>
+                                <input type="checkbox" name="permissions" value="user_create" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="user">
+                                <span>Create User</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="user_management_department" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="user">
+                                <input type="checkbox" name="permissions" value="user_management_department" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="user">
                                 <span>Quản lý phòng ban</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="user_management" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="user">
+                                <input type="checkbox" name="permissions" value="user_management" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="user">
                                 <span>Toàn quyền người dùng</span>
                             </label>
                         </div>
                     </div>
                     
                     <!-- Audit Permissions -->
-                    <div class="bg-white rounded p-3 border">
+                    <div class="bg-white dark:bg-gray-800 rounded p-3 border">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-gray-700">📊 Kiểm toán & Báo cáo</span>
-                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="audit">Chọn tất cả</button>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">📊 Kiểm toán & Báo cáo</span>
+                            <button type="button" class="select-all-btn text-xs text-blue-600 hover:underline" data-group="audit">Select tất cả</button>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="logs_view" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="audit">
+                                <input type="checkbox" name="permissions" value="logs_view" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="audit">
                                 <span>Xem logs</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="reports_view" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="audit">
+                                <input type="checkbox" name="permissions" value="reports_view" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="audit">
                                 <span>Xem báo cáo</span>
                             </label>
                             <label class="inline-flex items-center text-sm">
-                                <input type="checkbox" name="permissions" value="audit_export" class="perm-checkbox text-indigo-600 rounded mr-2" data-group="audit">
+                                <input type="checkbox" name="permissions" value="audit_export" class="perm-checkbox text-indigo-600 dark:text-indigo-400 rounded mr-2" data-group="audit">
                                 <span>Xuất báo cáo</span>
                             </label>
                         </div>
@@ -227,29 +227,29 @@
                 <!-- Custom Permissions -->
                 <div class="mt-3">
                     <div class="flex items-center justify-between">
-                        <label class="text-xs text-gray-500">Quyền tùy chỉnh (nếu cần):</label>
+                        <label class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Quyền tùy chỉnh (nếu cần):</label>
                         <button type="button" id="toggle-custom-perms" class="text-xs text-blue-600 hover:underline">+ Thêm quyền khác</button>
                     </div>
-                    <textarea id="custom-permissions" name="custom_permissions" rows="2" class="hidden mt-2 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
+                    <textarea id="custom-permissions" name="custom_permissions" rows="2" class="hidden mt-2 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="permission_1&#10;permission_2"></textarea>
                 </div>
                 
                 <!-- Permission Preview -->
-                <div class="mt-3 p-2 bg-white rounded border">
-                    <span class="text-xs text-gray-500">Quyền đã chọn:</span>
+                <div class="mt-3 p-2 bg-white dark:bg-gray-800 rounded border">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Quyền đã chọn:</span>
                     <div id="permission-preview" class="mt-1 flex flex-wrap gap-1 min-h-[24px]">
-                        <span class="text-gray-400 text-sm">(Chưa chọn quyền nào)</span>
+                        <span class="text-gray-400 dark:text-gray-500 text-sm">(Chưa chọn quyền nào)</span>
                     </div>
                 </div>
             </div>
             
             <div class="flex items-center">
-                <input type="checkbox" name="is_active" id="is_active_checkbox" checked class="h-4 w-4 text-indigo-600 rounded">
-                <label for="is_active_checkbox" class="ml-2 text-sm text-gray-700">Kích hoạt</label>
+                <input type="checkbox" name="is_active" id="is_active_checkbox" checked class="h-4 w-4 text-indigo-600 dark:text-indigo-400 rounded">
+                <label for="is_active_checkbox" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Active</label>
             </div>
             <div class="flex justify-end space-x-3 pt-4">
-                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Hủy</button>
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Lưu</button>
+                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
             </div>
         </form>
     </div>
@@ -292,18 +292,18 @@
     function showAuthRequired() {
         document.getElementById('user-types-list').innerHTML = `
             <tr><td colspan="6" class="px-6 py-8 text-center">
-                <p class="text-gray-600 mb-4">Bạn cần đăng nhập để xem trang này</p>
-                <a href="/auth/login/?next=${encodeURIComponent(location.pathname)}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Đăng nhập</a>
+                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">You need to log in to view this page</p>
+                <a href="/auth/login/?next=${encodeURIComponent(location.pathname)}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md">Log in</a>
             </td></tr>`;
     }
 
     function showAccessDenied() {
         document.querySelector('.space-y-6').innerHTML = `
-            <div class="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+            <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-8 text-center">
                 <div class="text-6xl mb-4">🚫</div>
-                <h2 class="text-2xl font-bold text-red-600 mb-2">Không có quyền truy cập</h2>
-                <p class="text-gray-600 mb-4">Chỉ Admin mới có thể truy cập trang này.</p>
-                <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">Về trang chủ</a>
+                <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">Access Denied</h2>
+                <p class="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">Only Admin can truy cập trang này.</p>
+                <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">Go to Home</a>
             </div>`;
     }
 
@@ -317,17 +317,17 @@
         const preview = document.getElementById('permission-preview');
         
         if (isFullAccess) {
-            preview.innerHTML = '<span class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded font-medium">⭐ Toàn quyền (*)</span>';
+            preview.innerHTML = '<span class="px-2 py-1 text-xs bg-red-100 text-red-800 dark:text-red-300 rounded font-medium">⭐ Toàn quyền (*)</span>';
             return;
         }
         
         const selectedPerms = getSelectedPermissions();
         
         if (selectedPerms.length === 0) {
-            preview.innerHTML = '<span class="text-gray-400 text-sm">(Chưa chọn quyền nào)</span>';
+            preview.innerHTML = '<span class="text-gray-400 dark:text-gray-500 text-sm">(Chưa chọn quyền nào)</span>';
         } else {
             preview.innerHTML = selectedPerms.map(p => 
-                `<span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">${p}</span>`
+                `<span class="px-2 py-1 text-xs bg-green-100 text-green-800 dark:text-green-300 rounded">${p}</span>`
             ).join('');
         }
     }
@@ -430,16 +430,16 @@
             const response = await fetch(API_BASE, { headers });
             console.log('Response status:', response.status);
             if (response.status === 401) {
-                showAlert('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', 'error');
+                showAlert('Session expired. Vui lòng đăng nhập lại.', 'error');
                 setTimeout(() => window.location.href = '/auth/login/', 2000);
                 return;
             }
             if (response.status === 403) {
                 console.log('403 Forbidden response');
                 document.getElementById('user-types-list').innerHTML = `
-                    <tr><td colspan="6" class="px-6 py-8 text-center text-red-600">
-                        <p class="font-medium">Không có quyền truy cập</p>
-                        <p class="text-sm mt-2">Chỉ Super Admin mới có thể xem trang này</p>
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-red-600 dark:text-red-400">
+                        <p class="font-medium">Access Denied</p>
+                        <p class="text-sm mt-2">Only Super Admin can xem trang này</p>
                     </td></tr>`;
                 return;
             }
@@ -451,39 +451,39 @@
             renderUserTypes(userTypes);
         } catch (error) {
             console.error('Error in loadUserTypes:', error);
-            showAlert('Lỗi tải dữ liệu: ' + error.message, 'error');
+            showAlert('Error loading data: ' + error.message, 'error');
         }
     }
 
     function renderUserTypes(userTypes) {
         const tbody = document.getElementById('user-types-list');
         if (userTypes.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Không có dữ liệu</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">No data available</td></tr>';
             return;
         }
 
         tbody.innerHTML = userTypes.map(ut => `
             <tr>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 py-1 text-sm font-mono bg-gray-100 rounded">${ut.code}</span>
+                    <span class="px-2 py-1 text-sm font-mono bg-gray-100 dark:bg-gray-700 rounded">${ut.code}</span>
                     ${ut.is_system ? '<span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">System</span>' : ''}
                 </td>
-                <td class="px-6 py-4 font-medium text-gray-900">${ut.name}</td>
-                <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">${ut.description || '-'}</td>
+                <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${ut.name}</td>
+                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 max-w-xs truncate">${ut.description || '-'}</td>
                 <td class="px-6 py-4">
                     <div class="flex flex-wrap gap-1">
-                        ${ut.permissions.slice(0, 3).map(p => `<span class="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded">${p}</span>`).join('')}
-                        ${ut.permissions.length > 3 ? `<span class="text-xs text-gray-500">+${ut.permissions.length - 3}</span>` : ''}
+                        ${ut.permissions.slice(0, 3).map(p => `<span class="px-2 py-0.5 text-xs bg-green-100 text-green-800 dark:text-green-300 rounded">${p}</span>`).join('')}
+                        ${ut.permissions.length > 3 ? `<span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">+${ut.permissions.length - 3}</span>` : ''}
                     </div>
                 </td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs rounded-full ${ut.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                    <span class="px-2 py-1 text-xs rounded-full ${ut.is_active ? 'bg-green-100 text-green-800 dark:text-green-300' : 'bg-red-100 text-red-800 dark:text-red-300'}">
                         ${ut.is_active ? 'Active' : 'Inactive'}
                     </span>
                 </td>
                 <td class="px-6 py-4 text-right space-x-2">
-                    <button onclick="editUserType(${ut.id})" class="text-indigo-600 hover:text-indigo-900">Sửa</button>
-                    ${!ut.is_system ? `<button onclick="deleteUserType(${ut.id})" class="text-red-600 hover:text-red-900">Xóa</button>` : ''}
+                    <button onclick="editUserType(${ut.id})" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900">Edit</button>
+                    ${!ut.is_system ? `<button onclick="deleteUserType(${ut.id})" class="text-red-600 dark:text-red-400 hover:text-red-900">Delete</button>` : ''}
                 </td>
             </tr>
         `).join('');
@@ -501,7 +501,7 @@
     // Modal handlers
     document.getElementById('add-btn').addEventListener('click', () => {
         editingId = null;
-        document.getElementById('modal-title').textContent = 'Thêm loại người dùng';
+        document.getElementById('modal-title').textContent = 'Add User Type';
         document.getElementById('user-type-form').reset();
         document.getElementById('custom-permissions').classList.add('hidden');
         setSelectedPermissions([]);
@@ -518,7 +518,7 @@
             const response = await fetch(`${API_BASE}${id}/`, { headers });
             const ut = await response.json();
             editingId = id;
-            document.getElementById('modal-title').textContent = 'Sửa loại người dùng';
+            document.getElementById('modal-title').textContent = 'Edit loại người dùng';
             const form = document.getElementById('user-type-form');
             form.code.value = ut.code;
             form.name.value = ut.name;
@@ -530,24 +530,24 @@
             
             document.getElementById('modal').classList.remove('hidden');
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     }
 
     // Delete user type
     async function deleteUserType(id) {
-        if (!confirm('Bạn chắc chắn muốn xóa loại người dùng này?')) return;
+        if (!confirm('Are you sure you want to delete loại người dùng này?')) return;
         try {
             const response = await fetch(`${API_BASE}${id}/`, { method: 'DELETE', headers });
             if (response.ok) {
-                showAlert('Đã xóa thành công');
+                showAlert('Successfully deleted');
                 loadUserTypes();
             } else {
                 const data = await response.json();
-                showAlert(data.error || 'Lỗi xóa', 'error');
+                showAlert(data.error || 'Error xóa', 'error');
             }
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     }
 
@@ -579,7 +579,7 @@
             });
 
             if (response.ok) {
-                showAlert(editingId ? 'Đã cập nhật' : 'Đã thêm thành công');
+                showAlert(editingId ? 'Updated successfully' : 'Successfully added');
                 document.getElementById('modal').classList.add('hidden');
                 loadUserTypes();
             } else {
@@ -587,7 +587,7 @@
                 showAlert(JSON.stringify(err), 'error');
             }
         } catch (error) {
-            showAlert('Lỗi: ' + error.message, 'error');
+            showAlert('Error: ' + error.message, 'error');
         }
     });
 

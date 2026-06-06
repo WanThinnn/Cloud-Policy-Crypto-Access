@@ -1,40 +1,55 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Đăng ký - Crypto Access{% endblock %}
 
 {% block content %}
-<div class="min-h-[calc(100vh-16rem)] flex items-center justify-center px-4 py-12">
-    <div class="max-w-md w-full space-y-8">
-        <!-- Header -->
-        <div class="text-center">
-            <div class="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-indigo-100">
-                <svg class="h-10 w-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-                </svg>
+<div class="relative flex items-center justify-center px-4 min-h-[calc(100vh-120px)] overflow-hidden">
+  <!-- Background full không crop -->
+  <div class="fixed inset-0 z-0">
+    <img
+      src="{% static 'image/background.webp' %}"
+      alt="Crypto Access Background"
+      class="w-full h-full object-cover object-center"
+    />
+    <div class="absolute inset-0 bg-gradient-to-br from-gray-900/70 via-gray-800/60 to-gray-900/80"></div>
+  </div>
+
+  <!-- Register Card -->
+  <div class="relative z-10 w-full max-w-5xl my-10">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+      <div class="grid md:grid-cols-5 gap-0 min-h-[500px]">
+        <!-- Left side -->
+        <div class="md:col-span-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-10 text-white flex flex-col justify-center">
+          <div class="text-center md:text-left space-y-6">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl mb-2">
+              <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+              </svg>
             </div>
-            <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
-                Tạo tài khoản mới
-            </h2>
-            <p class="mt-2 text-sm text-gray-600">
-                Đăng ký để truy cập hệ thống quản lý dữ liệu mã hóa
-            </p>
+            <div>
+              <h1 class="text-3xl font-bold mb-3">Tạo tài khoản mới</h1>
+              <p class="text-blue-100 text-base font-medium">Crypto Access System</p>
+              <p class="text-blue-200 text-sm mt-2 opacity-90">Đăng ký để truy cập hệ thống quản lý dữ liệu mã hóa</p>
+            </div>
+          </div>
         </div>
 
-        <!-- Alert -->
-        <div id="alert" class="hidden rounded-md p-4 fade-in">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg id="alert-icon" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <p id="alert-message" class="text-sm font-medium"></p>
-                </div>
+        <!-- Right side -->
+        <div class="md:col-span-3 p-10 flex flex-col justify-center bg-white dark:bg-gray-800">
+          
+          <!-- Alert Box -->
+          <div id="alert" class="hidden mb-4 p-4 rounded-lg shadow-sm border fade-in" role="alert">
+            <div class="flex items-center gap-3">
+              <svg id="alert-icon" class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              <p id="alert-message" class="text-sm font-medium"></p>
             </div>
-        </div>
+          </div>
 
         <!-- Register Form -->
+
         <form id="register-form" class="mt-8 space-y-6 bg-white p-8 rounded-lg shadow-md">
             <div class="space-y-4">
                 <!-- Full Name -->
@@ -55,7 +70,7 @@
                 <!-- Username -->
                 <div>
                     <label for="username" class="block text-sm font-medium text-gray-700">
-                        Tên đăng nhập <span class="text-red-500">*</span>
+                        Username <span class="text-red-500">*</span>
                     </label>
                     <input 
                         id="username" 
@@ -102,7 +117,7 @@
                 <!-- Password -->
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700">
-                        Mật khẩu <span class="text-red-500">*</span>
+                        Password <span class="text-red-500">*</span>
                     </label>
                     <div class="mt-1 relative">
                         <input 
@@ -196,11 +211,14 @@
             <div class="text-center text-sm">
                 <span class="text-gray-600">Đã có tài khoản?</span>
                 <a href="/auth/login/" class="ml-1 font-medium text-indigo-600 hover:text-indigo-500">
-                    Đăng nhập ngay
+                    Login ngay
                 </a>
             </div>
         </form>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -268,10 +286,10 @@
         
         passwordMatch.classList.remove('hidden');
         if (passwordInput.value === password2Input.value) {
-            passwordMatch.textContent = '✓ Mật khẩu khớp';
+            passwordMatch.textContent = '✓ Password khớp';
             passwordMatch.className = 'mt-1 text-xs text-green-600';
         } else {
-            passwordMatch.textContent = '✗ Mật khẩu không khớp';
+            passwordMatch.textContent = '✗ Password không khớp';
             passwordMatch.className = 'mt-1 text-xs text-red-600';
         }
     });
@@ -293,7 +311,7 @@
         
         // Validate passwords match
         if (passwordInput.value !== password2Input.value) {
-            showAlert('Mật khẩu xác nhận không khớp!');
+            showAlert('Password xác nhận không khớp!');
             return;
         }
         
@@ -337,18 +355,18 @@
             } else {
                 // Handle validation errors
                 if (data.username) {
-                    showAlert(`Tên đăng nhập: ${data.username[0]}`);
+                    showAlert(`Username: ${data.username[0]}`);
                 } else if (data.email) {
                     showAlert(`Email: ${data.email[0]}`);
                 } else if (data.password) {
-                    showAlert(`Mật khẩu: ${data.password[0]}`);
+                    showAlert(`Password: ${data.password[0]}`);
                 } else {
                     showAlert(data.message || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.');
                 }
             }
         } catch (error) {
             console.error('Register error:', error);
-            showAlert('Có lỗi xảy ra. Vui lòng thử lại.');
+            showAlert('Yes lỗi xảy ra. Vui lòng thử lại.');
         } finally {
             submitButton.disabled = false;
             buttonText.textContent = 'Đăng ký';

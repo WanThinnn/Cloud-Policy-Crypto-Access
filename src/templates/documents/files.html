@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Quản lý Tài liệu - Document Management{% endblock %}
+{% block title %}Document Management - Document Management{% endblock %}
 
 {% block content %}
 <style>
@@ -20,38 +20,38 @@
 
 <div class="space-y-6 bg-gradient-to-br from-gray-50 to-indigo-50 min-h-screen p-6">
     <!-- Header với Search và View Toggle -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
         <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
                     <div class="p-2 bg-indigo-100 rounded-lg">
-                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
                         </svg>
                     </div>
-                    Quản lý Tài liệu
+                    Document Management
                 </h1>
-                <p class="mt-1 text-sm text-gray-500 ml-12">Hệ thống quản lý tài liệu bảo mật với ABAC và Hybrid CP-ABE</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 ml-12">Secure Document Management System with ABAC and Hybrid CP-ABE</p>
             </div>
             
             <div class="flex flex-wrap items-center gap-3">
                 <!-- Search Box -->
                 <div class="relative group">
-                    <input type="text" id="search-input" placeholder="Tìm kiếm tài liệu..." 
-                        class="pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full sm:w-64 transition-all duration-200">
-                    <svg class="absolute left-3 top-3 h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <input type="text" id="search-input" placeholder="Search documents..." 
+                        class="pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full sm:w-64 transition-all duration-200">
+                    <svg class="absolute left-3 top-3 h-5 w-5 text-gray-400 dark:text-gray-500 group-focus-within:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                 </div>
 
                 <!-- View Toggle -->
-                <div class="flex p-1 bg-gray-100 rounded-xl">
-                    <button id="grid-view-btn" class="p-2 rounded-lg bg-white shadow-sm text-indigo-600 transition-all duration-200" title="Lưới">
+                <div class="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-xl">
+                    <button id="grid-view-btn" class="p-2 rounded-lg bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400 transition-all duration-200" title="Grid">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
                         </svg>
                     </button>
-                    <button id="list-view-btn" class="p-2 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-white/50 transition-all duration-200" title="Danh sách">
+                    <button id="list-view-btn" class="p-2 rounded-lg text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:text-indigo-400 hover:bg-white dark:bg-gray-800/50 transition-all duration-200" title="List">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                         </svg>
@@ -85,17 +85,17 @@
     <!-- Bulk Actions Bar -->
     <div id="bulk-actions-bar" class="hidden bg-indigo-600 text-white rounded-xl shadow-lg p-4 flex items-center justify-between mb-6 animate-fade-in-down">
         <div class="flex items-center gap-4">
-            <div class="bg-white/20 p-2 rounded-lg">
+            <div class="bg-white dark:bg-gray-800/20 p-2 rounded-lg">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
             </div>
-            <span class="font-medium"><span id="selected-count" class="font-bold text-lg">0</span> file đã chọn</span>
-            <div class="h-6 w-px bg-white/30 mx-2"></div>
-            <button data-action="clear-selection" class="text-sm text-indigo-100 hover:text-white hover:underline transition-colors">Bỏ chọn tất cả</button>
+            <span class="font-medium"><span id="selected-count" class="font-bold text-lg">0</span> selected files</span>
+            <div class="h-6 w-px bg-white dark:bg-gray-800/30 mx-2"></div>
+            <button data-action="clear-selection" class="text-sm text-indigo-100 hover:text-white hover:underline transition-colors">Deselect all</button>
         </div>
         <div class="flex gap-3">
-            <button data-action="bulk-download" class="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-50 font-medium transition-colors flex items-center gap-2">
+            <button data-action="bulk-download" class="px-4 py-2 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 font-medium transition-colors flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
@@ -105,7 +105,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>
-                Chuyển vào thùng rác
+                Move to Trash
             </button>
         </div>
     </div>
@@ -113,46 +113,46 @@
     <!-- Drag & Drop Zone -->
     <div id="drop-zone" class="hidden border-2 border-dashed border-indigo-400 bg-indigo-50/80 backdrop-blur-sm rounded-2xl p-16 text-center mb-6 animate-pulse">
         <div class="bg-indigo-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="h-10 w-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-10 w-10 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
             </svg>
         </div>
-        <p class="text-xl font-bold text-indigo-900">Thả files vào đây để upload</p>
-        <p class="text-indigo-600 mt-2">Hỗ trợ các định dạng file phổ biến</p>
+        <p class="text-xl font-bold text-indigo-900">Drop files here to upload</p>
+        <p class="text-indigo-600 dark:text-indigo-400 mt-2">Supports common file formats</p>
     </div>
 
     <!-- Files Container -->
-    <div id="files-container" class="bg-white shadow-sm border border-gray-100 rounded-2xl overflow-hidden min-h-[600px]">
+    <div id="files-container" class="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 rounded-2xl overflow-hidden min-h-[600px]">
         <!-- Breadcrumb & Toolbar -->
-        <div class="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="p-4 border-b border-gray-100 bg-gray-50 dark:bg-gray-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <!-- Breadcrumb -->
-            <div class="flex items-center bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
-                <button data-action="go-home" class="text-gray-500 hover:text-indigo-600 transition-colors">
+            <div class="flex items-center bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-sm border border-gray-100">
+                <button data-action="go-home" class="text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:text-indigo-400 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                     </svg>
                 </button>
                 <div class="h-4 w-px bg-gray-300 mx-3"></div>
-                <div id="breadcrumb" class="flex items-center text-sm font-medium text-gray-700">
+                <div id="breadcrumb" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
                     <!-- JS will populate this -->
                 </div>
             </div>
 
             <!-- Action Buttons -->
-            <button data-action="create-folder" class="text-gray-600 hover:text-indigo-600 hover:bg-white bg-transparent px-4 py-2 rounded-xl flex items-center gap-2 transition-all border border-transparent hover:border-gray-200 hover:shadow-sm">
+            <button data-action="create-folder" class="text-gray-600 dark:text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:text-indigo-400 hover:bg-white dark:bg-gray-800 bg-transparent px-4 py-2 rounded-xl flex items-center gap-2 transition-all border border-transparent hover:border-gray-200 dark:border-gray-700 hover:shadow-sm">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
                 </svg>
-                <span class="font-medium">Thư mục mới</span>
+                <span class="font-medium">New Folder</span>
             </button>
         </div>
         
         <!-- Grid View -->
         <div id="files-grid" class="p-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
             <!-- Loading State -->
-            <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
+            <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
                 <div class="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-                <p class="font-medium">Đang tải tài liệu...</p>
+                <p class="font-medium">Loading documents...</p>
             </div>
         </div>
 
@@ -165,25 +165,25 @@
 
 <!-- Upload Modal -->
 <div id="upload-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
             </svg>
-            Upload Tài liệu
+            Upload Document
         </h3>
         <form id="upload-form" class="space-y-4">
             <!-- Drag & Drop File Zone -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Chọn file</label>
-                <div id="modal-drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors">
-                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select file</label>
+                <div id="modal-drop-zone" class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors">
+                    <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                     </svg>
-                    <p class="text-sm font-medium text-gray-700">Kéo thả file vào đây, hoặc click để chọn</p>
-                    <p class="text-xs text-gray-500 mt-1">Hỗ trợ: .md, .txt, .pdf, .doc, .docx, images</p>
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Drag and drop file here, or click to select</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">Supports: .md, .txt, .pdf, .doc, .docx, images</p>
                     <input type="file" id="file-input" name="file" required accept=".md,.txt,.pdf,.doc,.docx,.jpg,.png,.gif" class="hidden">
-                    <div id="file-selected-name" class="mt-3 text-sm font-bold text-indigo-600 hidden"></div>
+                    <div id="file-selected-name" class="mt-3 text-sm font-bold text-indigo-600 dark:text-indigo-400 hidden"></div>
                 </div>
             </div>
             
@@ -192,17 +192,17 @@
                 <div class="w-full bg-gray-200 rounded-full h-2.5">
                     <div id="upload-progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all" style="width: 0%"></div>
                 </div>
-                <p class="text-xs text-gray-600 mt-1"><span id="upload-progress-text">0%</span></p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 dark:text-gray-500 mt-1"><span id="upload-progress-text">0%</span></p>
             </div>
 
             <!-- Destination Folder Badge -->
             <div>
-                <label class="block text-sm font-medium text-gray-700">Thư mục đích</label>
-                <div class="mt-1 flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-md">
-                    <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Destination Folder</label>
+                <div class="mt-1 flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md">
+                    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
                     </svg>
-                    <span id="upload-destination-folder" class="text-sm font-medium text-gray-700">/ (Root)</span>
+                    <span id="upload-destination-folder" class="text-sm font-medium text-gray-700 dark:text-gray-300">/ (Root)</span>
                 </div>
             </div>
             
@@ -210,79 +210,79 @@
             <div id="version-policy-section" class="hidden border-t pt-4 mt-4 bg-yellow-50 p-4 rounded-xl border border-yellow-200">
                 <h4 class="text-sm font-medium text-yellow-900 mb-2 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Xử lý Quyền cho Phiên bản mới
+                    New Version Policy Handling
                 </h4>
                 <div class="text-sm text-yellow-800 mb-3">
-                    Policy cũ: <strong id="old-policy-name" class="text-indigo-700 font-semibold">Đang tải...</strong>
+                    Old Policy: <strong id="old-policy-name" class="text-indigo-700 font-semibold">Loading...</strong>
                 </div>
                 
                 <div class="space-y-2 mt-2">
-                    <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-yellow-100 hover:bg-yellow-100 transition-colors">
+                    <label class="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-800 p-2 rounded border border-yellow-100 hover:bg-yellow-100 transition-colors">
                         <input type="radio" name="version_policy_action" value="keep" checked class="text-yellow-600 focus:ring-yellow-500">
-                        <span class="text-sm font-medium text-gray-700">1. Giữ nguyên policy cũ</span>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">1. Keep old policy</span>
                     </label>
-                    <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-yellow-100 hover:bg-yellow-100 transition-colors">
+                    <label class="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-800 p-2 rounded border border-yellow-100 hover:bg-yellow-100 transition-colors">
                         <input type="radio" name="version_policy_action" value="update" class="text-yellow-600 focus:ring-yellow-500">
-                        <span class="text-sm font-medium text-gray-700">2. Cập nhật / Gán policy mới</span>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">2. Update / Assign new policy</span>
                     </label>
                 </div>
             </div>
 
             <!-- Access Policy Section -->
             <div id="normal-policy-section" class="border-t pt-4 mt-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                     <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                     </svg>
-                    Gán quyền truy cập (tùy chọn)
+                    Assign access rights (optional)
                 </label>
                 
-                <select id="upload-policy-select" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
-                    <option value="">-- Không gán policy (sử dụng ABAC mặc định) --</option>
+                <select id="upload-policy-select" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm">
+                    <option value="">-- No policy (use default ABAC) --</option>
                     <!-- Policies will be loaded here -->
                 </select>
-                <p class="mt-1 text-xs text-gray-500">Chọn policy để kiểm soát ai có thể truy cập file này</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Select policy to control who can access this file</p>
                 
                 <!-- Quick create new policy -->
                 <div class="mt-3">
-                    <button type="button" data-action="toggle-new-policy-form" class="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                    <button type="button" data-action="toggle-new-policy-form" class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 flex items-center gap-1">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
-                        Tạo policy mới cho file này
+                        Create new policy for this file
                     </button>
                     
                     <div id="new-policy-form-upload" class="hidden mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
                         <div class="flex justify-between items-center">
-                            <label class="block text-sm font-medium text-blue-800">🔧 Tạo Policy mới</label>
+                            <label class="block text-sm font-medium text-blue-800">🔧 Create new Policy</label>
                             <button type="button" data-action="toggle-upload-advanced" id="upload-toggle-advanced" class="text-xs text-blue-600 hover:underline">
-                                Chế độ nâng cao
+                                Advanced mode
                             </button>
                         </div>
                         
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-gray-600">Tên Policy *</label>
-                                <input type="text" id="upload-new-policy-name" placeholder="vd: hr_read_document" pattern="[a-z][a-z0-9_]*"
-                                    class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
-                                <p class="text-xs text-gray-400 mt-0.5">Chữ thường, số và gạch dưới</p>
+                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Policy Name *</label>
+                                <input type="text" id="upload-new-policy-name" placeholder="e.g.: hr_read_document" pattern="[a-z][a-z0-9_]*"
+                                    class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
+                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Lowercase, numbers and underscores</p>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600">Ưu tiên (1 = cao nhất)</label>
+                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Priority (1 = highest)</label>
                                 <input type="number" id="upload-new-policy-priority" value="100" min="1" max="999"
-                                    class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                                    class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
                             </div>
                         </div>
                         
                         <div>
-                            <label class="block text-xs font-medium text-gray-600">Mô tả</label>
-                            <input type="text" id="upload-new-policy-description" placeholder="Mô tả chính sách"
-                                class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Description</label>
+                            <input type="text" id="upload-new-policy-description" placeholder="Policy description"
+                                class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
                         </div>
                         
                         <!-- Simple Mode: Policy Builder -->
                         <div id="upload-simple-mode" class="space-y-3">
-                            <p class="text-xs text-blue-700">Chọn điều kiện cho người dùng được áp dụng chính sách này:</p>
+                            <p class="text-xs text-blue-700">Select conditions for users to apply this policy:</p>
                             
                             <div id="upload-condition-rules" class="space-y-2">
                                 <!-- Rules will be added here -->
@@ -292,31 +292,31 @@
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                 </svg>
-                                Thêm điều kiện
+                                Add condition
                             </button>
                             
-                            <div class="text-xs text-gray-500">
-                                💡 <strong>Gợi ý:</strong> Chọn <span class="text-green-600 font-medium">VÀ</span> nếu cần thỏa tất cả điều kiện, 
-                                <span class="text-orange-600 font-medium">HOẶC</span> nếu chỉ cần 1 trong các điều kiện.
+                            <div class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                                💡 <strong>Hint:</strong> Select <span class="text-green-600 dark:text-green-400 font-medium">AND</span> if all conditions must be met, 
+                                <span class="text-orange-600 font-medium">OR</span> if only 1 of the conditions must be met.
                             </div>
                             
-                            <div class="p-2 bg-white rounded border">
-                                <span class="text-xs text-gray-500">Xem trước câu điều kiện:</span>
+                            <div class="p-2 bg-white dark:bg-gray-800 rounded border">
+                                <span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Condition preview:</span>
                                 <div id="upload-condition-preview" class="font-mono text-xs text-green-700 mt-1">
-                                    (Chưa có điều kiện nào)
+                                    (No conditions yet)
                                 </div>
                             </div>
                         </div>
                         
                         <!-- Advanced Mode: Raw Expression -->
                         <div id="upload-advanced-mode" class="hidden">
-                            <p class="text-xs text-blue-700 mb-2">Nhập biểu thức ABAC trực tiếp:</p>
+                            <p class="text-xs text-blue-700 mb-2">Enter ABAC expression directly:</p>
                             <textarea id="upload-new-policy-condition" rows="2"
-                                class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm font-mono"
+                                class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm font-mono"
                                 placeholder="r.sub.user_type == 'admin' and r.sub.department == 'it'"
                                 oninput="updateUploadPreviewFromAdvanced()"></textarea>
-                            <div class="mt-1 text-xs text-gray-500">
-                                <strong>Cú pháp:</strong> <code>r.sub.attribute == 'value'</code> | <code>and</code>, <code>or</code> để kết hợp
+                            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                                <strong>Syntax:</strong> <code>r.sub.attribute == 'value'</code> | <code>and</code>, <code>or</code> to combine
                             </div>
                         </div>
                         
@@ -324,29 +324,29 @@
                         
                         <div class="grid grid-cols-3 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-gray-600">Tài nguyên</label>
-                                <select id="upload-new-policy-resource" class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
-                                    <option value="document">📄 Tài liệu</option>
-                                    <option value="key">🔑 Khóa mã hóa</option>
-                                    <option value="*">⭐ Tất cả</option>
+                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Resource</label>
+                                <select id="upload-new-policy-resource" class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
+                                    <option value="document">📄 Document</option>
+                                    <option value="key">🔑 Encryption Key</option>
+                                    <option value="*">⭐ All</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600">Hành động</label>
-                                <select id="upload-new-policy-action" class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Actions</label>
+                                <select id="upload-new-policy-action" class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
                                     <option value="read">👁️ Xem</option>
-                                    <option value="write">✏️ Tạo mới</option>
-                                    <option value="update">📝 Cập nhật</option>
-                                    <option value="delete">🗑️ Xóa</option>
-                                    <option value="download">⬇️ Tải xuống</option>
-                                    <option value="*">⭐ Tất cả</option>
+                                    <option value="write">✏️ Create</option>
+                                    <option value="update">📝 Update</option>
+                                    <option value="delete">🗑️ Delete</option>
+                                    <option value="download">⬇️ Download</option>
+                                    <option value="*">⭐ All</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600">Hiệu lực</label>
-                                <select id="upload-new-policy-effect" class="mt-1 w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
-                                    <option value="allow">✅ Cho phép</option>
-                                    <option value="deny">❌ Từ chối</option>
+                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Effect</label>
+                                <select id="upload-new-policy-effect" class="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
+                                    <option value="allow">✅ Allow</option>
+                                    <option value="deny">❌ Deny</option>
                                 </select>
                             </div>
                         </div>
@@ -355,8 +355,8 @@
             </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t">
-                <button type="button" id="cancel-upload" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                    Hủy
+                <button type="button" id="cancel-upload" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
+                    Cancel
                 </button>
                 <button type="submit" id="submit-upload" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                     Upload
@@ -368,10 +368,10 @@
 
 <!-- File Preview Modal -->
 <div id="preview-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-[9999]">
-    <div class="bg-white rounded-lg w-full mx-4 flex flex-col" style="max-width: 90vw; max-height: 90vh;">
-        <div class="flex items-center justify-between p-4 border-b relative z-10 bg-white rounded-t-lg shadow-sm">
+    <div class="bg-white dark:bg-gray-800 rounded-lg w-full mx-4 flex flex-col" style="max-width: 90vw; max-height: 90vh;">
+        <div class="flex items-center justify-between p-4 border-b relative z-10 bg-white dark:bg-gray-800 rounded-t-lg shadow-sm">
             <h3 class="text-lg font-semibold" id="preview-title">Preview</h3>
-            <button data-action="close-preview" class="text-gray-500 hover:text-gray-700">
+            <button data-action="close-preview" class="text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -380,7 +380,7 @@
         <div id="preview-content" class="flex-1 overflow-auto p-6 flex flex-col items-center justify-center min-h-[50vh]">
             <!-- Content here -->
         </div>
-        <div class="flex justify-between items-center p-4 border-t bg-gray-50 relative z-10 rounded-b-lg shadow-inner">
+        <div class="flex justify-between items-center p-4 border-t bg-gray-50 dark:bg-gray-900 relative z-10 rounded-b-lg shadow-inner">
             <div class="flex gap-2">
                 <button data-action="download-preview" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -389,71 +389,71 @@
                     Download
                 </button>
             </div>
-            <button data-action="close-preview" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">
-                Đóng
+            <button data-action="close-preview" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
+                Close
             </button>
         </div>
     </div>
 </div>
 
 <!-- Context Menu -->
-<div id="context-menu" class="hidden fixed shadow-xl rounded-2xl p-1.5 z-50 min-w-[200px] border border-gray-100 ring-1 ring-black/5 bg-white">
-    <button data-action="preview" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
-        <svg class="w-5 h-5 text-gray-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div id="context-menu" class="hidden fixed shadow-xl rounded-2xl p-1.5 z-50 min-w-[200px] border border-gray-100 ring-1 ring-black/5 bg-white dark:bg-gray-800">
+    <button data-action="preview" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
+        <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
         </svg>
-        <span>Xem trước</span>
+        <span>Preview</span>
     </button>
-    <button data-action="download" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
-        <svg class="w-5 h-5 text-gray-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <button data-action="download" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
+        <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
         </svg>
         <span>Download</span>
     </button>
-    <button data-action="upload-new-version" id="context-upload-version" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
+    <button data-action="upload-new-version" id="context-upload-version" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
         <svg class="w-5 h-5 text-blue-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
         </svg>
-        <span>Tải lên phiên bản mới</span>
+        <span>Upload new version</span>
     </button>
-    <div class="h-px bg-gray-100 my-1.5 mx-2"></div>
+    <div class="h-px bg-gray-100 dark:bg-gray-700 my-1.5 mx-2"></div>
     <button data-action="assign_policy" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 rounded-xl flex items-center gap-3 transition-colors group">
         <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
         </svg>
-        <span>Gán quyền truy cập</span>
+        <span>Assign Access Rights</span>
     </button>
-    <button data-action="view_policies" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
-        <svg class="w-5 h-5 text-gray-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <button data-action="view_policies" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
+        <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
         </svg>
-        <span>Xem quyền đã gán</span>
+        <span>View Assigned Rights</span>
     </button>
-    <button data-action="versions" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
-        <svg class="w-5 h-5 text-gray-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <button data-action="versions" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
+        <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <span>Lịch sử phiên bản</span>
+        <span>Version History</span>
     </button>
-    <div class="h-px bg-gray-100 my-1.5 mx-2"></div>
-    <button data-action="delete" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 rounded-xl flex items-center gap-3 transition-colors group">
+    <div class="h-px bg-gray-100 dark:bg-gray-700 my-1.5 mx-2"></div>
+    <button data-action="delete" class="context-menu-item w-full text-left px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:bg-red-900/30 hover:text-red-700 rounded-xl flex items-center gap-3 transition-colors group">
         <svg class="w-5 h-5 text-red-400 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
         </svg>
-        <span>Chuyển vào thùng rác</span>
+        <span>Move to Trash</span>
     </button>
 </div>
 
 <!-- Assign Policy Modal -->
 <div id="assign-policy-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
         <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
             <h3 class="text-xl font-bold flex items-center gap-3">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
-                Gán quyền truy cập
+                Assign Access Rights
             </h3>
             <p class="text-indigo-100 mt-1 text-sm" id="assign-policy-file-name">File: </p>
         </div>
@@ -462,12 +462,12 @@
             <!-- Tabs -->
             <div class="flex border-b mb-6">
                 <button id="tab-existing" data-action="switch-tab-existing" 
-                    class="px-4 py-2 border-b-2 border-indigo-600 text-indigo-600 font-medium">
-                    Chọn Policy có sẵn
+                    class="px-4 py-2 border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 font-medium">
+                    Select existing Policy
                 </button>
                 <button id="tab-new" data-action="switch-tab-new" 
-                    class="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                    Tạo Policy mới
+                    class="px-4 py-2 border-b-2 border-transparent text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300">
+                    Create new Policy
                 </button>
             </div>
             
@@ -475,18 +475,18 @@
             <div id="panel-existing" class="space-y-4">
                 <div class="relative">
                     <input type="text" id="policy-search" placeholder="Tìm kiếm policy..." 
-                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         oninput="filterPolicies(this.value)">
-                    <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                 </div>
                 
                 <div id="policies-list" class="space-y-2 max-h-64 overflow-y-auto">
                     <!-- Policies will be loaded here -->
-                    <div class="text-center py-8 text-gray-500">
+                    <div class="text-center py-8 text-gray-500 dark:text-gray-400 dark:text-gray-500">
                         <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                        Đang tải danh sách policies...
+                        Loading policies list...
                     </div>
                 </div>
             </div>
@@ -494,37 +494,37 @@
             <!-- New Policy Tab -->
             <div id="panel-new" class="hidden space-y-4">
                 <div class="flex justify-between items-center">
-                    <label class="block text-sm font-medium text-blue-800">🔧 Xây dựng điều kiện (Policy Builder)</label>
+                    <label class="block text-sm font-medium text-blue-800">🔧 Build conditions (Policy Builder)</label>
                     <button type="button" data-action="toggle-assign-advanced" id="assign-toggle-advanced" class="text-xs text-blue-600 hover:underline">
-                        Chế độ nâng cao
+                        Advanced mode
                     </button>
                 </div>
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tên Policy *</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Policy Name *</label>
                         <input type="text" id="new-policy-name" pattern="[a-z][a-z0-9_]*"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                            placeholder="vd: hr_read_document">
-                        <p class="text-xs text-gray-500 mt-1">Chữ thường, số và gạch dưới</p>
+                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            placeholder="e.g.: hr_read_document">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">Lowercase, numbers and underscores</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Ưu tiên (1 = cao nhất)</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority (1 = highest)</label>
                         <input type="number" id="new-policy-priority" value="100" min="1" max="999"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
                     </div>
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                     <input type="text" id="new-policy-description" 
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        placeholder="Mô tả chính sách">
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Policy description">
                 </div>
                 
                 <!-- Simple Mode: Policy Builder -->
                 <div id="assign-simple-mode" class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                    <p class="text-sm text-blue-700">Chọn điều kiện cho người dùng được áp dụng chính sách này:</p>
+                    <p class="text-sm text-blue-700">Select conditions for users to apply this policy:</p>
                     
                     <div id="assign-condition-rules" class="space-y-2">
                         <!-- Rules will be added here -->
@@ -534,35 +534,35 @@
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
-                        Thêm điều kiện
+                        Add condition
                     </button>
                     
-                    <div class="text-xs text-gray-500">
-                        💡 <strong>Gợi ý:</strong> Chọn <span class="text-green-600 font-medium">VÀ</span> nếu cần thỏa tất cả điều kiện, 
-                        <span class="text-orange-600 font-medium">HOẶC</span> nếu chỉ cần 1 trong các điều kiện.
+                    <div class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                        💡 <strong>Hint:</strong> Select <span class="text-green-600 dark:text-green-400 font-medium">AND</span> if all conditions must be met, 
+                        <span class="text-orange-600 font-medium">OR</span> if only 1 of the conditions must be met.
                     </div>
                     
-                    <div class="p-2 bg-white rounded border">
-                        <span class="text-xs text-gray-500">Xem trước câu điều kiện:</span>
+                    <div class="p-2 bg-white dark:bg-gray-800 rounded border">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Condition preview:</span>
                         <div id="assign-condition-preview" class="font-mono text-sm text-green-700 mt-1">
-                            (Chưa có điều kiện nào)
+                            (No conditions yet)
                         </div>
                     </div>
                 </div>
                 
                 <!-- Advanced Mode: Raw Expression -->
                 <div id="assign-advanced-mode" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p class="text-sm text-blue-700 mb-2">Nhập biểu thức ABAC trực tiếp:</p>
+                    <p class="text-sm text-blue-700 mb-2">Enter ABAC expression directly:</p>
                     <textarea id="new-policy-condition" rows="3"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
                         placeholder="r.sub.user_type == 'admin' and r.sub.department == 'it'"
                         oninput="updateAssignPreviewFromAdvanced()"></textarea>
-                    <div class="mt-2 text-xs text-gray-500">
-                        <strong>Cú pháp:</strong>
+                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                        <strong>Syntax:</strong>
                         <ul class="list-disc ml-4 mt-1">
-                            <li><code>r.sub.attribute == 'value'</code> - So sánh bằng</li>
-                            <li><code>r.sub.attribute in ['val1', 'val2']</code> - Thuộc danh sách</li>
-                            <li><code>and</code>, <code>or</code> - Kết hợp điều kiện</li>
+                            <li><code>r.sub.attribute == 'value'</code> - Equals</li>
+                            <li><code>r.sub.attribute in ['val1', 'val2']</code> - In list</li>
+                            <li><code>and</code>, <code>or</code> - Combine conditions</li>
                         </ul>
                     </div>
                 </div>
@@ -571,31 +571,31 @@
                 
                 <div class="grid grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tài nguyên</label>
-                        <select id="new-policy-resource" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="document">📄 Tài liệu</option>
-                            <option value="key">🔑 Khóa mã hóa</option>
-                            <option value="user">👤 Quản lý người dùng</option>
-                            <option value="policy">📋 Quản lý chính sách</option>
-                            <option value="*">⭐ Tất cả tài nguyên</option>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resource</label>
+                        <select id="new-policy-resource" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="document">📄 Document</option>
+                            <option value="key">🔑 Encryption Key</option>
+                            <option value="user">👤 Manage users</option>
+                            <option value="policy">📋 Manage policies</option>
+                            <option value="*">⭐ All resources</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Hành động</label>
-                        <select id="new-policy-action" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Actions</label>
+                        <select id="new-policy-action" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
                             <option value="read">👁️ Xem (Read)</option>
-                            <option value="write">✏️ Tạo mới (Write)</option>
-                            <option value="update">📝 Cập nhật (Update)</option>
-                            <option value="delete">🗑️ Xóa (Delete)</option>
-                            <option value="download">⬇️ Tải xuống (Download)</option>
-                            <option value="*">⭐ Tất cả hành động</option>
+                            <option value="write">✏️ Create (Write)</option>
+                            <option value="update">📝 Update (Update)</option>
+                            <option value="delete">🗑️ Delete (Delete)</option>
+                            <option value="download">⬇️ Download (Download)</option>
+                            <option value="*">⭐ All actions</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Hiệu lực</label>
-                        <select id="new-policy-effect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="allow">✅ Cho phép (Allow)</option>
-                            <option value="deny">❌ Từ chối (Deny)</option>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Effect</label>
+                        <select id="new-policy-effect" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="allow">✅ Allow (Allow)</option>
+                            <option value="deny">❌ Deny (Deny)</option>
                         </select>
                     </div>
                 </div>
@@ -606,31 +606,31 @@
                 <!-- Replace Policy Checkbox -->
                 <div class="flex items-start bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                     <div class="flex h-5 items-center">
-                        <input id="assign-replace-policy" name="replace_policy" type="checkbox" class="h-4 w-4 rounded border-yellow-400 text-indigo-600 focus:ring-indigo-500">
+                        <input id="assign-replace-policy" name="replace_policy" type="checkbox" class="h-4 w-4 rounded border-yellow-400 text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500">
                     </div>
                     <div class="ml-3 text-sm">
-                        <label for="assign-replace-policy" class="font-medium text-yellow-800">Ghi đè (Thay thế toàn bộ Policy cũ và Mã hoá lại)</label>
-                        <p class="text-yellow-700 mt-1">Nếu chọn, hệ thống sẽ xoá các quyền cũ và tự động giải mã & mã hoá lại file bằng Policy này.</p>
+                        <label for="assign-replace-policy" class="font-medium text-yellow-800">Overwrite (Replace entire old Policy and re-encrypt)</label>
+                        <p class="text-yellow-700 mt-1">If selected, the system will delete old permissions and automatically decrypt & re-encrypt the file using this Policy.</p>
                     </div>
                 </div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú (tùy chọn)</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes (optional)</label>
                 <input type="text" id="assign-notes" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    placeholder="VD: Gán quyền theo yêu cầu ticket #123">
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g.: Assign permission as requested in ticket #123">
             </div>
         </div>
         
-        <div class="flex justify-end gap-3 p-6 bg-gray-50 border-t">
+        <div class="flex justify-end gap-3 p-6 bg-gray-50 dark:bg-gray-900 border-t">
             <button data-action="close-assign-modal" 
-                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                Hủy
+                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
+                Cancel
             </button>
             <button data-action="submit-assign-policy" id="submit-assign-policy"
                 class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
-                Gán quyền
+                Assign Permission
             </button>
         </div>
     </div>
@@ -638,13 +638,13 @@
 
 <!-- View Policies Modal -->
 <div id="view-policies-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
             <h3 class="text-xl font-bold flex items-center gap-3">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                 </svg>
-                Quyền truy cập đã gán
+                Assigned Permissions
             </h3>
             <p class="text-blue-100 mt-1 text-sm" id="view-policies-file-name">File: </p>
         </div>
@@ -652,24 +652,24 @@
         <div class="p-6 overflow-y-auto max-h-[60vh]">
             <div id="file-policies-content">
                 <!-- Content will be loaded here -->
-                <div class="text-center py-8 text-gray-500">
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400 dark:text-gray-500">
                     <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                    Đang tải...
+                    Loading...
                 </div>
             </div>
         </div>
         
-        <div class="flex justify-end gap-3 p-6 bg-gray-50 border-t">
+        <div class="flex justify-end gap-3 p-6 bg-gray-50 dark:bg-gray-900 border-t">
             <button data-action="close-view-policies" 
-                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                Đóng
+                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
+                Close
             </button>
             <button data-action="open-assign-from-view" 
                 class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
-                Thêm quyền mới
+                Add new permission
             </button>
         </div>
     </div>
@@ -677,14 +677,14 @@
 
 <!-- Version History Modal -->
 <div id="version-history-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden">
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 flex items-start justify-between">
             <div>
                 <h3 class="text-xl font-bold flex items-center gap-3">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    Lịch sử phiên bản
+                    Version History
                 </h3>
                 <p class="text-indigo-100 mt-1 text-sm" id="version-history-file-name">File: </p>
             </div>
@@ -698,17 +698,17 @@
         <div class="p-6 overflow-y-auto max-h-[60vh]">
             <div id="version-history-list" class="space-y-4">
                 <!-- Versions will be loaded here -->
-                <div class="text-center py-8 text-gray-500">
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400 dark:text-gray-500">
                     <div class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                    Đang tải...
+                    Loading...
                 </div>
             </div>
         </div>
         
-        <div class="flex justify-end gap-3 p-6 bg-gray-50 border-t">
+        <div class="flex justify-end gap-3 p-6 bg-gray-50 dark:bg-gray-900 border-t">
             <button data-action="close-version-modal" 
-                class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                Đóng
+                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
+                Close
             </button>
         </div>
     </div>

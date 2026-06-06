@@ -1,21 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}403 - Không có quyền truy cập{% endblock %}
+{% block title %}403 - Access Denied{% endblock %}
 
 {% block content %}
 <div class="min-h-[60vh] flex items-center justify-center">
     <div class="text-center">
         <div class="text-9xl font-bold text-red-500 mb-4">403</div>
-        <h1 class="text-3xl font-bold text-gray-900 mb-4">Truy cập bị từ chối</h1>
-        <p class="text-lg text-gray-600 mb-8">
-            {{ message|default:"Bạn không có quyền truy cập trang này." }}
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">Access Denied</h1>
+        <p class="text-lg text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-8">
+            {{ message|default:"You do not have permission to access this page." }}
         </p>
         <div class="space-x-4">
             <a href="/" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-md transition">
-                Về trang chủ
+                Go to Home
             </a>
-            <a href="javascript:history.back()" class="inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-md transition">
-                Quay lại
+            <a href="javascript:history.back()" class="inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 dark:text-gray-100 px-6 py-3 rounded-md transition">
+                Go back
             </a>
         </div>
     </div>

@@ -1,27 +1,27 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Thùng rác - Trash Management{% endblock %}
+{% block title %}Trash - Trash Management{% endblock %}
 
 {% block content %}
 <div class="space-y-6 bg-gradient-to-br from-gray-50 to-red-50 min-h-screen p-6">
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
         <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
                     <div class="p-2 bg-red-100 rounded-lg">
-                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
                     </div>
-                    Thùng rác
+                    Trash
                 </h1>
-                <p class="mt-1 text-sm text-gray-500 ml-12">Quản lý các tài liệu đã bị xóa mềm</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 ml-12">Manage soft-deleted documents</p>
             </div>
             
             <div class="flex flex-wrap items-center gap-3">
-                <button onclick="loadTrash()" class="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl flex items-center gap-2 transition-all">
+                <button onclick="loadTrash()" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 px-4 py-2 rounded-xl flex items-center gap-2 transition-all">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    Làm mới
+                    Refresh
                 </button>
             </div>
         </div>
@@ -39,21 +39,21 @@
     </div>
 
     <!-- Files Container -->
-    <div class="bg-white shadow-sm border border-gray-100 rounded-2xl overflow-hidden min-h-[600px]">
+    <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 rounded-2xl overflow-hidden min-h-[600px]">
         <div id="trash-list">
             <!-- Header Row -->
-            <div class="flex items-center px-6 py-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <div class="flex-1">Tên file</div>
-                <div class="w-32">Kích thước</div>
-                <div class="w-48">Thời gian xóa</div>
-                <div class="w-48 text-right">Hành động</div>
+            <div class="flex items-center px-6 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                <div class="flex-1">Name file</div>
+                <div class="w-32">Size</div>
+                <div class="w-48">Deletion Time</div>
+                <div class="w-48 text-right">Actions</div>
             </div>
             
             <div id="trash-items-container" class="divide-y divide-gray-100">
                 <!-- Loading State -->
-                <div class="flex flex-col items-center justify-center py-20 text-gray-400">
-                    <div class="w-10 h-10 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mb-4"></div>
-                    <p class="font-medium">Đang tải dữ liệu thùng rác...</p>
+                <div class="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+                    <div class="w-10 h-10 border-4 border-red-200 dark:border-red-800 border-t-red-600 rounded-full animate-spin mb-4"></div>
+                    <p class="font-medium">Loading trash data...</p>
                 </div>
             </div>
         </div>
@@ -79,8 +79,8 @@
                 <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
-                <p class="text-lg font-bold">Không có quyền truy cập</p>
-                <p>Chỉ Admin mới có thể xem Thùng rác.</p>
+                <p class="text-lg font-bold">Access Denied</p>
+                <p>Only Admin can xem Trash.</p>
             </div>
         `;
     } else {
@@ -129,9 +129,9 @@
     async function loadTrash() {
         const container = document.getElementById('trash-items-container');
         container.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-20 text-gray-400">
-                <div class="w-10 h-10 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mb-4"></div>
-                <p class="font-medium">Đang tải...</p>
+            <div class="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
+                <div class="w-10 h-10 border-4 border-red-200 dark:border-red-800 border-t-red-600 rounded-full animate-spin mb-4"></div>
+                <p class="font-medium">Loading...</p>
             </div>
         `;
         
@@ -140,18 +140,18 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             
-            if (!response.ok) throw new Error('Không thể tải thùng rác');
+            if (!response.ok) throw new Error('Cannot load trash');
             const files = await response.json();
             
             if (files.length === 0) {
                 container.innerHTML = `
-                    <div class="text-center py-20 text-gray-500">
-                        <div class="bg-gray-50 p-6 rounded-full inline-block mb-4">
+                    <div class="text-center py-20 text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                        <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-full inline-block mb-4">
                             <svg class="h-16 w-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                             </svg>
                         </div>
-                        <p class="text-xl font-medium text-gray-600">Thùng rác rỗng</p>
+                        <p class="text-xl font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Trash is empty</p>
                     </div>
                 `;
                 return;
@@ -160,25 +160,25 @@
             const isSuperAdmin = perms.is_super_admin;
             
             container.innerHTML = files.map(file => `
-                <div class="flex items-center px-6 py-4 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 transition-colors">
                     <div class="flex-1 flex items-center gap-4">
-                        <div class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-lg text-gray-500">
-                            <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
+                        <div class="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                            <svg class="w-6 h-6 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
                         </div>
                         <div>
-                            <p class="font-medium text-gray-900">${file.file_name}</p>
-                            <p class="text-xs text-gray-500">Người tải lên: ${file.uploaded_by_username || 'Unknown'}</p>
+                            <p class="font-medium text-gray-900 dark:text-white">${file.file_name}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Uploader: ${file.uploaded_by_username || 'Unknown'}</p>
                         </div>
                     </div>
-                    <div class="w-32 text-sm text-gray-500 font-mono">${formatSize(file.file_size)}</div>
-                    <div class="w-48 text-sm text-gray-500">${formatDate(file.deleted_at)}</div>
+                    <div class="w-32 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 font-mono">${formatSize(file.file_size)}</div>
+                    <div class="w-48 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">${formatDate(file.deleted_at)}</div>
                     <div class="w-48 flex justify-end gap-2">
-                        <button onclick="restoreFile(${file.id})" class="px-3 py-1.5 text-green-600 hover:text-white border border-green-600 hover:bg-green-600 rounded-md text-sm font-medium transition-colors">
-                            Khôi phục
+                        <button onclick="restoreFile(${file.id})" class="px-3 py-1.5 text-green-600 dark:text-green-400 hover:text-white border border-green-600 hover:bg-green-600 rounded-md text-sm font-medium transition-colors">
+                            Restore
                         </button>
                         ${isSuperAdmin ? `
                         <button onclick="hardDeleteFile(${file.id}, '${file.file_name}')" class="px-3 py-1.5 text-white bg-red-600 hover:bg-red-700 rounded-md text-sm font-medium transition-colors">
-                            Xóa vĩnh viễn
+                            Delete permanently
                         </button>
                         ` : ''}
                     </div>
@@ -187,12 +187,12 @@
             
         } catch (error) {
             showAlert(error.message, 'error');
-            container.innerHTML = `<div class="text-center py-10 text-red-500">Lỗi tải dữ liệu</div>`;
+            container.innerHTML = `<div class="text-center py-10 text-red-500">Error loading data</div>`;
         }
     }
     
     async function restoreFile(id) {
-        if (!confirm('Bạn có chắc chắn muốn khôi phục file này?')) return;
+        if (!confirm('Are you sure you want to restore this file?')) return;
         
         try {
             const response = await fetch(`/api/storage/files/${id}/restore/`, {
@@ -201,19 +201,19 @@
             });
             
             if (response.ok) {
-                showAlert('Khôi phục file thành công');
+                showAlert('File restored successfully');
                 loadTrash();
             } else {
                 const err = await response.json();
-                showAlert(err.error || 'Lỗi khôi phục', 'error');
+                showAlert(err.error || 'Restore error', 'error');
             }
         } catch (error) {
-            showAlert('Lỗi kết nối', 'error');
+            showAlert('Connection error', 'error');
         }
     }
     
     async function hardDeleteFile(id, name) {
-        if (!confirm(`CẢNH BÁO: File "${name}" sẽ bị xóa vĩnh viễn khỏi Database và Storage Cloud Supabase.\nHành động này KHÔNG THỂ HOÀN TÁC!\nBạn có chắc chắn không?`)) return;
+        if (!confirm(`WARNING: File "${name}" will be permanently deleted from Database and Supabase Cloud Storage.\nThis action CANNOT BE UNDONE!\nAre you sure?`)) return;
         
         try {
             const response = await fetch(`/api/storage/files/${id}/hard_delete/`, {
@@ -222,14 +222,14 @@
             });
             
             if (response.ok) {
-                showAlert('Đã xóa file vĩnh viễn');
+                showAlert('File permanently deleted');
                 loadTrash();
             } else {
                 const err = await response.json();
-                showAlert(err.error || 'Lỗi xóa file', 'error');
+                showAlert(err.error || 'Error deleting file', 'error');
             }
         } catch (error) {
-            showAlert('Lỗi kết nối', 'error');
+            showAlert('Connection error', 'error');
         }
     }
 </script>
