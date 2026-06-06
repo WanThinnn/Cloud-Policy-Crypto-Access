@@ -21,19 +21,28 @@
     const CACHE_TTL = 60000; // 60 seconds
     let policyCache = null;
 
-    // Get access token from localStorage
-    const accessToken = localStorage.getItem('access_token');
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
     const headers = {
-        'Authorization': `Bearer ${accessToken}`
+        'X-CSRFToken': getCookie('csrftoken')
     };
 
     // ============= INITIALIZATION =============
 
     async function initFileManager() {
-        if (!accessToken) {
-            showAuthRequired();
-            return;
-        }
 
         // Check user permissions first
         try {
@@ -1050,9 +1059,9 @@
             console.log('Loading policy builder attributes...');
             const response = await fetch('/api/admin/policy-builder-attributes/', { 
                 headers: {
-                    'Authorization': `Bearer ${accessToken}`,
+                    'X-CSRFToken': getCookie('csrftoken'),
                     'Content-Type': 'application/json'
-                }
+                },
             });
             console.log('Response status:', response.status);
             if (response.ok) {
@@ -1421,68 +1430,6 @@
         }
     }
     
-    async function assignPolicyToUploadedFile(filePath, policyId, isCreatingNew) {
-        try {
-            let payload = {
-                file_path: filePath,
-                bucket_name: 'documents',
-                target_type: 'file',
-                notes: 'Assigned during upload'
-            };
-            
-            if (isCreatingNew) {
-                // Create new policy with all fields from Policy Builder
-                const name = document.getElementById('upload-new-policy-name').value.trim();
-                const condition = document.getElementById('upload-policy-condition-final').value.trim() 
-                    || document.getElementById('upload-new-policy-condition')?.value.trim() || '';
-                const effect = document.getElementById('upload-new-policy-effect').value;
-                const description = document.getElementById('upload-new-policy-description')?.value.trim() || `Policy for file: ${filePath}`;
-                const priority = parseInt(document.getElementById('upload-new-policy-priority')?.value) || 100;
-                const resource = document.getElementById('upload-new-policy-resource')?.value || 'document';
-                const action = document.getElementById('upload-new-policy-action')?.value || 'read';
-                
-                if (!name || !condition) {
-                    console.warn('New policy info incomplete, skipping policy assignment');
-                    return;
-                }
-                
-                payload.create_new_policy = true;
-                payload.new_policy_name = name;
-                payload.new_policy_description = description;
-                payload.new_policy_subject_condition = condition;
-                payload.new_policy_effect = effect;
-                payload.new_policy_priority = priority;
-                payload.new_policy_resource = resource;
-                payload.new_policy_action = action;
-            } else if (policyId) {
-                payload.policy_id = parseInt(policyId);
-            } else {
-                return; // No policy to assign
-            }
-            
-            const response = await fetch(`${API_BASE}files/assign_policy/`, {
-                method: 'POST',
-                headers: {
-                    ...headers,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-            
-            if (response.ok) {
-                console.log('Policy assigned to uploaded file');
-                policyCache = null; // Invalidate cache
-            } else {
-                const err = await response.json().catch(() => ({}));
-                console.error('Failed to assign policy:', err);
-                // Don't show error - upload was successful, policy assignment is optional
-            }
-        } catch (error) {
-            console.error('Error assigning policy:', error);
-        }
-    }
-
-
 
     async function handleUpload(e) {
         e.preventDefault();
@@ -1588,7 +1535,7 @@
 
             const response = await fetch(`${API_BASE}files/upload/`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}` },
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
                 body: formData
             });
 

@@ -175,15 +175,17 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-        // Authenticated
+    const username = localStorage.getItem('username');
+    
+    if (username) {
         document.getElementById('auth-view').classList.remove('hidden');
-        
-        // Fetch User Info to populate Welcome Header
+        document.getElementById('unauth-view').classList.add('hidden');
+        document.getElementById('dashboard-username').textContent = username;
+
+        // Fetch User Info to get role
         fetch('/api/auth/profile/', {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'X-CSRFToken': getCookie('csrftoken')
             }
         })
         .then(res => res.json())
@@ -194,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.is_superuser || data.is_staff) {
                 const badge = document.getElementById('dashboard-role-badge');
                 badge.classList.remove('hidden');
+                
                 document.getElementById('card-users').style.display = 'block';
                 document.getElementById('card-policies').style.display = 'block';
                 document.getElementById('admin-section').style.display = 'block';
@@ -201,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.is_superuser) {
                     badge.classList.add('bg-blue-100', 'dark:bg-blue-900', 'text-blue-800', 'dark:text-blue-200');
                     badge.textContent = 'Administrator';
-                } else {
+                } else if (data.is_staff) {
                     badge.classList.add('bg-purple-100', 'dark:bg-purple-900', 'text-purple-800', 'dark:text-purple-200');
                     badge.textContent = 'Employee';
                 }
@@ -211,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fetch Stats
         fetch('/api/admin/dashboard-stats/', {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'X-CSRFToken': getCookie('csrftoken')
             }
         })
         .then(res => {

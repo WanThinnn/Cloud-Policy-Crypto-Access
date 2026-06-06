@@ -71,20 +71,30 @@ def register(request):
         
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
         
-        return Response({
+        response = Response({
             'message': 'User registered successfully',
             'user': {
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
                 'full_name': user.profile.full_name,
-            },
-            'tokens': {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
             }
         }, status=status.HTTP_201_CREATED)
+        
+        # Set HttpOnly cookies
+        response.set_cookie(
+            'access_token', access_token,
+            max_age=3600, httponly=True, samesite='Lax'
+        )
+        response.set_cookie(
+            'refresh_token', refresh_token,
+            max_age=7*24*3600, httponly=True, samesite='Lax'
+        )
+        
+        return response
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -130,15 +140,25 @@ def login(request):
         
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
         
-        return Response({
+        response = Response({
             'message': 'Login successful',
-            'user': UserDetailSerializer(user).data,
-            'tokens': {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }
+            'user': UserDetailSerializer(user).data
         })
+        
+        # Set HttpOnly cookies
+        response.set_cookie(
+            'access_token', access_token,
+            max_age=3600, httponly=True, samesite='Lax'
+        )
+        response.set_cookie(
+            'refresh_token', refresh_token,
+            max_age=7*24*3600, httponly=True, samesite='Lax'
+        )
+        
+        return response
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -156,18 +176,29 @@ def logout(request):
     }
     """
     try:
-        refresh_token = request.data.get('refresh')
+        # Get refresh token from cookies instead of body
+        refresh_token = request.COOKIES.get('refresh_token') or request.data.get('refresh')
         if refresh_token:
             token = RefreshToken(refresh_token)
             token.blacklist()
-        
-        return Response({
+            
+        response = Response({
             'message': 'Logout successful'
-        })
+        }, status=status.HTTP_200_OK)
+        
+        # Delete cookies
+        response.delete_cookie('access_token')
+        response.delete_cookie('refresh_token')
+        
+        return response
+        
     except Exception as e:
-        return Response({
+        response = Response({
             'error': str(e)
         }, status=status.HTTP_400_BAD_REQUEST)
+        response.delete_cookie('access_token')
+        response.delete_cookie('refresh_token')
+        return response
 
 @csrf_exempt
 @api_view(['POST'])

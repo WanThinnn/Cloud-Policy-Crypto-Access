@@ -64,10 +64,10 @@
 {% block extra_js %}
 <script>
     const API_BASE = '/api/storage/';
-    const token = localStorage.getItem('access_token');
+    // username is already declared in base.html global scope
     
     // Check auth
-    if (!token) {
+    if (!username) {
         window.location.href = '/auth/login/?next=/manage/trash/';
     }
     
@@ -137,7 +137,7 @@
         
         try {
             const response = await fetch('/api/storage/files/trash/', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
             });
             
             if (!response.ok) throw new Error('Cannot load trash');
@@ -197,7 +197,7 @@
         try {
             const response = await fetch(`/api/storage/files/${id}/restore/`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
             });
             
             if (response.ok) {
@@ -218,7 +218,7 @@
         try {
             const response = await fetch(`/api/storage/files/${id}/hard_delete/`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
             });
             
             if (response.ok) {

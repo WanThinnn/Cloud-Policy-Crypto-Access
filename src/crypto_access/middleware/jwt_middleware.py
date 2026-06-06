@@ -29,13 +29,17 @@ class JWTAuthenticationMiddleware:
         # Only process if Authorization header is present and user is not already authenticated
         if not request.user.is_authenticated:
             auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+            raw_token = None
             
             if auth_header.startswith('Bearer '):
+                raw_token = auth_header.split(' ')[1]
+            elif 'access_token' in request.COOKIES:
+                raw_token = request.COOKIES['access_token']
+                
+            if raw_token:
                 try:
                     # Try to authenticate using JWT
-                    validated_token = self.jwt_authenticator.get_validated_token(
-                        auth_header.split(' ')[1]
-                    )
+                    validated_token = self.jwt_authenticator.get_validated_token(raw_token)
                     user = self.jwt_authenticator.get_user(validated_token)
                     
                     if user:

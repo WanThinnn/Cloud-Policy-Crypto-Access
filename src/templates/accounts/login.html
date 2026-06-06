@@ -191,8 +191,8 @@
 
             if (response.ok) {
                 // Store tokens
-                localStorage.setItem('access_token', data.tokens.access);
-                localStorage.setItem('refresh_token', data.tokens.refresh);
+                // Tokens are now stored in HttpOnly cookies by the server
+                // Refresh token is stored in HttpOnly cookie
                 localStorage.setItem('username', data.user.username);
                 localStorage.setItem('user_id', data.user.id);
                 
@@ -215,7 +215,7 @@
     });
 
     // Check if already logged in
-    if (localStorage.getItem('access_token')) {
+    if (localStorage.getItem('username')) {
         window.location.href = '/';
     }
 </script>

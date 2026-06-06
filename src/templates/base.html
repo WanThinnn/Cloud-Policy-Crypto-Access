@@ -306,13 +306,28 @@
       });
       applyDarkMode(getSavedMode());
 
+      // Global getCookie helper
+      function getCookie(name) {
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== '') {
+              const cookies = document.cookie.split(';');
+              for (let i = 0; i < cookies.length; i++) {
+                  const cookie = cookies[i].trim();
+                  if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                      cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                      break;
+                  }
+              }
+          }
+          return cookieValue;
+      }
+
       // Authentication state
-      const accessToken = localStorage.getItem('access_token');
-      const refreshToken = localStorage.getItem('refresh_token');
       const username = localStorage.getItem('username');
+      const isLoggedIn = !!username;
       
       async function initAuthUI() {
-          if (accessToken && username) {
+          if (isLoggedIn) {
               const authLinks = document.getElementById('auth-links');
               if (authLinks) authLinks.classList.add('hidden');
               
@@ -324,7 +339,7 @@
               
               try {
                   const response = await fetch('/api/auth/permissions/', {
-                      headers: { 'Authorization': `Bearer ${accessToken}` }
+                      headers: { 'X-CSRFToken': getCookie('csrftoken') }
                   });
                   
                   if (response.ok) {
@@ -361,27 +376,29 @@
       initAuthUI();
       
       // Hide footer on home page if not logged in
-      if (window.location.pathname === '/' && !accessToken) {
+      if (window.location.pathname === '/' && !isLoggedIn) {
           document.getElementById('main-footer')?.classList.add('hidden');
       }
-
-      document.getElementById('logout-btn')?.addEventListener('click', async () => {
-          try {
-              await fetch('/api/auth/logout/', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${accessToken}`
-                  },
-                  body: JSON.stringify({ refresh: refreshToken })
-              });
-          } catch (error) {
-              console.error('Logout error:', error);
-          } finally {
+      
+      // Setup Logout
+      const logoutBtn = document.getElementById('logout-btn');
+      if (logoutBtn) {
+          logoutBtn.addEventListener('click', async (e) => {
+              e.preventDefault();
+              try {
+                  await fetch('/api/auth/logout/', {
+                      method: 'POST',
+                      headers: {
+                          'X-CSRFToken': getCookie('csrftoken')
+                      }
+                  });
+              } catch (e) {
+                  console.error('Logout error', e);
+              }
               localStorage.clear();
               window.location.href = '/auth/login/';
-          }
-      });
+          });
+      }
     </script>
     {% block extra_js %}{% endblock %}
 </body>

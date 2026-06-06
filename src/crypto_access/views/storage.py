@@ -95,13 +95,6 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     
     def _decrypt_file_if_needed(self, file_data, bucket_name, file_path, user, is_owner=False, cpabe_policy_str=None):
         """Helper to decrypt file if it has a CP-ABE policy"""
-        # Fast path: Check if we recently decrypted this exact file for this user
-        file_hash = hashlib.sha256(file_data).hexdigest()
-        decrypted_cache_key = f"decrypted_{user.id}_{file_hash}"
-        cached_decrypted = cache.get(decrypted_cache_key)
-        if cached_decrypted:
-            logger.info(f"Returning decrypted data from cache for file: {file_path}")
-            return cached_decrypted
 
         if cpabe_policy_str is not None:
             is_encrypted = bool(cpabe_policy_str)
@@ -139,23 +132,33 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         attrs_hash = hashlib.sha256(attrs_str.encode('utf-8')).hexdigest()
         cache_key = f"cpabe_key_{user.id}_{attrs_hash}"
         cached_key_data = cache.get(cache_key)
-        with tempfile.NamedTemporaryFile(delete=False) as f_key:
-            key_name = f_key.name
-            if cached_key_data:
-                f_key.write(cached_key_data)
         
         try:
             if not cached_key_data:
-                cpabe_service.generate_user_key(user_attrs, key_name)
-                # Cache the generated key for 1 hour
-                with open(key_name, 'rb') as f:
-                    cache.set(cache_key, f.read(), timeout=3600)
+                import tempfile
+                import os
+                # Generate key requires a file output due to C library constraints
+                with tempfile.NamedTemporaryFile(delete=False) as f_key:
+                    key_name = f_key.name
+                
+                try:
+                    cpabe_service.generate_user_key(user_attrs, key_name)
+                    # Read the generated key immediately and delete the file
+                    with open(key_name, 'rb') as f:
+                        cached_key_data = f.read()
+                    
+                    # Cache the generated key for 1 hour
+                    cache.set(cache_key, cached_key_data, timeout=3600)
+                finally:
+                    if os.path.exists(key_name):
+                        os.remove(key_name)
                     
             try:
-                decrypted_data = cpabe_service.decrypt_buffer(key_name, file_data)
+                # Decrypt passing the raw bytes directly (No TempFile)
+                decrypted_data = cpabe_service.decrypt_buffer(cached_key_data, file_data)
                 logger.info(f"CP-ABE Decryption successful for file: {file_path}")
-                # Cache the decrypted data for 10 minutes (600 seconds)
-                cache.set(decrypted_cache_key, decrypted_data, timeout=600)
+                # We DO NOT cache decrypted_data for security reasons.
+                # Decrypted data should strictly reside in RAM during the request life cycle.
                 return decrypted_data
             except Exception as e:
                 error_msg = str(e)
@@ -166,9 +169,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     return file_data
                 # Otherwise (e.g. -4 Crypto failed), it is a real decryption failure
                 raise Exception("Bạn không có đủ thuộc tính (quyền) để giải mã tài liệu này!")
-        finally:
-            if os.path.exists(key_name):
-                os.remove(key_name)
+        except Exception as e:
+            raise e
     
     def get_queryset(self):
         """Filter files by user, bucket, and ABAC policies"""

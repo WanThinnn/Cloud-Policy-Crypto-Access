@@ -134,7 +134,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'crypto_access.authentication.CookieJWTAuthentication',
         # Removed SessionAuthentication to avoid CSRF issues with API calls
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -236,6 +236,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read the CSRF token
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # ABAC Protected Routes Configuration
 ABAC_PROTECTED_ROUTES = [

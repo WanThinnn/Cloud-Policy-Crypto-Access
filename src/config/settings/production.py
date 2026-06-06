@@ -74,13 +74,25 @@ X_FRAME_OPTIONS = 'DENY'
 # Cache configuration
 redis_url = os.environ.get('REDIS_URL')
 if redis_url:
+    # Check if TLS should be enforced (helpful for internal networks with self-signed certs or managed Redis)
+    redis_use_tls = os.environ.get('REDIS_USE_TLS', 'False').lower() == 'true'
+    
+    redis_options = {
+        'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+    }
+    
+    if redis_use_tls:
+        # Require SSL/TLS for secure transit
+        redis_options['CONNECTION_POOL_KWARGS'] = {
+            'ssl': True,
+            'ssl_cert_reqs': None  # Set to 'CERT_REQUIRED' if using strict CA validation
+        }
+
     CACHES = {
         'default': {
             'BACKEND': 'django_redis.cache.RedisCache',
             'LOCATION': redis_url,
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            },
+            'OPTIONS': redis_options,
             'KEY_PREFIX': 'crypto_access',
             'TIMEOUT': 300,
         }

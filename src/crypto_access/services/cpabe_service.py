@@ -241,14 +241,12 @@ class CPABEService:
             
         return ciphertext
 
-    def decrypt_buffer(self, private_key_path: str, ciphertext: bytes) -> bytes:
+    def decrypt_buffer(self, private_key_data: bytes, ciphertext: bytes) -> bytes:
         """Decrypt data buffer directly in memory"""
         if not self._decrypt_buffer_func:
             raise CPABEError("Buffer decryption function not found in library")
 
-        # Read private key file into memory
-        with open(private_key_path, 'rb') as f:
-            sk_data = f.read()
+        sk_data = private_key_data
 
         sk_ptr = ctypes.cast(ctypes.create_string_buffer(sk_data), ctypes.POINTER(ctypes.c_ubyte))
         ct_ptr = ctypes.cast(ctypes.create_string_buffer(ciphertext), ctypes.POINTER(ctypes.c_ubyte))

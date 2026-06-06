@@ -216,18 +216,18 @@
 {% block extra_js %}
 <script>
     const API_BASE = '/api/admin/policies/';
-    const token = localStorage.getItem('access_token');
+    // username is already declared in base.html global scope
     let editingId = null;
 
     // Permission check helper
     async function checkPermissionAndInit() {
-        if (!token) {
+        if (!username) {
             showAuthRequired();
             return false;
         }
         try {
             const res = await fetch('/api/auth/permissions/', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
             });
             if (res.status === 401) {
                 showAuthRequired();
@@ -265,7 +265,7 @@
 
     const headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'X-CSRFToken': getCookie('csrftoken')
     };
 
     async function loadPolicies() {
