@@ -113,12 +113,12 @@
                 <div id="simple-mode" class="space-y-3">
                     <p class="text-sm text-blue-700 mb-2">Select conditions for users to apply this policy:</p>
                     
-                    <!-- Condition Rules Container -->
-                    <div id="condition-rules" class="space-y-2">
-                        <!-- Rules will be added here dynamically -->
+                    <!-- Visual Query Builder Container -->
+                    <div id="query-builder-root" class="space-y-2">
+                        <!-- Root group will be injected here -->
                     </div>
                     
-                    <button type="button" id="add-rule-btn" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                    <button type="button" id="add-rule-btn" style="display:none;" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
@@ -139,6 +139,8 @@
                         </div>
                     </div>
                 </div>
+                
+                <div id="modal-alert" class="hidden rounded-md p-3 mt-3 text-sm border"></div>
                 
                 <!-- Advanced Mode: Raw Expression -->
                 <div id="advanced-mode" class="hidden">
@@ -204,9 +206,14 @@
                     class="h-4 w-4 text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded">
                 <label for="is_active" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Active policy</label>
             </div>
-            <div class="flex justify-end space-x-3 pt-4 border-t">
-                <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+            <div class="flex justify-between items-center pt-4 border-t">
+                <div>
+                    <button type="button" id="test-policy-btn" class="px-4 py-2 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-md hover:bg-yellow-200 text-sm font-medium">🧪 Test Policy</button>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="button" id="cancel-btn" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Save</button>
+                </div>
             </div>
         </form>
     </div>
@@ -340,9 +347,17 @@
     function showAlert(message, type = 'success') {
         const alert = document.getElementById('alert');
         alert.className = `rounded-md p-4 ${type === 'error' ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'}`;
-        alert.innerHTML = message;
+        alert.textContent = message;
         alert.classList.remove('hidden');
         setTimeout(() => alert.classList.add('hidden'), 5000);
+    }
+    
+    function showModalAlert(message, type = 'success') {
+        const alert = document.getElementById('modal-alert');
+        alert.className = `rounded-md p-3 mt-3 text-sm border ${type === 'error' ? 'bg-red-50 text-red-800 border-red-200' : 'bg-green-50 text-green-800 border-green-200'}`;
+        alert.textContent = message;
+        alert.classList.remove('hidden');
+        setTimeout(() => alert.classList.add('hidden'), 7000);
     }
 
     // ========== POLICY BUILDER LOGIC ==========
@@ -374,63 +389,97 @@
 
     const OPERATORS = [
         { key: '==', label: 'equals' },
-        { key: '!=', label: 'not equals' },
         { key: 'in', label: 'in list' },
-        { key: 'not in', label: 'not in list' },
     ];
 
-    let ruleCounter = 0;
+    let elementCounter = 0;
     let isAdvancedMode = false;
 
-    function createRuleHTML(ruleId) {
-        const attrOptions = AVAILABLE_ATTRIBUTES.map(a => 
-            `<option value="${a.key}">${a.label}</option>`
-        ).join('');
-        
-        const opOptions = OPERATORS.map(o => 
-            `<option value="${o.key}">${o.label}</option>`
-        ).join('');
-
+    function createGroupHTML(groupId, isRoot = false) {
         return `
-            <div class="condition-rule-wrapper" data-rule-id="${ruleId}">
-                <!-- Connector to previous rule (hidden for first rule) -->
-                <div class="connector-row flex items-center justify-center py-1 ${ruleId === 1 ? 'hidden' : ''}" data-rule-id="${ruleId}">
-                    <select class="connector-select bg-gray-100 dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-sm font-medium" data-rule-id="${ruleId}">
-                        <option value="and" class="text-green-700">AND (AND)</option>
-                        <option value="or" class="text-orange-700">OR (OR)</option>
+            <div class="condition-group ${isRoot ? 'border border-blue-300 rounded p-3 bg-blue-50/50 dark:bg-blue-900/10' : 'border-l-4 border-blue-400 pl-3 py-2 ml-4 mt-2 bg-gray-50 dark:bg-gray-800/50 rounded-r'}" data-group-id="${groupId}">
+                <div class="group-header flex items-center mb-2">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Match</span>
+                    <select class="group-connector-select bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm font-bold text-blue-700" onchange="updatePreview()">
+                        <option value="and">ALL (AND)</option>
+                        <option value="or">ANY (OR)</option>
                     </select>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 ml-2">of the following:</span>
+                    ${!isRoot ? `
+                        <button type="button" class="remove-group-btn ml-auto text-red-500 hover:text-red-700" onclick="this.closest('.condition-group').remove(); updatePreview();">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    ` : ''}
                 </div>
-                <div class="condition-rule flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded border" data-rule-id="${ruleId}">
-                    <span class="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">If</span>
-                    <select class="attr-select bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm" data-rule-id="${ruleId}">
-                        ${attrOptions}
-                    </select>
-                    <select class="op-select bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm" data-rule-id="${ruleId}">
-                        ${opOptions}
-                    </select>
-                    <div class="value-container flex-1" data-rule-id="${ruleId}">
-                        <!-- Value selector will be populated dynamically -->
-                    </div>
-                    <button type="button" class="remove-rule-btn text-red-500 hover:text-red-700" data-rule-id="${ruleId}">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
+                <div class="group-children space-y-2">
+                    <!-- Rules and subgroups go here -->
+                </div>
+                <div class="group-actions mt-2 flex gap-2">
+                    <button type="button" class="text-xs px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-blue-600 hover:bg-blue-50" onclick="addRuleToGroup(${groupId})">
+                        + Add Rule
+                    </button>
+                    <button type="button" class="text-xs px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-purple-600 hover:bg-purple-50" onclick="addGroupToGroup(${groupId})">
+                        + Add Group
                     </button>
                 </div>
             </div>
         `;
     }
 
-    function updateValueSelector(ruleId) {
+    function createRuleHTML(ruleId) {
+        const attrOptions = AVAILABLE_ATTRIBUTES.map(a => `<option value="${a.key}">${a.label}</option>`).join('');
+        const opOptions = OPERATORS.map(o => `<option value="${o.key}">${o.label}</option>`).join('');
+
+        return `
+            <div class="condition-rule flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700" data-rule-id="${ruleId}">
+                <select class="attr-select bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm" onchange="updateValueSelector(${ruleId})">
+                    ${attrOptions}
+                </select>
+                <select class="op-select bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm" onchange="updateValueSelector(${ruleId})">
+                    ${opOptions}
+                </select>
+                <div class="value-container flex-1" data-rule-id="${ruleId}"></div>
+                <button type="button" class="remove-rule-btn text-red-500 hover:text-red-700" onclick="this.closest('.condition-rule').remove(); updatePreview();">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        `;
+    }
+
+    window.addRuleToGroup = function(groupId, ruleData = null) {
+        const group = document.querySelector(`.condition-group[data-group-id="${groupId}"] > .group-children`);
+        const ruleId = ++elementCounter;
+        group.insertAdjacentHTML('beforeend', createRuleHTML(ruleId));
+        
+        if (ruleData) {
+            const rule = document.querySelector(`.condition-rule[data-rule-id="${ruleId}"]`);
+            rule.querySelector('.attr-select').value = ruleData.attr;
+            rule.querySelector('.op-select').value = ruleData.op;
+        }
+        updateValueSelector(ruleId, ruleData ? ruleData.value : null);
+    };
+
+    window.addGroupToGroup = function(groupId, connector = 'and') {
+        const group = document.querySelector(`.condition-group[data-group-id="${groupId}"] > .group-children`);
+        const newGroupId = ++elementCounter;
+        group.insertAdjacentHTML('beforeend', createGroupHTML(newGroupId, false));
+        
+        const newGroup = document.querySelector(`.condition-group[data-group-id="${newGroupId}"]`);
+        newGroup.querySelector('.group-connector-select').value = connector;
+        
+        updatePreview();
+        return newGroupId;
+    };
+
+    function updateValueSelector(ruleId, initialValue = null) {
         const rule = document.querySelector(`.condition-rule[data-rule-id="${ruleId}"]`);
+        if (!rule) return;
         const attrSelect = rule.querySelector('.attr-select');
         const opSelect = rule.querySelector('.op-select');
         const valueContainer = rule.querySelector('.value-container');
         
         const selectedAttr = AVAILABLE_ATTRIBUTES.find(a => a.key === attrSelect.value);
         const isMultiSelect = opSelect.value === 'in' || opSelect.value === 'not in';
-        
-        // Handle null/undefined values - use empty array as fallback
         const attrValues = selectedAttr?.values || [];
 
         if (isMultiSelect) {
@@ -438,101 +487,71 @@
                 <div class="flex flex-wrap gap-1">
                     ${attrValues.map(v => `
                         <label class="inline-flex items-center bg-gray-100 dark:bg-gray-700 rounded px-2 py-1 text-xs">
-                            <input type="checkbox" class="value-checkbox mr-1" value="${v}">
+                            <input type="checkbox" class="value-checkbox mr-1" value="${v}" onchange="updatePreview()">
                             ${v}
                         </label>
                     `).join('')}
                 </div>
             `;
+            if (initialValue && Array.isArray(initialValue)) {
+                rule.querySelectorAll('.value-checkbox').forEach(cb => {
+                    cb.checked = initialValue.includes(cb.value);
+                });
+            }
         } else {
             valueContainer.innerHTML = `
-                <select class="value-select bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm">
+                <select class="value-select bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm" onchange="updatePreview()">
                     ${attrValues.map(v => `<option value="${v}">${v}</option>`).join('')}
                 </select>
             `;
+            if (initialValue) {
+                rule.querySelector('.value-select').value = initialValue;
+            }
         }
         updatePreview();
     }
 
-    function addRule() {
-        const container = document.getElementById('condition-rules');
-        const ruleId = ++ruleCounter;
-        container.insertAdjacentHTML('beforeend', createRuleHTML(ruleId));
+    function buildConditionFromGroup(groupEl) {
+        const children = Array.from(groupEl.querySelector('.group-children').children);
+        if (children.length === 0) return '';
         
-        // Initialize value selector
-        updateValueSelector(ruleId);
+        const connector = groupEl.querySelector('.group-connector-select').value;
+        const parts = [];
         
-        // Bind events
-        const wrapper = document.querySelector(`.condition-rule-wrapper[data-rule-id="${ruleId}"]`);
-        const rule = wrapper.querySelector('.condition-rule');
-        rule.querySelector('.attr-select').addEventListener('change', () => updateValueSelector(ruleId));
-        rule.querySelector('.op-select').addEventListener('change', () => updateValueSelector(ruleId));
-        rule.querySelector('.remove-rule-btn').addEventListener('click', () => {
-            wrapper.remove();
-            updateConnectorVisibility();
-            updatePreview();
-        });
-        
-        // Bind connector change event
-        const connectorSelect = wrapper.querySelector('.connector-select');
-        if (connectorSelect) {
-            connectorSelect.addEventListener('change', updatePreview);
-        }
-        
-        // Bind change events for preview update
-        rule.addEventListener('change', updatePreview);
-    }
-
-    function updateConnectorVisibility() {
-        const wrappers = document.querySelectorAll('.condition-rule-wrapper');
-        wrappers.forEach((wrapper, index) => {
-            const connectorRow = wrapper.querySelector('.connector-row');
-            if (connectorRow) {
-                if (index === 0) {
-                    connectorRow.classList.add('hidden');
+        children.forEach(child => {
+            if (child.classList.contains('condition-group')) {
+                const subCond = buildConditionFromGroup(child);
+                if (subCond) parts.push(`(${subCond})`);
+            } else if (child.classList.contains('condition-rule')) {
+                const attr = child.querySelector('.attr-select').value;
+                const op = child.querySelector('.op-select').value;
+                let value;
+                if (op === 'in' || op === 'not in') {
+                    const checkboxes = child.querySelectorAll('.value-checkbox:checked');
+                    const values = Array.from(checkboxes).map(cb => `'${cb.value}'`);
+                    if (values.length > 0) {
+                        value = `[${values.join(', ')}]`;
+                        parts.push(`r.sub.${attr} ${op} ${value}`);
+                    }
                 } else {
-                    connectorRow.classList.remove('hidden');
+                    const select = child.querySelector('.value-select');
+                    if (select) {
+                        parts.push(`r.sub.${attr} ${op} '${select.value}'`);
+                    }
                 }
             }
         });
+        
+        return parts.join(` ${connector} `);
     }
 
     function buildConditionFromRules() {
-        const wrappers = document.querySelectorAll('.condition-rule-wrapper');
-        const parts = [];
-
-        wrappers.forEach((wrapper, index) => {
-            const rule = wrapper.querySelector('.condition-rule');
-            const attr = rule.querySelector('.attr-select').value;
-            const op = rule.querySelector('.op-select').value;
-            
-            let value;
-            if (op === 'in' || op === 'not in') {
-                const checkboxes = rule.querySelectorAll('.value-checkbox:checked');
-                const values = Array.from(checkboxes).map(cb => `'${cb.value}'`);
-                if (values.length === 0) return;
-                value = `[${values.join(', ')}]`;
-            } else {
-                const select = rule.querySelector('.value-select');
-                if (!select) return;
-                value = `'${select.value}'`;
-            }
-
-            const condition = `r.sub.${attr} ${op} ${value}`;
-            
-            // Get connector (and/or) from previous rule
-            if (index > 0) {
-                const connectorSelect = wrapper.querySelector('.connector-select');
-                const connector = connectorSelect ? connectorSelect.value : 'and';
-                parts.push(` ${connector} `);
-            }
-            parts.push(condition);
-        });
-
-        return parts.join('');
+        const rootGroup = document.querySelector('#query-builder-root > .condition-group');
+        if (!rootGroup) return '';
+        return buildConditionFromGroup(rootGroup);
     }
 
-    function updatePreview() {
+    window.updatePreview = function() {
         const preview = document.getElementById('condition-preview');
         const condition = isAdvancedMode 
             ? document.getElementById('subject_condition_input').value
@@ -548,9 +567,8 @@
             preview.classList.add('text-gray-400');
         }
         
-        // Update hidden field
         document.getElementById('subject_condition_final').value = condition;
-    }
+    };
 
     function toggleAdvancedMode() {
         isAdvancedMode = !isAdvancedMode;
@@ -559,14 +577,13 @@
         const toggleBtn = document.getElementById('toggle-advanced');
 
         if (isAdvancedMode) {
-            // Transfer built condition to textarea
-            const builtCondition = buildConditionFromRules();
-            document.getElementById('subject_condition_input').value = builtCondition;
-            
+            document.getElementById('subject_condition_input').value = buildConditionFromRules();
             simpleMode.classList.add('hidden');
             advancedMode.classList.remove('hidden');
             toggleBtn.textContent = 'Simple mode';
         } else {
+            // Need to re-parse from input to visual builder if switching back
+            parseConditionToRules(document.getElementById('subject_condition_input').value);
             simpleMode.classList.remove('hidden');
             advancedMode.classList.add('hidden');
             toggleBtn.textContent = 'Advanced mode';
@@ -574,71 +591,71 @@
         updatePreview();
     }
 
-    function parseConditionToRules(condition) {
-        // Clear existing rules
-        document.getElementById('condition-rules').innerHTML = '';
-        ruleCounter = 0;
+    function initRootGroup() {
+        document.getElementById('query-builder-root').innerHTML = createGroupHTML(0, true);
+    }
+
+    async function parseConditionToRules(condition) {
+        document.getElementById('query-builder-root').innerHTML = '';
+        elementCounter = 0;
+        initRootGroup();
 
         if (!condition) {
-            addRule();
+            addRuleToGroup(0);
             return;
         }
 
-        // Parse condition with mixed and/or connectors
-        // Split by ' and ' or ' or ' while keeping the connector
-        const regex = /\s+(and|or)\s+/gi;
-        const parts = [];
-        const connectors = [];
-        
-        let lastIndex = 0;
-        let match;
-        while ((match = regex.exec(condition)) !== null) {
-            parts.push(condition.substring(lastIndex, match.index).trim());
-            connectors.push(match[1].toLowerCase());
-            lastIndex = match.index + match[0].length;
-        }
-        parts.push(condition.substring(lastIndex).trim());
-
-        parts.forEach((part, index) => {
-            const ruleMatch = part.match(/r\.sub\.(\w+)\s*(==|!=|in|not in)\s*(.+)/);
-            if (ruleMatch) {
-                addRule();
-                const ruleId = ruleCounter;
-                const wrapper = document.querySelector(`.condition-rule-wrapper[data-rule-id="${ruleId}"]`);
-                const rule = wrapper.querySelector('.condition-rule');
-                
-                // Set connector for rules after first
-                if (index > 0 && connectors[index - 1]) {
-                    const connectorSelect = wrapper.querySelector('.connector-select');
-                    if (connectorSelect) {
-                        connectorSelect.value = connectors[index - 1];
-                    }
-                }
-                
-                rule.querySelector('.attr-select').value = ruleMatch[1];
-                rule.querySelector('.op-select').value = ruleMatch[2].trim();
-                updateValueSelector(ruleId);
-
-                // Set value(s)
-                const valueStr = ruleMatch[3].trim();
-                if (ruleMatch[2].trim() === 'in' || ruleMatch[2].trim() === 'not in') {
-                    const values = valueStr.replace(/[\[\]']/g, '').split(',').map(v => v.trim());
-                    rule.querySelectorAll('.value-checkbox').forEach(cb => {
-                        cb.checked = values.includes(cb.value);
-                    });
-                } else {
-                    const value = valueStr.replace(/['"]/g, '');
-                    const select = rule.querySelector('.value-select');
-                    if (select) select.value = value;
-                }
+        try {
+            const response = await fetch('/api/admin/policies/parse_ast/', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ condition: condition })
+            });
+            const data = await response.json();
+            
+            if (data.tree) {
+                // Clear root
+                document.getElementById('query-builder-root').innerHTML = '';
+                buildUIFromJson(data.tree, null);
+            } else {
+                addRuleToGroup(0);
             }
-        });
-
-        if (ruleCounter === 0) {
-            addRule();
+        } catch (error) {
+            console.error("Failed to parse AST from server:", error);
+            showAlert("Failed to parse complex policy. Switched to Advanced Mode.", "error");
+            isAdvancedMode = true;
+            document.getElementById('simple-mode').classList.add('hidden');
+            document.getElementById('advanced-mode').classList.remove('hidden');
+            document.getElementById('toggle-advanced').textContent = 'Simple mode';
+            document.getElementById('subject_condition_input').value = condition;
         }
-        updateConnectorVisibility();
         updatePreview();
+    }
+
+    function buildUIFromJson(node, parentGroupId) {
+        if (!node) return;
+        
+        if (node.type === 'group') {
+            let groupId;
+            if (parentGroupId === null) {
+                // It's root
+                groupId = 0;
+                document.getElementById('query-builder-root').innerHTML = createGroupHTML(groupId, true);
+            } else {
+                groupId = addGroupToGroup(parentGroupId, node.connector);
+            }
+            
+            const groupEl = document.querySelector(`.condition-group[data-group-id="${groupId}"]`);
+            if (groupEl) {
+                groupEl.querySelector('.group-connector-select').value = node.connector;
+            }
+            
+            if (node.children) {
+                node.children.forEach(child => buildUIFromJson(child, groupId));
+            }
+        } else if (node.type === 'rule' && parentGroupId !== null) {
+            addRuleToGroup(parentGroupId, node);
+        }
     }
 
     // ========== EVENT LISTENERS ==========
@@ -667,26 +684,68 @@
             document.getElementById('toggle-advanced').textContent = 'Advanced mode';
         }
         
-        // Initialize with one rule
-        document.getElementById('condition-rules').innerHTML = '';
-        ruleCounter = 0;
+        // Initialize visual builder with empty root group
+        document.getElementById('query-builder-root').innerHTML = '';
+        elementCounter = 0;
+        
         if (!isAdvancedMode) {
-            addRule();
+            initRootGroup();
+            addRuleToGroup(0);
         }
         
         document.getElementById('modal').classList.remove('hidden');
+        updatePreview();
     });
 
     document.getElementById('cancel-btn').addEventListener('click', () => {
         document.getElementById('modal').classList.add('hidden');
     });
 
-    document.getElementById('add-rule-btn').addEventListener('click', () => {
-        addRule();
-        updateConnectorVisibility();
-    });
+    // Handle add condition button outside
+    const outerAddRuleBtn = document.getElementById('add-rule-btn');
+    if (outerAddRuleBtn) {
+        outerAddRuleBtn.addEventListener('click', () => {
+            addRuleToGroup(0);
+        });
+    }
     document.getElementById('toggle-advanced').addEventListener('click', toggleAdvancedMode);
     document.getElementById('subject_condition_input').addEventListener('input', updatePreview);
+
+    document.getElementById('test-policy-btn').addEventListener('click', async () => {
+        const condition = document.getElementById('subject_condition_final').value;
+        if (!condition) {
+            showAlert('Please build a condition first to test.', 'error');
+            return;
+        }
+        
+        try {
+            const btn = document.getElementById('test-policy-btn');
+            const origText = btn.textContent;
+            btn.textContent = 'Testing...';
+            btn.disabled = true;
+            document.getElementById('modal-alert').classList.add('hidden');
+            
+            const response = await fetch(`${API_BASE}test_policy/`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ condition })
+            });
+            const data = await response.json();
+            
+            btn.textContent = origText;
+            btn.disabled = false;
+            
+            if (data.error) {
+                showModalAlert(`Test Failed: ${data.error}`, 'error');
+            } else if (data.cpabe_valid && data.abac_valid) {
+                showModalAlert(`Success! ABAC and CP-ABE are valid. CP-ABE Policy: ${data.cpabe_policy}`, 'success');
+            }
+        } catch (error) {
+            showModalAlert('Error testing policy: ' + error.message, 'error');
+            document.getElementById('test-policy-btn').textContent = '🧪 Test Policy';
+            document.getElementById('test-policy-btn').disabled = false;
+        }
+    });
 
     document.getElementById('reload-btn').addEventListener('click', async () => {
         try {
@@ -732,7 +791,7 @@
             form.is_active.checked = policy.is_active;
             
             // Parse condition to rules
-            parseConditionToRules(policy.subject_condition);
+            await parseConditionToRules(policy.subject_condition);
             document.getElementById('subject_condition_input').value = policy.subject_condition;
             
             document.getElementById('modal').classList.remove('hidden');

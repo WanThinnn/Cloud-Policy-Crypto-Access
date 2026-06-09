@@ -129,6 +129,131 @@ class AccessPolicyViewSet(viewsets.ModelViewSet):
         
         return Response(explanation)
 
+    @action(detail=False, methods=['post'])
+    def test_policy(self, request):
+        """
+        Test ABAC syntax and CP-ABE compilation of a policy condition.
+        """
+        condition = request.data.get('condition', '')
+        if not condition:
+            return Response({'error': 'Condition is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        import ast
+        from crypto_access.services.cpabe_service import cpabe_service
+        
+        result = {
+            'abac_valid': False,
+            'cpabe_valid': False,
+            'cpabe_policy': None,
+            'error': None
+        }
+        
+        # 1. Test ABAC Syntax
+        try:
+            expr = condition.replace('&&', ' and ').replace('||', ' or ')
+            ast.parse(expr, mode='eval')
+            result['abac_valid'] = True
+        except Exception as e:
+            result['error'] = f"ABAC Syntax Error: {str(e)}"
+            return Response(result)
+            
+        # 2. Test CP-ABE compilation
+        try:
+            # Use dummy policy object to invoke the generator logic
+            dummy_policy = AccessPolicy(subject_condition=condition)
+            cpabe_str = dummy_policy._generate_cpabe_policy()
+            result['cpabe_policy'] = cpabe_str
+            
+            if not cpabe_str:
+                result['error'] = "Generated empty CP-ABE policy."
+                return Response(result)
+                
+            # Attempt to encrypt a dummy buffer to see if libhybrid-cp-abe rejects the syntax
+            # The encrypt_buffer function throws CPABEError if the policy syntax is invalid.
+            cpabe_service.encrypt_buffer(b"dummy_test_payload", cpabe_str)
+            result['cpabe_valid'] = True
+            
+        except Exception as e:
+            result['error'] = f"CP-ABE Compilation Error: {str(e)}"
+            
+        return Response(result)
+
+    @action(detail=False, methods=['post'])
+    def parse_ast(self, request):
+        """
+        Parse an ABAC condition string into a structured JSON tree for the frontend Visual Query Builder.
+        """
+        condition = request.data.get('condition', '')
+        if not condition:
+            return Response({'tree': None})
+            
+        import ast
+        
+        def _ast_to_json(node):
+            if isinstance(node, ast.BoolOp):
+                connector = 'and' if isinstance(node.op, ast.And) else 'or'
+                return {
+                    'type': 'group',
+                    'connector': connector,
+                    'children': [child for v in node.values if (child := _ast_to_json(v)) is not None]
+                }
+            elif isinstance(node, ast.Compare):
+                try:
+                    attr_name = ""
+                    if isinstance(node.left, ast.Attribute):
+                        def get_full_name(n):
+                            if isinstance(n, ast.Name): return n.id
+                            elif isinstance(n, ast.Attribute): return f"{get_full_name(n.value)}.{n.attr}"
+                            return ""
+                        attr_name = get_full_name(node.left)
+                    elif isinstance(node.left, ast.Name):
+                        attr_name = node.left.id
+                        
+                    attr = attr_name.replace('r.sub.', '')
+                    
+                    op_node = node.ops[0]
+                    if isinstance(op_node, ast.Eq): op = '=='
+                    elif isinstance(op_node, ast.NotEq): op = '!='
+                    elif isinstance(op_node, ast.In): op = 'in'
+                    elif isinstance(op_node, ast.NotIn): op = 'not in'
+                    else: op = '=='
+                    
+                    val_node = node.comparators[0]
+                    if isinstance(val_node, ast.Constant):
+                        val = val_node.value
+                    elif isinstance(val_node, ast.List) or isinstance(val_node, ast.Set):
+                        val = [v.value if isinstance(v, ast.Constant) else str(v) for v in val_node.elts]
+                    else:
+                        val = str(val_node)
+                        
+                    return {
+                        'type': 'rule',
+                        'attr': attr,
+                        'op': op,
+                        'value': val
+                    }
+                except Exception as e:
+                    return None
+            return None
+
+        try:
+            expr = condition.replace('&&', ' and ').replace('||', ' or ')
+            tree = ast.parse(expr, mode='eval')
+            json_tree = _ast_to_json(tree.body)
+            
+            # If the root is a single rule, wrap it in a group
+            if json_tree and json_tree.get('type') == 'rule':
+                json_tree = {
+                    'type': 'group',
+                    'connector': 'and',
+                    'children': [json_tree]
+                }
+                
+            return Response({'tree': json_tree})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 def policies_page(request):
     """Render the policies admin page - permission check done via API"""

@@ -39,94 +39,116 @@ from crypto_access.services.setting_service import SettingService
 logger = logging.getLogger(__name__)
 
 
+class ASTEvaluator(ast.NodeVisitor):
+    def __init__(self, context):
+        self.context = context
+        
+    def visit_BoolOp(self, node):
+        if isinstance(node.op, ast.And):
+            for value in node.values:
+                if not self.visit(value):
+                    return False
+            return True
+        elif isinstance(node.op, ast.Or):
+            for value in node.values:
+                if self.visit(value):
+                    return True
+            return False
+            
+    def visit_UnaryOp(self, node):
+        if isinstance(node.op, ast.Not):
+            return not self.visit(node.operand)
+        raise ValueError(f"Unsupported unary operator: {type(node.op)}")
+        
+    def visit_Compare(self, node):
+        left = self.visit(node.left)
+        
+        for op, comparator in zip(node.ops, node.comparators):
+            right = self.visit(comparator)
+            if isinstance(op, ast.Eq):
+                if left != right: return False
+            elif isinstance(op, ast.NotEq):
+                if left == right: return False
+            elif isinstance(op, ast.In):
+                if left not in right: return False
+            elif isinstance(op, ast.NotIn):
+                if left in right: return False
+            elif isinstance(op, ast.Lt):
+                if left >= right: return False
+            elif isinstance(op, ast.LtE):
+                if left > right: return False
+            elif isinstance(op, ast.Gt):
+                if left <= right: return False
+            elif isinstance(op, ast.GtE):
+                if left < right: return False
+            else:
+                raise ValueError(f"Unsupported comparison operator: {type(op)}")
+            left = right
+        return True
+        
+    def visit_Name(self, node):
+        # Could be a boolean or None
+        if node.id == 'True': return True
+        if node.id == 'False': return False
+        if node.id == 'None': return None
+        return node.id
+        
+    def visit_Attribute(self, node):
+        def get_full_name(n):
+            if isinstance(n, ast.Name):
+                return n.id
+            elif isinstance(n, ast.Attribute):
+                return f"{get_full_name(n.value)}.{n.attr}"
+            return ""
+            
+        full_name = get_full_name(node)
+        
+        # We strip the r.sub. prefix to lookup in flat context directly
+        if full_name.startswith("r.sub."):
+            attr_name = full_name[6:]
+            return self.context.get(attr_name)
+            
+        return self.context.get(full_name)
+        
+    def visit_Constant(self, node):
+        return node.value
+        
+    def visit_List(self, node):
+        return [self.visit(elt) for elt in node.elts]
+        
+    def visit_Set(self, node):
+        return {self.visit(elt) for elt in node.elts}
+        
+    def visit_Tuple(self, node):
+        return tuple(self.visit(elt) for elt in node.elts)
+        
+    def generic_visit(self, node):
+        raise ValueError(f"Unsupported AST node: {type(node)}")
+
+
 def safe_eval_condition(condition: str, context: dict) -> bool:
     """
-    Safely evaluate ABAC policy conditions without using eval().
-    Supports: ==, !=, 'in', 'and', 'or', 'not', attribute access via r.sub.X
+    Safely evaluate ABAC policy conditions using Python's AST module.
+    Supports arbitrarily nested boolean grouping, compares, and attribute access.
     """
     try:
-        # Normalize operators
+        if not condition or not condition.strip():
+            return False
+            
+        # Normalize operators and syntax
         expr = condition.replace('&&', ' and ').replace('||', ' or ')
         expr = expr.strip()
         
-        # Handle 'and' / 'or' by splitting and recursing
-        # Split on ' or ' first (lower precedence)
-        if ' or ' in expr:
-            parts = expr.split(' or ', 1)
-            return safe_eval_condition(parts[0], context) or safe_eval_condition(parts[1], context)
+        # Parse into an AST expression node
+        tree = ast.parse(expr, mode='eval')
         
-        if ' and ' in expr:
-            parts = expr.split(' and ', 1)
-            return safe_eval_condition(parts[0], context) and safe_eval_condition(parts[1], context)
-        
-        # Handle 'not'
-        if expr.startswith('not ') or expr.startswith('!'):
-            inner = expr[4:].strip() if expr.startswith('not ') else expr[1:].strip()
-            return not safe_eval_condition(inner, context)
-        
-        # Strip outer parens
-        if expr.startswith('(') and expr.endswith(')'):
-            return safe_eval_condition(expr[1:-1], context)
-        
-        # Handle comparisons: ==, !=, in
-        for op in ['!=', '==', ' in ']:
-            if op in expr:
-                left, right = expr.split(op, 1)
-                left_val = _resolve_value(left.strip(), context)
-                right_val = _resolve_value(right.strip(), context)
-                if op == '==':
-                    return left_val == right_val
-                elif op == '!=':
-                    return left_val != right_val
-                elif op == ' in ':
-                    if isinstance(right_val, (list, tuple, set)):
-                        return left_val in right_val
-                    elif isinstance(right_val, str):
-                        return str(left_val) in right_val
-                    return False
-        
-        # Boolean value
-        val = _resolve_value(expr, context)
-        return bool(val)
-    except Exception:
+        # Evaluate safely using our strict visitor
+        evaluator = ASTEvaluator(context)
+        result = evaluator.visit(tree.body)
+        return bool(result)
+    except Exception as e:
+        logger.error(f"AST evaluation error for condition '{condition}': {e}")
         return False
-
-
-def _resolve_value(token: str, context: dict):
-    """Resolve a token to its value from the context or as a literal."""
-    token = token.strip()
-    
-    # String literal
-    if (token.startswith("'") and token.endswith("'")) or \
-       (token.startswith('"') and token.endswith('"')):
-        return token[1:-1]
-    
-    # Boolean / None
-    if token in ('True', 'true'):
-        return True
-    if token in ('False', 'false'):
-        return False
-    if token in ('None', 'null'):
-        return None
-    
-    # Numeric
-    try:
-        return ast.literal_eval(token)
-    except (ValueError, SyntaxError):
-        pass
-    
-    # Attribute access: r.sub.department
-    parts = token.split('.')
-    obj = context
-    for part in parts:
-        if isinstance(obj, dict):
-            obj = obj.get(part)
-        else:
-            obj = getattr(obj, part, None)
-        if obj is None:
-            return None
-    return obj
-
 
 # Default mappings if settings are not available
 DEFAULT_ACTION_PERMISSION_MAP = {
