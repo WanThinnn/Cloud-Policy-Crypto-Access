@@ -189,10 +189,12 @@ Phiên bản thuộc tính: 3
 | 5   | data_access       | enum   | advanced   | active     | 08/09/2025    |
 | 6   | employment_status | enum   | active     | active     | 01/01/2025    |
 
-### **1.3.5. Quy định 5 (đã cập nhật - Sinh khóa động và Redis Cache)**
+### **1.3.5. Quy định 5 (đã cập nhật - Sinh khóa động, Redis Cache và Disaster Recovery)**
 
-**QĐ5:** Thay vì lưu trữ cố định khóa bí mật, mỗi khi người dùng có yêu cầu truy cập tài liệu mã hóa, hệ thống sẽ thực hiện **sinh khóa bí mật CP-ABE (User Private Key) động (on-the-fly)** dựa trên tập thuộc tính của người dùng tại thời điểm đó.
-Để đảm bảo an toàn tuyệt đối và tránh nguy cơ rò rỉ khóa từ cơ sở dữ liệu, **hệ thống KHÔNG LƯU TRỮ User Private Key** dưới dạng persistent. Thay vào đó, ngay sau khi sinh ra, mảng byte của khóa được lưu trữ tạm thời (ephemeral caching) vào hệ thống **Redis tập trung (Centralized Redis Cache)** nhằm mục đích tăng hiệu năng giải mã giữa các multi-worker (Gunicorn) của Django.
+**QĐ5:** 
+- **Khóa mã hóa (Keys)**:
+    - Khóa bí mật cá nhân (Private Key) được **tạo động (on-the-fly) trên RAM** dựa trên thuộc tính hiện tại của người dùng khi có yêu cầu và lưu vào **Redis Cache** (có thời hạn). Tuyệt đối **KHÔNG** lưu vào DB hay file tĩnh.
+    - Master Key (`cpabe_msk.key`) và Public Key (`cpabe_pub.key`) được hệ thống tự động sinh ra trong thư mục `./keys` nếu chưa tồn tại. Tuy nhiên, nếu chuyển sang máy chủ mới, quản trị viên **BẮT BUỘC** phải copy 2 file này sang máy mới. Nếu mất Master Key, toàn bộ file đã mã hóa trước đó sẽ vĩnh viễn không thể khôi phục.
 - **Thời hạn sống (TTL)**: Khóa được cache trong một khoảng thời gian ngắn (mặc định 1 giờ).
 - **Thu hồi khóa (Revocation)**: Khi thuộc tính người dùng thay đổi hoặc tài khoản bị vô hiệu hóa, hệ thống chỉ cần xóa (invalidate) khóa tương ứng trên Redis. Các yêu cầu sau đó sẽ bị từ chối hoặc phải sinh khóa mới với tập thuộc tính mới nhất.
 

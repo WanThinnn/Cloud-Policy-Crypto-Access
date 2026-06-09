@@ -49,8 +49,9 @@ The `user_attributes` table is the Single Source of Truth for all user ABAC attr
 - **CP-ABE**: Generating user secret keys and encrypting files
 
 ### **R5: Dynamic Key Generation and Redis Cache**
-Instead of permanently storing secret keys, whenever a user requests access to an encrypted document, the system generates a **dynamic CP-ABE secret key (on-the-fly)** based on the user's attribute set at that moment. 
-To ensure absolute security and avoid the risk of key leakage from the database, **the system DOES NOT store the User Private Key persistently**. Instead, the raw bytes of the key are temporarily cached in a **Centralized Redis Cache** to boost decryption performance across Django workers. 
+**Cryptographic Keys**:
+- The User Private Key is **dynamically generated (on-the-fly) in RAM** based on the user's current attributes when access is requested. It is cached in **Redis** with a short TTL. It is **NEVER** persisted to the DB or static files.
+- The Master Key (`cpabe_msk.key`) and Public Key (`cpabe_pub.key`) are automatically generated in the `./keys` directory if they do not exist. However, if migrating to a new server, the administrator **MUST** manually copy these two files to the new machine. If the Master Key is lost, all previously encrypted files will be permanently irrecoverable.
 - **TTL**: Keys are cached for 1 hour.
 - **Revocation**: Handled by simply invalidating the specific Redis key.
 

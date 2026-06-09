@@ -163,6 +163,7 @@ python start.py createsuperuser
 - **Zero Persistent Keys**: CP-ABE private keys are never stored on disk or in the database. They are generated dynamically (on-the-fly) and temporarily cached in Redis.
 - **XSS Protection**: JWT Tokens are securely stored in HttpOnly cookies, rendering them immune to XSS attacks.
 - Ensure the `keys` directory is properly secured in production. The `cpabe_msk.key` (Master Key) must never be exposed.
+- **Disaster Recovery / Migration**: The CP-ABE Public Key and Master Key are **automatically generated** by the backend upon startup if they do not exist in the `./keys` folder. However, if you migrate your server or move to a completely new machine, you **MUST** manually copy the `cpabe_pub.key` and `cpabe_msk.key` from your old machine to the new `./keys` directory. If you lose the old Master Key, all previously encrypted files in your storage will become permanently inaccessible.
 - Always use `HTTPS` in production to prevent Man-in-the-Middle (MITM) attacks during token transmission.
 
 ## License
