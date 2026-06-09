@@ -29,9 +29,16 @@ urlpatterns = [
     path('api/auth/', include('crypto_access.urls.auth')),  # Auth API endpoints (/api/auth/login/)
     path('api/storage/', include('crypto_access.urls.storage')),  # Storage API
     path('api/admin/', include('crypto_access.urls.admin')),  # Admin API for ABAC management
+
 ]
 
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Custom error handlers
+handler400 = 'crypto_access.views.custom_400'
+handler403 = 'crypto_access.views.custom_403'
+handler404 = 'crypto_access.views.custom_404'
+handler500 = 'crypto_access.views.custom_500'

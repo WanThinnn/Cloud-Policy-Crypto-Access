@@ -56,11 +56,24 @@ from .audit import (
     key_revocations_page,
 )
 
+from .errors import (
+    custom_400,
+    custom_403,
+    custom_404,
+    custom_500,
+)
+
 __all__ = [
     # Base views
     'index',
     'health_check',
     'api_health',
+    
+    # Error views
+    'custom_400',
+    'custom_403',
+    'custom_404',
+    'custom_500',
     
     # Auth views
     'login_page',
