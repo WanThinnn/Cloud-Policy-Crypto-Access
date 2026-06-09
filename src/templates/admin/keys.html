@@ -10,12 +10,20 @@
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Key Revocation List (KRL)</h1>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">View history of revoked and reissued CP-ABE keys.</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2">
+                <label for="start_date" class="text-sm font-medium text-gray-700 dark:text-gray-300">From:</label>
+                <input type="date" id="start_date" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white px-2 py-1.5">
+            </div>
+            <div class="flex items-center gap-2">
+                <label for="end_date" class="text-sm font-medium text-gray-700 dark:text-gray-300">To:</label>
+                <input type="date" id="end_date" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white px-2 py-1.5">
+            </div>
             <button id="refresh-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
-                Refresh Data
+                Filter & Refresh
             </button>
         </div>
     </div>
@@ -55,7 +63,19 @@ async function loadKeys() {
     tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>';
     
     try {
-        const response = await fetch('/api/admin/key-revocations/');
+        const startDate = document.getElementById('start_date').value;
+        const endDate = document.getElementById('end_date').value;
+        
+        let url = '/api/admin/key-revocations/';
+        const params = new URLSearchParams();
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+        
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+        
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch keys');
         const data = await response.json();
         

@@ -15,6 +15,18 @@ class AccessLogViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['log_id', 'user__username', 'user__email', 'resource_id', 'error_message']
     ordering_fields = ['timestamp', 'user__username', 'result']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        
+        if start_date:
+            queryset = queryset.filter(timestamp__date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(timestamp__date__lte=end_date)
+            
+        return queryset
 
 class KeyRevocationViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -27,6 +39,18 @@ class KeyRevocationViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['revocation_id', 'user__username', 'key_id', 'reason_detail']
     ordering_fields = ['revoked_at', 'reissued_at', 'user__username', 'status']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        
+        if start_date:
+            queryset = queryset.filter(revoked_at__date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(revoked_at__date__lte=end_date)
+            
+        return queryset
 
 def audit_logs_page(request):
     """Render System Logs page"""
