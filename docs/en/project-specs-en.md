@@ -59,7 +59,7 @@ Each ABAC policy defines access rules based on three types of attributes:
 - **Subject Attributes**: User attributes (department, role, clearance_level, etc.)
 - **Resource Attributes**: Resource attributes (file type, classification level)
 - **Environment Attributes**: Environmental attributes (time, IP, device, geolocation)
-Default conflict resolution strategy is **Deny-Override**.
+The system features an **Abstract Syntax Tree (AST) evaluator**, allowing policies to support complex **nested boolean logic** (e.g., `(department == 'it' and role == 'manager') or clearance_level == 'top_secret'`). This ensures mathematically precise attribute matching for both the Casbin ABAC layer and the CP-ABE cryptographic layer. Default conflict resolution strategy is **Deny-Override**.
 
 ## **1.4. Database Tables Summary**
 

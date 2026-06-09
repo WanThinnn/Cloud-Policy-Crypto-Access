@@ -257,16 +257,18 @@ Ngày tạo: _______
 - **Resource Attributes**: Thuộc tính của tài nguyên (loại file, mức phân loại, phòng ban sở hữu)
 - **Environment Attributes**: Thuộc tính môi trường (thời gian, IP, thiết bị, vị trí địa lý)
 
-Chỉ Super Admin mới có thể tạo/sửa chính sách. Có 2 loại hiệu lực: ALLOW và DENY. Độ ưu tiên cao hơn sẽ được áp dụng trước. Chiến lược xử lý xung đột mặc định là **Deny-Override** (nếu có bất kỳ chính sách DENY nào khớp, quyết định cuối cùng là DENY).
+Hệ thống được tích hợp bộ phân tích **Cây cú pháp trừu tượng (Abstract Syntax Tree - AST)**, cho phép các chính sách hỗ trợ **logic boolean lồng nhau phức tạp** bằng dấu ngoặc đơn (ví dụ: `(department == 'it' and role == 'manager') or clearance_level == 'top_secret'`). Điều này đảm bảo tính toán thuộc tính chính xác tuyệt đối cho cả tầng ABAC (Casbin) và tầng mật mã học (CP-ABE). 
 
-**Ví dụ 1: Chính sách dựa trên thuộc tính người dùng**  
+Chỉ Super Admin mới có thể tạo/sửa chính sách thông qua giao diện kéo thả logic (Visual UI Builder) hoặc viết code trực tiếp. Có 2 loại hiệu lực: ALLOW và DENY. Độ ưu tiên cao hơn sẽ được áp dụng trước. Chiến lược xử lý xung đột mặc định là **Deny-Override** (nếu có bất kỳ chính sách DENY nào khớp, quyết định cuối cùng là DENY).
+
+**Ví dụ 1: Chính sách dựa trên thuộc tính người dùng (có logic lồng nhau)**  
 BM7: Phiếu Chính Sách Truy Cập ABAC  
 Policy ID: executives_all_access  
 Tên chính sách: Executive All Access  
 Mô tả: Executive level access to all resources  
 Tài nguyên: shared_files  
 Hành động: read, write, delete  
-Điều kiện thuộc tính người dùng: role == "executive" OR role == "ceo"  
+Điều kiện thuộc tính người dùng: `(role == "executive" OR role == "ceo") AND department == "board"`  
 Điều kiện thuộc tính tài nguyên: *  
 Điều kiện thuộc tính môi trường: *  
 Hiệu lực: ALLOW  

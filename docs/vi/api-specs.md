@@ -49,6 +49,8 @@ Prefix: `/api/admin/`
 | GET/POST | `/user-types/` | Quản lý danh sách các loại người dùng (User Types). | Admin |
 | GET/POST | `/attributes/` | Định nghĩa lược đồ thuộc tính (Attribute Definitions). Dùng cho ABAC và CP-ABE. | Admin |
 | GET/POST | `/policies/` | Quản trị chính sách ABAC (Access Policies). Cho phép định nghĩa rules theo định dạng Casbin. | Admin |
+| POST | `/policies/parse_ast/` | Phân tích chuỗi chính sách thành Cây cú pháp trừu tượng (AST) phục vụ giao diện kéo thả. | Admin |
+| POST | `/policies/test_policy/` | Kiểm thử chính sách ABAC với thuộc tính thực tế của người dùng trước khi lưu. | Admin |
 | GET/POST | `/users/` | Quản lý danh sách người dùng toàn hệ thống (tạo, khóa, duyệt tài khoản). | Admin |
 | GET | `/dashboard-stats/` | Lấy các số liệu tổng quan (Tổng số user, file, chính sách) hiển thị lên biểu đồ. | Admin |
 | GET | `/users/{id}/attributes/` | Liệt kê các thuộc tính hiện đang được gán cho một user cụ thể. | Admin |

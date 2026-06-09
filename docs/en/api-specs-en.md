@@ -49,6 +49,8 @@ Prefix: `/api/admin/`
 | GET/POST | `/user-types/`                      | Manage the list of user types.                                                                     | Admin         |
 | GET/POST | `/attributes/`                      | Define attribute schemas (Attribute Definitions). Used for ABAC and CP-ABE.                        | Admin         |
 | GET/POST | `/policies/`                        | Manage ABAC Access Policies. Allows defining rules in Casbin format.                               | Admin         |
+| POST     | `/policies/parse_ast/`              | Parses a policy string into an Abstract Syntax Tree (AST) structure for UI visualization.          | Admin         |
+| POST     | `/policies/test_policy/`            | Tests an ABAC policy string against real user attributes to verify access decisions before saving. | Admin         |
 | GET/POST | `/users/`                           | Manage users across the system (create, lock, approve accounts).                                   | Admin         |
 | GET      | `/dashboard-stats/`                 | Retrieve overview statistics (Total users, files, policies) for dashboard charts.                  | Admin         |
 | GET      | `/users/{id}/attributes/`           | List attributes currently assigned to a specific user.                                             | Admin         |
