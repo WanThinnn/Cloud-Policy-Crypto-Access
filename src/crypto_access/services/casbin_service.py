@@ -456,23 +456,6 @@ class CasbinService:
             
         user_attrs = self.get_user_attributes(user)
         
-        class AttrNamespace:
-            def __init__(self, attributes):
-                for k, v in attributes.items():
-                    setattr(self, k, v)
-            
-            def __getattr__(self, name):
-                return None
-        
-        r_sub = AttrNamespace(user_attrs)
-        eval_context = {
-            'r': type('Request', (), {'sub': r_sub})(),
-            'True': True,
-            'False': False,
-            'true': True,
-            'false': False,
-        }
-        
         allowed_policy_ids = []
         all_policies = AccessPolicy.objects.filter(is_active=True)
         
@@ -488,7 +471,7 @@ class CasbinService:
                     continue
                     
             try:
-                if safe_eval_condition(policy.subject_condition, eval_context):
+                if safe_eval_condition(policy.subject_condition, user_attrs):
                     if policy.effect == 'allow':
                         allowed_policy_ids.append(policy.id)
             except Exception as e:
@@ -537,16 +520,6 @@ class CasbinService:
             return True, "no_file_policy_default_allow"
         
         # Create namespace for condition evaluation
-        class AttrNamespace:
-            def __init__(self, attributes):
-                for k, v in attributes.items():
-                    setattr(self, k, v)
-            
-            def __getattr__(self, name):
-                return None
-        
-        r_sub = AttrNamespace(user_attrs)
-        
         # Evaluate each policy in priority order
         # Sort by priority (lower = higher priority)
         sorted_policies = sorted(file_policies, key=lambda p: p.priority)
@@ -567,11 +540,7 @@ class CasbinService:
             
             # Evaluate the subject condition
             try:
-                eval_context = {
-                    'r': type('Request', (), {'sub': r_sub})(),
-                }
-                
-                result = safe_eval_condition(policy.subject_condition, eval_context)
+                result = safe_eval_condition(policy.subject_condition, user_attrs)
                 
                 if result:
                     if policy.effect == 'allow':
