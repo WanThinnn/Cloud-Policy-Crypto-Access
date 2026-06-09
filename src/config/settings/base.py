@@ -45,6 +45,7 @@ NPM_BIN_PATH = r'C:\Program Files\nodejs\npm.cmd'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'crypto_access.middleware.rate_limit.GlobalRateLimitMiddleware',  # Rate Limiting
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files
     'django_browser_reload.middleware.BrowserReloadMiddleware',
     'corsheaders.middleware.CorsMiddleware',

@@ -136,6 +136,7 @@
               <button class="hover:scale-105 duration-200 transition-transform flex items-center justify-between w-full py-2 px-3 text-gray-900 dark:text-gray-200 rounded hover:bg-gray-100 dark:hover:bg-gray-700 md:hover:bg-transparent md:hover:text-blue-700 dark:md:hover:text-blue-400 md:p-0 md:w-auto peer font-semibold">
                 <span id="user-info"></span>
                 <span id="admin-badge" class="hidden ms-2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium px-2.5 py-0.5 rounded-full">Admin</span>
+                <span id="superadmin-badge" class="hidden ms-2 bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 text-xs font-medium px-2.5 py-0.5 rounded-full border border-purple-200 dark:border-purple-800 shadow-sm">SuperAdmin</span>
               </button>
               <div class="dropdown-menu z-10 hidden font-normal bg-white divide-y divide-gray-100 rounded-lg shadow w-52 absolute top-full left-1/2 -translate-x-1/2 mt-1 border border-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:divide-gray-600">
                 <ul class="py-2 text-gray-700 dark:text-gray-200">
@@ -355,7 +356,13 @@
                       // Handle Admin Menus dynamically based on ABAC attributes
                       if (perms.can_access_admin) {
                           document.getElementById('admin-sys-mgmt')?.classList.remove('hidden');
-                          document.getElementById('admin-badge')?.classList.remove('hidden');
+                          
+                          if (perms.is_super_admin) {
+                              document.getElementById('superadmin-badge')?.classList.remove('hidden');
+                              document.getElementById('django-admin-link')?.classList.remove('hidden');
+                          } else {
+                              document.getElementById('admin-badge')?.classList.remove('hidden');
+                          }
                           
                           if (perms.can_manage_users || perms.can_manage_attributes) {
                               document.getElementById('admin-user-mgmt')?.classList.remove('hidden');
@@ -372,10 +379,6 @@
                           
                           if (perms.can_view_audit_logs) {
                               document.getElementById('system-logs-link')?.classList.remove('hidden');
-                          }
-                          
-                          if (perms.is_super_admin) {
-                              document.getElementById('django-admin-link')?.classList.remove('hidden');
                           }
                       }
                   } else if (response.status === 401) {

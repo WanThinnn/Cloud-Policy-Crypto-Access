@@ -121,12 +121,26 @@ def login(request):
         username = serializer.validated_data['username']
         password = serializer.validated_data['password']
         
+        from django.core.cache import cache
+        
+        cache_key = f"failed_login_attempts_{username}"
+        attempts = cache.get(cache_key, 0)
+        
+        if attempts >= 5:
+            return Response({
+                'error': 'Account locked temporarily due to too many failed attempts. Please try again in 15 minutes.'
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        
         user = authenticate(username=username, password=password)
         
         if user is None:
+            cache.set(cache_key, attempts + 1, 900)  # Lock for 15 minutes
             return Response({
                 'error': 'Invalid credentials'
             }, status=status.HTTP_401_UNAUTHORIZED)
+            
+        # Reset attempts on successful login
+        cache.delete(cache_key)
         
         if not user.is_active:
             return Response({
