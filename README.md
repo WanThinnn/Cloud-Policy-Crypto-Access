@@ -116,6 +116,7 @@ Open `.env` in your text editor and fill in the missing critical values:
 - `SUPABASE_URL`: Your Supabase project URL (e.g., `https://xxxx.supabase.co`).
 - `SUPABASE_SERVICE_KEY`: Your Supabase Service Role Key (Dashboard -> Settings -> API). **Do not use the public anon key!**
 - `KEYS_DIR`: Keep as `./keys` to securely mount your encryption master keys outside the source code.
+- `SSL_CERT_FILE` & `SSL_KEY_FILE`: (Optional) By default, the system uses self-signed CyberFortress certs. To use your own certificates in production, place your `.crt` and `.key` files in the `./certs` folder and specify their filenames here.
 
 ### 4. Setup Supabase Storage
 Before running the system, configure your storage:
