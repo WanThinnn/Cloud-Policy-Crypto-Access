@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class AuthRateThrottle(AnonRateThrottle):
-    """Rate limit: 5 attempts per minute for auth endpoints"""
-    rate = '5/min'
+    """Rate limit: 20 attempts per minute for auth endpoints"""
+    rate = '20/min'
 
 from ..serializers import (
     RegisterSerializer,

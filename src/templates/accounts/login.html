@@ -202,7 +202,7 @@
                     window.location.href = '/';
                 }, 1500);
             } else {
-                showAlert(data.error || 'Login failed. Please check your credentials.');
+                showAlert(data.error || data.detail || 'Login failed. Please check your credentials.');
             }
         } catch (error) {
             console.error('Login error:', error);
