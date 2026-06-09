@@ -712,9 +712,11 @@
     document.getElementById('subject_condition_input').addEventListener('input', updatePreview);
 
     document.getElementById('test-policy-btn').addEventListener('click', async () => {
+        // Force sync UI state to input string before testing
+        updatePreview();
         const condition = document.getElementById('subject_condition_final').value;
         if (!condition) {
-            showAlert('Please build a condition first to test.', 'error');
+            showModalAlert('Please build a condition first to test.', 'error');
             return;
         }
         

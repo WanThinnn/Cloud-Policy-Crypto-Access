@@ -116,47 +116,53 @@ class AccessPolicy(BaseModel):
         
     def _generate_cpabe_policy(self):
         """Auto-generate CP-ABE policy from ABAC subject_condition"""
-        import re
         if not self.subject_condition:
             return ""
             
-        condition = self.subject_condition.replace("r.sub.", "")
+        import ast
         
-        # Replace == 'value' with :value
-        condition = re.sub(r"([a-zA-Z0-9_]+)\s*==\s*['\"]([^'\"]+)['\"]", r"\1:\2", condition)
-        
-        # Replace in ['val1', 'val2'] with (attr:val1 or attr:val2)
-        def repl_in(match):
-            attr = match.group(1)
-            values_str = match.group(2)
-            values = re.findall(r"['\"]([^'\"]+)['\"]", values_str)
-            if not values:
-                return ""
-            if len(values) == 1:
-                return f"{attr}:{values[0]}"
+        expr = self.subject_condition.replace('&&', ' and ').replace('||', ' or ')
+        try:
+            tree = ast.parse(expr, mode='eval')
+        except SyntaxError:
+            return ""
             
-            # rabe requires binary ORs! (A or B or C) -> ((A or B) or C)
-            res = f"{attr}:{values[0]}"
-            for v in values[1:]:
-                res = f"({res} or {attr}:{v})"
-            return res
-            
-        condition = re.sub(r"([a-zA-Z0-9_]+)\s*in\s*\[(.*?)\]", repl_in, condition)
-        
-        # CP-ABE lib supports 'and', 'or', and '()'. It doesn't support '&&' or '||' natively.
-        condition = condition.replace("&&", "and").replace("||", "or")
-        
-        # Fix binary tree requirement for rabe (A and B and C -> ((A and B) and C))
-        # This handles simple top-level ANDs which is what our UI generates.
-        if ' or ' not in condition or condition.startswith('('):
-            parts = [p.strip() for p in condition.split(' and ')]
-            if len(parts) > 2:
-                res = parts[0]
-                for p in parts[1:]:
-                    res = f"({res} and {p})"
-                condition = res
-        
-        return condition
+        def _build_rabe(node):
+            if isinstance(node, ast.BoolOp):
+                op_str = 'and' if isinstance(node.op, ast.And) else 'or'
+                res = _build_rabe(node.values[0])
+                for child in node.values[1:]:
+                    res = f"({res} {op_str} {_build_rabe(child)})"
+                return res
+            elif isinstance(node, ast.Compare):
+                attr_node = node.left
+                if isinstance(attr_node, ast.Attribute):
+                    attr = attr_node.attr
+                else:
+                    attr = attr_node.id
+                attr = attr.replace('r.sub.', '')
+                
+                op_node = node.ops[0]
+                val_node = node.comparators[0]
+                
+                if isinstance(op_node, ast.In):
+                    if hasattr(val_node, 'elts') and val_node.elts:
+                        values = [v.value if isinstance(v, ast.Constant) else str(v) for v in val_node.elts]
+                        res = f"{attr}:{values[0]}"
+                        for v in values[1:]:
+                            res = f"({res} or {attr}:{v})"
+                        return res
+                    return ""
+                elif isinstance(op_node, ast.Eq):
+                    val = val_node.value if isinstance(val_node, ast.Constant) else str(val_node)
+                    return f"{attr}:{val}"
+                else:
+                    val = val_node.value if isinstance(val_node, ast.Constant) else str(val_node)
+                    return f"{attr}:{val}"
+                    
+            return ""
+
+        return _build_rabe(tree.body)
 
     def save(self, *args, **kwargs):
         if not self.cpabe_policy and self.subject_condition:

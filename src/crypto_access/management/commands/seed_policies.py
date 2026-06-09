@@ -108,7 +108,7 @@ class Command(BaseCommand):
             {
                 'name': 'director_strategic_access',
                 'description': 'Directors or CEOs can access strategic data',
-                'subject_condition': "r.sub.role in ['director', 'ceo']",
+                'subject_condition': "(r.sub.role == 'director' or r.sub.role == 'ceo') and r.sub.employment_status == 'active'",
                 'resource': 'document',
                 'action': '*',
                 'effect': 'allow',
@@ -119,7 +119,7 @@ class Command(BaseCommand):
             {
                 'name': 'strict_finance_policy',
                 'description': 'Only active finance employees with full access can manage financial data',
-                'subject_condition': "r.sub.department == 'finance' and r.sub.employment_status == 'active' and r.sub.data_access == 'full'",
+                'subject_condition': "r.sub.department == 'finance' and (r.sub.role == 'manager' or r.sub.data_access == 'full')",
                 'resource': 'document',
                 'action': 'manage',
                 'effect': 'allow',
