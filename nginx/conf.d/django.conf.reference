@@ -5,11 +5,7 @@ upstream django_app {
 # HTTP server - redirect to HTTPS
 server {
     listen 80;
-    server_name cloudsafe.cyberfortress.local library.smartxdr.app *.smartxdr.app localhost 127.0.0.1;
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
+    server_name cloudsafe.cyberfortress.local localhost 127.0.0.1;
 
     location / {
         return 301 https://$host$request_uri;
@@ -21,7 +17,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name cyberfortress.local *.cyberfortress.local library.smartxdr.app *.smartxdr.app localhost 127.0.0.1;
+    server_name cyberfortress.local *.cyberfortress.local localhost 127.0.0.1;
 
     # SSL certificates
     ssl_certificate /etc/nginx/certs/_.cyberfortress.local.crt;
