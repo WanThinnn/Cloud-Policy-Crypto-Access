@@ -490,7 +490,7 @@ venv/
 .venv/
 env/
 
-# --- IDE / Editor ---
+# # --- IDE / Editor ---
 .vscode/
 
 tmp/
@@ -504,6 +504,11 @@ src/config/keys
 
 LMS_Templates
 
-# Vault Data
-data/vault_data/
-config/keys/
+# --- CONFIG (keys, certs, vault) ---
+# Ignore all sensitive files inside config/
+config/keys/*
+config/certs/*
+# Keep the directory structure and READMEs
+!config/keys/README.md
+!config/certs/README.md
+

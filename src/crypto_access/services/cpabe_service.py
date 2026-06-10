@@ -94,10 +94,13 @@ class CPABEService:
         self._lib.getErrorMessage.restype = ctypes.c_char_p
         
     def _ensure_keys_exist(self):
-        """Run setup to generate master and public keys if they don't exist in Vault"""
-        if not os.path.exists(self.keys_dir):
-            os.makedirs(self.keys_dir)
-            
+        """Load CP-ABE keys from Vault (primary) or local backup (fallback), or generate new ones.
+        After loading/generating, always saves a local backup for disaster recovery."""
+        backup_dir = os.environ.get('KEYS_DIR', self.keys_dir)
+        backup_msk = os.path.join(backup_dir, 'cpabe_msk.key')
+        backup_pk = os.path.join(backup_dir, 'cpabe_pk.key')
+        
+        # 1. Try Vault (primary source)
         cpabe_msk_b64 = vault_service.get_secret('CPABE_MSK')
         cpabe_pk_b64 = vault_service.get_secret('CPABE_PK')
         
@@ -105,8 +108,23 @@ class CPABEService:
             logger.info("CP-ABE keys fetched from Vault.")
             self.msk_data = base64.b64decode(cpabe_msk_b64)
             self.pk_data = base64.b64decode(cpabe_pk_b64)
+            self._save_backup(backup_dir, backup_msk, backup_pk)
             return
 
+        # 2. Try local backup (fallback if Vault lost data)
+        if os.path.exists(backup_msk) and os.path.exists(backup_pk):
+            logger.warning("Vault has no CP-ABE keys. Restoring from local backup...")
+            with open(backup_msk, 'rb') as f:
+                self.msk_data = f.read()
+            with open(backup_pk, 'rb') as f:
+                self.pk_data = f.read()
+            # Re-push to Vault to restore
+            vault_service.put_secret('CPABE_MSK', base64.b64encode(self.msk_data).decode('utf-8'))
+            vault_service.put_secret('CPABE_PK', base64.b64encode(self.pk_data).decode('utf-8'))
+            logger.info("CP-ABE keys restored to Vault from local backup.")
+            return
+
+        # 3. Generate new keys (first-time setup)
         logger.info("Generating CP-ABE Master and Public keys...")
         
         # We must generate to disk first because C library expects path
@@ -128,10 +146,25 @@ class CPABEService:
         vault_service.put_secret('CPABE_MSK', base64.b64encode(self.msk_data).decode('utf-8'))
         vault_service.put_secret('CPABE_PK', base64.b64encode(self.pk_data).decode('utf-8'))
         
-        # Clean up
+        # Save local backup
+        self._save_backup(backup_dir, backup_msk, backup_pk)
+        
+        # Clean up temp files
         os.remove(msk_path)
         os.remove(pk_path)
         os.rmdir(tmp_dir)
+    
+    def _save_backup(self, backup_dir, backup_msk, backup_pk):
+        """Save CP-ABE keys to local backup directory for disaster recovery."""
+        try:
+            os.makedirs(backup_dir, exist_ok=True)
+            with open(backup_msk, 'wb') as f:
+                f.write(self.msk_data)
+            with open(backup_pk, 'wb') as f:
+                f.write(self.pk_data)
+            logger.info(f"CP-ABE keys backed up to {backup_dir}")
+        except Exception as e:
+            logger.warning(f"Could not save CP-ABE key backup: {e}")
                 
     def expand_hierarchical_attributes(self, attrs: dict) -> List[str]:
         """

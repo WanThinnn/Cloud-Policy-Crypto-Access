@@ -184,7 +184,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     logger.warning("Assuming file is plaintext due to format error. Returning original data.")
                     return file_data
                 # Otherwise (e.g. -4 Crypto failed), it is a real decryption failure
-                raise Exception("Bạn không có đủ thuộc tính (quyền) để giải mã tài liệu này!")
+                raise Exception("You don't have permission to see this file!")
         except Exception as e:
             raise e
     

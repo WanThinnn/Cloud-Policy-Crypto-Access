@@ -1,1 +1,0 @@
-**Warning: These keys should only be used for development and testing purposes. Do not use them in production!!!!**

@@ -1,1 +1,0 @@
-**Warning: These certificates are self-signed and should only be used for development and testing purposes. Do not use them in production!!!!**
