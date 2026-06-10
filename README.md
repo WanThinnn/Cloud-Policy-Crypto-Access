@@ -14,8 +14,9 @@ See more demo images in `img/`.
 ### Key Features
 
 - **Hybrid CP-ABE Encryption (v3.1.0)**: Advanced attribute-based encryption utilizing high-speed in-memory buffers (RAM) for encryption/decryption, completely bypassing disk I/O bottlenecks. See more at: https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git 
+- **HashiCorp Vault Integration (Envelope Encryption)**: Enterprise-grade key management. Vault secures the CP-ABE Master Keys and dynamically wraps per-file Data Encryption Keys (DEK), ensuring keys are never leaked to the disk.
 - **Supabase Integration**: Leverages Supabase Storage for hosting encrypted files and Supabase PostgreSQL for high-performance metadata management.
-- **Multi-Layer Security**: Combines **CP-ABE AC17** and **AES-GCM-256** (Mathematical Cryptography) with **Casbin ABAC** (Application-level Access Control) for defense-in-depth.
+- **Multi-Layer Security**: Combines **HashiCorp Vault**, **CP-ABE AC17**, and **AES-GCM-256** (Mathematical Cryptography) with **Casbin ABAC** (Application-level Access Control) for defense-in-depth.
 - **Field-Level SQL Encryption & Blind Indexing**: Protects sensitive metadata in the relational database. Fields such as physical paths, original filenames, signed URLs, and auto-extracted upload metadata are heavily encrypted using AES-256-GCM. Queries on these fields utilize HMAC-SHA3-256 Blind Indexes to maintain searchability while ensuring absolute privacy.
 - **Advanced Policy Engine**: Implements an Abstract Syntax Tree (AST) evaluator for ABAC and CP-ABE policies, supporting arbitrarily complex nested boolean logic (e.g., `(A and B) or C`) with visual UI builder integration.
 - **Intelligent Policy Combination**: Automatically re-encrypts and merges policies using `OR` logic when new access rights are granted to existing files.
@@ -33,6 +34,7 @@ See more demo images in `img/`.
 - **Deployment**: Docker & Docker Compose
 
 ### Security & Cryptography
+- **Key Management**: HashiCorp Vault
 - **Hybrid CP-ABE**: Custom C++ `libhybrid-cp-abe` (v3.1.0) bridged via Python `ctypes`
 - **Access Control**: PyCasbin (Attribute-Based Access Control)
 - **Authentication**: JWT (JSON Web Tokens)
@@ -66,7 +68,8 @@ flowchart LR
 
     subgraph DataLayer ["🗄️ Infrastructure"]
         direction TB
-        Redis[("⚡ Redis Cache<br/>(Keys & Policies)")]:::datalayer
+        Vault[("🛡️ HashiCorp Vault<br/>(Master Keys)")]:::datalayer
+        Redis[("⚡ Redis Cache<br/>(User Keys & Policies)")]:::datalayer
         DB[("🐘 Supabase DB<br/>(Metadata)")]:::datalayer
         Storage[("☁️ Supabase Storage<br/>(Ciphertexts)")]:::datalayer
     end
@@ -77,7 +80,8 @@ flowchart LR
     Casbin -.->|Cache| Redis
     Casbin -.->|Verify| DB
     
-    Ctrl <-->|Manage Keys| Redis
+    Ctrl <-->|Fetch DEK/CP-ABE Key| Vault
+    Ctrl <-->|Cache User Key| Redis
     Ctrl <-->|CRUD Metadata| DB
     Ctrl <-->|Upload/Download| Storage
 ```
@@ -85,7 +89,7 @@ flowchart LR
 ### Workflow Overview
 
 1. **Authentication & Authorization**: The client makes a request via HTTPS containing an `HttpOnly Cookie` (for JWT) and an `X-CSRFToken` header. The **Auth Middleware** verifies the identity, and the **Casbin ABAC Engine** evaluates the user's attributes against the stored policies (cached in Redis) to determine access rights.
-2. **Encryption/Decryption (In-Memory)**: Upon an authorized file upload/download, the **Storage Controller** dynamically generates an ephemeral CP-ABE private key based on the user's current attributes. This key is temporarily cached in **Redis**. The data buffer is passed to the **CP-ABE C++ Library** to be encrypted or decrypted directly in RAM, ensuring plaintext data is never written to disk.
+2. **Encryption/Decryption (In-Memory)**: Upon an authorized file upload/download, the **Storage Controller** retrieves the CP-ABE Master Keys from **HashiCorp Vault**. It generates an ephemeral CP-ABE private key based on the user's current attributes. This key is temporarily cached in **Redis**. The file itself is encrypted with a random AES-256-GCM DEK, and this DEK is then wrapped (encrypted) by CP-ABE. The data buffer is passed to the **CP-ABE C++ Library** to be processed directly in RAM, ensuring plaintext data is never written to disk.
 3. **Data Persistence**: File metadata, access policies, and user attributes are securely managed in **Supabase PostgreSQL**. The fully encrypted ciphertexts are uploaded to **Supabase Storage**.
 
 ## Quick Start (Step-by-Step for New Environments)

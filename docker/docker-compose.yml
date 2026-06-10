@@ -21,6 +21,8 @@ services:
       - ./scripts/init_data.py:/app/init_data.py:ro
       - ./scripts/vault_manager.py:/app/vault_manager.py:ro
       - ./src/crypto_access/migrations:/app/crypto_access/migrations
+    tmpfs:
+      - /tmp
 
     expose:
       - "8000"

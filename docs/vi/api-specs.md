@@ -19,10 +19,10 @@ Mỗi tài nguyên file (Upload) trong hệ thống đều trải qua 2 tầng b
 - **Tầng 1 - ABAC (Attribute-Based Access Control)**:
   - Khi user yêu cầu tải/xem file, PEP (Policy Enforcement Point) sẽ gửi request kiểm tra quyền đến PDP (Policy Decision Point sử dụng PyCasbin).
   - PDP đánh giá thuộc tính của user (`department`, `role`, `clearance_level`, v.v.), kết hợp với chính sách (Policies) để đưa ra quyết định Allow hoặc Deny.
-- **Tầng 2 - CP-ABE (Ciphertext-Policy Attribute-Based Encryption)**:
+- **Tầng 2 - HashiCorp Vault & CP-ABE (Envelope Encryption)**:
   - Nếu ABAC cho phép, file mã hóa mới được tải về server. 
-  - Hệ thống sinh động (on-the-fly) khóa bí mật CP-ABE dựa trên tập hợp thuộc tính hiện tại của user. Khóa này được cache tạm thời trên **Redis** (tránh lưu trữ cố định vào DB).
-  - Khóa CP-ABE dùng để giải mã khóa AES, sau đó dùng khóa AES giải mã nội dung file và trả về cho user. Nội dung file chỉ tồn tại trên RAM trong quá trình xử lý request.
+  - Hệ thống lấy Master Key từ **HashiCorp Vault**, sau đó sinh động (on-the-fly) khóa bí mật CP-ABE dựa trên tập hợp thuộc tính hiện tại của user. Khóa này được cache tạm thời trên **Redis** (tránh lưu trữ cố định vào DB).
+  - Khóa CP-ABE dùng để giải mã khóa AES (DEK) đã được bọc (wrap). Sau đó dùng khóa AES giải mã nội dung file và trả về cho user. Các khóa và nội dung file chỉ tồn tại trên RAM trong quá trình xử lý request.
 
 ### 1.3. Luồng Mã Hóa CSDL & Bảo Mật Siêu Dữ Liệu (Field-level Encryption)
 Ngoài việc bảo vệ nội dung file, hệ thống còn chống rò rỉ dữ liệu từ cấu trúc bảng SQL:

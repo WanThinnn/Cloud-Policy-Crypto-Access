@@ -53,10 +53,10 @@ The `user_attributes` table is the Single Source of Truth for all user ABAC attr
 - **ABAC**: Evaluating access policies at the PDP
 - **CP-ABE**: Generating user secret keys and encrypting files
 
-### **R5: Dynamic Key Generation and Redis Cache**
+### **R5: Dynamic Key Generation, HashiCorp Vault, and Redis Cache**
 **Cryptographic Keys**:
+- **HashiCorp Vault Integration**: The CP-ABE Master Key (`cpabe_msk.key`) and Public Key (`cpabe_pk.key`) are strictly secured within **HashiCorp Vault**. During initialization, if keys do not exist, they are automatically generated, injected into Vault's memory, and backed up locally to `./config/keys`.
 - The User Private Key is **dynamically generated (on-the-fly) in RAM** based on the user's current attributes when access is requested. It is cached in **Redis** with a short TTL. It is **NEVER** persisted to the DB or static files.
-- The Master Key (`cpabe_msk.key`) and Public Key (`cpabe_pub.key`) are automatically generated in the `./keys` directory if they do not exist. However, if migrating to a new server, the administrator **MUST** manually copy these two files to the new machine. If the Master Key is lost, all previously encrypted files will be permanently irrecoverable.
 - **TTL**: Keys are cached for 1 hour.
 - **Revocation**: Handled by simply invalidating the specific Redis key.
 

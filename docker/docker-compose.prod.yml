@@ -13,8 +13,12 @@ services:
       - PYTHONUNBUFFERED=1
       - DJANGO_SETTINGS_MODULE=config.settings.production
       - REDIS_URL=redis://crypto-redis:6379/1
+      - VAULT_ADDR=${VAULT_ADDR:-http://vault:8200}
+      - VAULT_TOKEN=${VAULT_TOKEN:-root}
+      - VAULT_SECRET_PATH=${VAULT_SECRET_PATH:-secret/data/crypto_access}
     depends_on:
       - crypto-redis
+      - vault
     volumes:
       - ${DB_DIR:-sqlite_volume}:/app/data
       - ${KEYS_DIR:-keys_volume}:/app/config/keys
@@ -22,7 +26,10 @@ services:
       - static_volume:/app/staticfiles
       - ./scripts/gunicorn.conf.py:/app/gunicorn.conf.py:ro
       - ./scripts/init_data.py:/app/init_data.py:ro
+      - ./scripts/vault_manager.py:/app/vault_manager.py:ro
       - ./src/crypto_access/migrations:/app/crypto_access/migrations
+    tmpfs:
+      - /tmp
     expose:
       - "8000"
     networks:
@@ -42,6 +49,24 @@ services:
       - "6379"
     networks:
       - app-network
+    restart: unless-stopped
+
+  vault:
+    image: hashicorp/vault:1.13
+    container_name: vault_server
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:8200
+      - VAULT_API_ADDR=http://127.0.0.1:8200
+      - VAULT_LOCAL_CONFIG={"storage":{"file":{"path":"/vault/file"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":1}},"default_lease_ttl":"168h","max_lease_ttl":"720h","ui":true}
+    volumes:
+      - vault_data:/vault/file
+    ports:
+      - "8200:8200"
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - app-network
+    command: server
     restart: unless-stopped
 
   nginx:
@@ -89,6 +114,8 @@ volumes:
     name: static_volume
   keys_volume:
     name: keys_volume
+  vault_data:
+    name: vault_data
 
 networks:
   app-network:

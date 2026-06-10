@@ -19,10 +19,10 @@ Every file resource (Upload) in the system goes through 2 layers of security:
 - **Layer 1 - ABAC (Attribute-Based Access Control)**:
   - When a user requests to download/view a file, the PEP (Policy Enforcement Point) sends an access control request to the PDP (Policy Decision Point using PyCasbin).
   - The PDP evaluates the user's attributes (`department`, `role`, `clearance_level`, etc.) against the defined Policies to make an Allow or Deny decision.
-- **Layer 2 - CP-ABE (Ciphertext-Policy Attribute-Based Encryption)**:
+- **Layer 2 - HashiCorp Vault & CP-ABE (Envelope Encryption)**:
   - If ABAC allows access, the encrypted file is downloaded to the server. 
-  - The system dynamically generates (on-the-fly) a CP-ABE secret key based on the user's current set of attributes. This key is temporarily cached on **Redis** (avoiding persistent storage in the DB).
-  - The CP-ABE key is used to decrypt the AES key, which is then used to decrypt the file content and return it to the user. The file content exists only in RAM during request processing.
+  - The system retrieves the CP-ABE Master Keys from **HashiCorp Vault** and dynamically generates an ephemeral CP-ABE private key based on the user's current set of attributes. This key is temporarily cached on **Redis**.
+  - The CP-ABE key is used to decrypt the file's wrapped AES Data Encryption Key (DEK). This AES key is then used to decrypt the file content and return it to the user. The keys and file content exist only in RAM during request processing.
 
 ### 1.3. SQL Encryption & Metadata Security (Field-level Encryption)
 In addition to protecting the file contents, the system secures sensitive data within the SQL database:

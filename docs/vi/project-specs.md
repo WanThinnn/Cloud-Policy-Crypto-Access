@@ -197,8 +197,8 @@ Phiên bản thuộc tính: 3
 
 **QĐ5:** 
 - **Khóa mã hóa (Keys)**:
+    - **Tích hợp HashiCorp Vault**: Master Key (`cpabe_msk.key`) và Public Key (`cpabe_pk.key`) được bảo mật tuyệt đối trong **HashiCorp Vault**. Khi khởi tạo, nếu chưa tồn tại, hệ thống sẽ tự động sinh khóa, đẩy vào bộ nhớ của Vault và lưu một bản dự phòng tại `./config/keys`.
     - Khóa bí mật cá nhân (Private Key) được **tạo động (on-the-fly) trên RAM** dựa trên thuộc tính hiện tại của người dùng khi có yêu cầu và lưu vào **Redis Cache** (có thời hạn). Tuyệt đối **KHÔNG** lưu vào DB hay file tĩnh.
-    - Master Key (`cpabe_msk.key`) và Public Key (`cpabe_pub.key`) được hệ thống tự động sinh ra trong thư mục `./keys` nếu chưa tồn tại. Tuy nhiên, nếu chuyển sang máy chủ mới, quản trị viên **BẮT BUỘC** phải copy 2 file này sang máy mới. Nếu mất Master Key, toàn bộ file đã mã hóa trước đó sẽ vĩnh viễn không thể khôi phục.
 - **Thời hạn sống (TTL)**: Khóa được cache trong một khoảng thời gian ngắn (mặc định 1 giờ).
 - **Thu hồi khóa (Revocation)**: Khi thuộc tính người dùng thay đổi hoặc tài khoản bị vô hiệu hóa, hệ thống chỉ cần xóa (invalidate) khóa tương ứng trên Redis. Các yêu cầu sau đó sẽ bị từ chối hoặc phải sinh khóa mới với tập thuộc tính mới nhất.
 
