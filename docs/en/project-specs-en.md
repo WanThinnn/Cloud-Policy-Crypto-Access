@@ -14,6 +14,8 @@ The ABAC mechanism in the system is implemented according to standard architectu
 
 Simultaneously, the system applies a **hybrid encryption** approach to protect data. File contents are encrypted using the **AES-256-GCM** symmetric algorithm to ensure confidentiality and integrity, while the AES key is encrypted using **CP-ABE** according to the attribute policy defined by the Data Owner. This approach allows attaching access policies directly to the data, eliminating reliance on the trustworthiness of the cloud storage infrastructure.
 
+Furthermore, to mitigate the risk of data leaks from the relational database (SQL DB), the system employs **Field-level Encryption** using **AES-256-GCM** combined with **Blind Indexing** via **HMAC-SHA3-256**. Sensitive document details such as the physical file path, original name, shared URLs, and all extracted metadata are heavily encrypted before being saved into the DB. The actual storage path of the file on the Cloud Storage is obfuscated using random UUID strings to prevent directory traversal or structure guessing. Database queries on fields like `file_name` and `file_path` are securely performed using SHA3-256 hashes to preserve absolute privacy.
+
 ## **1.2. List of Requirements**
 
 | No. | Requirement Name | Form | Regulation | Note |
@@ -42,6 +44,9 @@ User types are defined in the attribute schema and can be expanded according to 
 - `data_owner`: Data owner (creates, encrypts, defines file policies)
 - `data_user`: Data user (reads/writes files according to granted policies)
 - `auditor`: Auditor (can only view logs and reports)
+
+### **R2: Upload Encrypted File & Metadata Extraction**
+Files uploaded to the system are strictly encrypted based on CP-ABE attribute policies. Nobody, except the file owner, can alter its access policy. During upload, the system automatically extracts comprehensive **metadata**: IP, User-Agent, Uploader Identity (Username, Email, Full Name, Role), File Size, and MIME Type. This metadata is strictly encrypted in the database, while the physical object is stored under a randomized UUID name in the cloud storage.
 
 ### **R4: User Attributes (Single Source of Truth)**
 The `user_attributes` table is the Single Source of Truth for all user ABAC attributes. These attributes are used for:

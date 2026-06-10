@@ -14,6 +14,8 @@ Cơ chế ABAC trong hệ thống được triển khai theo kiến trúc chuẩ
 
 Song song đó, hệ thống áp dụng phương pháp **mã hóa lai (hybrid encryption)** để bảo vệ dữ liệu. Nội dung file được mã hóa bằng thuật toán đối xứng **AES-256-GCM** nhằm đảm bảo tính bảo mật và toàn vẹn, trong khi khóa AES được mã hóa bằng **CP-ABE** theo chính sách thuộc tính do Data Owner định nghĩa. Cách tiếp cận này cho phép gắn chính sách truy cập trực tiếp vào dữ liệu, giúp loại bỏ sự phụ thuộc vào độ tin cậy của hạ tầng lưu trữ đám mây.
 
+Hơn thế nữa, để đối phó với rủi ro rò rỉ dữ liệu từ cơ sở dữ liệu (SQL DB), hệ thống ứng dụng kỹ thuật **Mã hóa mức trường (Field-level Encryption)** bằng thuật toán **AES-256-GCM** kết hợp **Chỉ mục mù (Blind Indexing)** bằng **HMAC-SHA3-256**. Các thông tin nhạy cảm của tài liệu như đường dẫn vật lý, tên gốc, URL chia sẻ và các siêu dữ liệu (metadata) đều được mã hóa tuyệt đối trước khi lưu vào CSDL. Đường dẫn lưu trữ thực tế của file trên Cloud Storage được che giấu bằng các chuỗi ngẫu nhiên (UUID). Tên bảng (`file_name`) hay (`file_path`) dùng thuật toán băm SHA3-256 để tìm kiếm nhằm bảo vệ sự riêng tư.
+
 Ngoài các chức năng kiểm soát truy cập, hệ thống còn hỗ trợ **quản lý người dùng, quản lý thuộc tính và lược đồ thuộc tính, quản lý khóa mã hóa, quản lý chính sách truy cập, phân quyền Super Admin**, cũng như cung cấp **các báo cáo thống kê và audit** phục vụ công tác giám sát, đánh giá và tuân thủ an toàn thông tin trong doanh nghiệp.
 
 Mục tiêu chính của đề tài bao gồm:
@@ -111,6 +113,8 @@ Ngày upload: _______
 Người upload: _______  
 
 **QĐ2:** Có 5 loại file chính (text/plain, document, image, video, audio). Kích thước tối đa 100MB. Chỉ nhận file không chứa virus và được mã hóa dựa trên thuộc tính chính sách bản mã (CP-ABE). Chính sách thuộc tính được quy định bởi chủ sở hữu (Data Owner) của file đó, người sử dụng  (Data User) có thuộc tính phù hợp với chính sách thì sẽ truy cập được file. Không ai có thể thay đổi được Chính sách truy cập của file ngoài chủ sở hữu.
+
+Ngoài ra, hệ thống tự động trích xuất các **siêu dữ liệu (metadata)** như: IP, User-Agent, thông tin định danh của người Upload (Tên, Email, Vai trò), kích thước file và MIME Type. Toàn bộ Metadata này cùng với các trường quan trọng (Tên file gốc, Đường dẫn, Signed URL) được **mã hóa hoàn toàn** bằng AES-256-GCM trong CSDL SQLite. Đường dẫn lưu file trên Cloud Storage được gán bằng chuỗi UUID ngẫu nhiên để chống việc suy đoán cấu trúc thư mục từ phía hạ tầng.
 
 **Ví dụ: Thông tin file upload**  
 BM2: Thông Tin File Upload  

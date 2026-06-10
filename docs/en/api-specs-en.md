@@ -24,6 +24,13 @@ Every file resource (Upload) in the system goes through 2 layers of security:
   - The system dynamically generates (on-the-fly) a CP-ABE secret key based on the user's current set of attributes. This key is temporarily cached on **Redis** (avoiding persistent storage in the DB).
   - The CP-ABE key is used to decrypt the AES key, which is then used to decrypt the file content and return it to the user. The file content exists only in RAM during request processing.
 
+### 1.3. SQL Encryption & Metadata Security (Field-level Encryption)
+In addition to protecting the file contents, the system secures sensitive data within the SQL database:
+- **AES-256-GCM Field Encryption**: Sensitive database columns (Original Filename, JSON Metadata, Signed URLs, Physical Paths) are strongly encrypted before insertion.
+- **HMAC-SHA3-256 Blind Indexing**: Allows secure searching on encrypted columns without revealing plaintext data.
+- **Path Obfuscation**: The physical file names stored in Cloud Storage (Supabase) are randomized UUID strings, bearing no relation to the original filename or business logic.
+- **Auto-Extract Metadata**: Upon upload, the system automatically collects IP, User-Agent, uploader identity, file size, and MIME type, encrypting the entire JSON metadata block.
+
 ## 2. REST API Specifications
 
 Base URL: `http(s)://<domain>`
@@ -63,7 +70,7 @@ Prefix: `/api/storage/`
 | Method   | Endpoint                | Description                                                                                                                                                                                      | Auth Required    |
 | -------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
 | GET/POST | `/buckets/`             | Manage Storage Buckets (Logical storage to group files).                                                                                                                                         | Yes              |
-| GET/POST | `/files/`               | Main API handling File Uploads. POST data includes `file` and `policy` (Desired CP-ABE Policy). The file will be AES encrypted, and the AES key will be CP-ABE encrypted before writing to disk. | Yes              |
+| GET/POST | `/files/`               | Main API for File Upload. POST data includes `file` and `policy` (Desired CP-ABE policy). The file is encrypted with AES, and the AES key is encrypted with CP-ABE. **Simultaneously**, metadata is extracted, and database fields (filename, path, metadata) are encrypted using AES-256-GCM before SQL insertion. | Yes              |
 | GET      | `/files/{id}/`          | Retrieve file metadata.                                                                                                                                                                          | Yes              |
 | GET      | `/files/{id}/download/` | Request file download. System performs ABAC check -> generates CP-ABE key (if not cached) -> decrypts -> returns data stream.                                                                    | Yes              |
 | DELETE   | `/files/{id}/`          | Move a file to Trash or permanent delete if authorized.                                                                                                                                          | File Owner/Admin |

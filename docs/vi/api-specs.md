@@ -24,6 +24,13 @@ Mỗi tài nguyên file (Upload) trong hệ thống đều trải qua 2 tầng b
   - Hệ thống sinh động (on-the-fly) khóa bí mật CP-ABE dựa trên tập hợp thuộc tính hiện tại của user. Khóa này được cache tạm thời trên **Redis** (tránh lưu trữ cố định vào DB).
   - Khóa CP-ABE dùng để giải mã khóa AES, sau đó dùng khóa AES giải mã nội dung file và trả về cho user. Nội dung file chỉ tồn tại trên RAM trong quá trình xử lý request.
 
+### 1.3. Luồng Mã Hóa CSDL & Bảo Mật Siêu Dữ Liệu (Field-level Encryption)
+Ngoài việc bảo vệ nội dung file, hệ thống còn chống rò rỉ dữ liệu từ cấu trúc bảng SQL:
+- **AES-256-GCM Field Encryption**: Các cột nhạy cảm trong CSDL (Tên file gốc, Metadata, Signed URL, Đường dẫn vật lý) đều bị mã hóa trước khi ghi.
+- **HMAC-SHA3-256 Blind Indexing**: Hỗ trợ tìm kiếm an toàn trên các cột đã mã hóa (ví dụ: tìm kiếm theo tên file hoặc hash) mà không làm rò rỉ văn bản gốc.
+- **Che giấu đường dẫn (Obfuscation)**: Tên file vật lý lưu trên Cloud Storage (Supabase) là chuỗi UUID ngẫu nhiên, hoàn toàn không mang ý nghĩa nghiệp vụ.
+- **Auto-Extract Metadata**: Khi upload, hệ thống tự động gom IP, User-Agent, thông tin uploader, file size, MIME type và mã hóa toàn bộ cục JSON metadata này.
+
 ## 2. Đặc Tả REST API (REST API Specifications)
 
 Base URL: `http(s)://<domain>`
@@ -63,7 +70,7 @@ Prefix: `/api/storage/`
 | Phương thức | Endpoint | Mô tả | Yêu cầu Auth |
 | ----------- | -------- | ----- | ------------ |
 | GET/POST | `/buckets/` | Quản lý Storage Buckets (Kho lưu trữ logic để nhóm file). | Có |
-| GET/POST | `/files/` | API chính xử lý Upload File. Dữ liệu POST bao gồm `file` và `policy` (Chính sách CP-ABE mong muốn). File sẽ được mã hóa AES, khóa AES mã hóa CP-ABE trước khi ghi disk. | Có |
+| GET/POST | `/files/` | API chính xử lý Upload File. Dữ liệu POST bao gồm `file` và `policy` (Chính sách CP-ABE mong muốn). File sẽ được mã hóa AES, khóa AES mã hóa CP-ABE trước khi lưu. **Đồng thời**, các thông tin metadata, tên file và đường dẫn cũng được tự động trích xuất và mã hóa bằng AES-256-GCM trước khi lưu xuống SQL. | Có |
 | GET | `/files/{id}/` | Lấy metadata của file. | Có |
 | GET | `/files/{id}/download/` | Yêu cầu tải nội dung file. Hệ thống thực hiện check ABAC -> sinh khóa CP-ABE (nếu chưa cache) -> giải mã -> trả về stream data. | Có |
 | DELETE | `/files/{id}/` | Đưa file vào thùng rác (Trash) hoặc xóa cứng (Permanent delete) nếu có quyền. | File Owner/Admin |
