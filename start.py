@@ -16,7 +16,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
 NO_SSL_OVERRIDE = REPO_ROOT / "docker" / "docker-compose.nossl.yml"
-CERTS_DIR = REPO_ROOT / "certs"
+CERTS_DIR = REPO_ROOT / "config" / "certs"
 ENV_FILE = REPO_ROOT / ".env"
 CLOUDFLARE_CONFIG = REPO_ROOT / "cloudflared" / "config.yml"
 

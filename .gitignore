@@ -472,13 +472,9 @@ dist/
 *.spec
 
 # --- Security ---
-certs/
 secrets/
 .env
-!certs/_.cyberfortress.local.crt
-!certs/_.cyberfortress.local.key
-!certs/CyberFortress-RootCA.crt
-!certs/README.md
+
 
 # --- Python ---
 __pycache__/
@@ -508,7 +504,9 @@ LMS_Templates
 # Ignore all sensitive files inside config/
 config/keys/*
 config/certs/*
-# Keep the directory structure and READMEs
+# Keep the directory structure, READMEs, and dev certificates
 !config/keys/README.md
 !config/certs/README.md
-
+!config/certs/_.cyberfortress.local.crt
+!config/certs/_.cyberfortress.local.key
+!config/certs/CyberFortress-RootCA.crt

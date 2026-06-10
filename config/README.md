@@ -20,7 +20,7 @@ config/
 
 ## Security Notes
 
-> ⚠️ **DO NOT PUSH** key and certificate files to Git. They have been added to `.gitignore`.
+> **DO NOT PUSH** key and certificate files to Git. They have been added to `.gitignore`.
 
 - Only `README.md` files in each subdirectory are tracked by Git.
 - When cloning the project, you need to recreate or copy the sensitive files.
