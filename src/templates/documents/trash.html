@@ -161,13 +161,13 @@
             
             container.innerHTML = files.map(file => `
                 <div class="flex items-center px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors">
-                    <div class="flex-1 flex items-center gap-4">
-                        <div class="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700/50 rounded-lg text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                    <div class="flex-1 flex items-center gap-4 min-w-0">
+                        <div class="w-10 h-10 shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700/50 rounded-lg text-gray-500 dark:text-gray-400 dark:text-gray-500">
                             <svg class="w-6 h-6 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
                         </div>
-                        <div>
-                            <p class="font-medium text-gray-900 dark:text-white">${file.file_name}</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Uploader: ${file.uploaded_by_username || 'Unknown'}</p>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-medium text-gray-900 dark:text-white truncate" title="${file.file_name}">${file.file_name}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 truncate" title="Uploader: ${file.uploaded_by_username || 'Unknown'}">Uploader: ${file.uploaded_by_username || 'Unknown'}</p>
                         </div>
                     </div>
                     <div class="w-32 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 font-mono">${formatSize(file.file_size)}</div>
