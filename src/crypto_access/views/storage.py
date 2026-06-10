@@ -34,7 +34,23 @@ from ..services.storage_service import get_storage_service
 from ..services.cpabe_service import cpabe_service
 from ..services.casbin_service import casbin_service
 import tempfile
-import os
+import time
+
+def get_db_file_by_path(bucket_name, file_path):
+    from crypto_access.models import UploadedFile
+    from django.conf import settings
+    field_encryption = getattr(settings, 'FIELD_ENCRYPTION', False)
+    
+    if field_encryption:
+        from crypto_access.models.fields import get_encryption_key
+        import hmac
+        import hashlib
+        key = get_encryption_key()
+        h = hmac.new(key, str(file_path).encode('utf-8'), hashlib.sha3_256)
+        hash_value = h.hexdigest()
+        return UploadedFile.objects.filter(bucket__name=bucket_name, file_path_hash=hash_value).first()
+    else:
+        return UploadedFile.objects.filter(bucket__name=bucket_name, file_path=file_path).first()
 
 logger = logging.getLogger(__name__)
 
@@ -303,14 +319,37 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             file_path = f"{timezone.now().strftime('%Y/%m/%d')}/{unique_name}"
             
         # Check if file exists for versioning
-        existing_file = UploadedFile.objects.filter(bucket=bucket, file_path=file_path).first()
+        from django.conf import settings
+        field_encryption = getattr(settings, 'FIELD_ENCRYPTION', False)
+        
+        if field_encryption:
+            from crypto_access.models.fields import get_encryption_key
+            import hmac
+            import hashlib
+            key = get_encryption_key()
+            h = hmac.new(key, str(file_path).encode('utf-8'), hashlib.sha3_256)
+            hash_value = h.hexdigest()
+            existing_file = UploadedFile.objects.filter(bucket=bucket, file_path_hash=hash_value).first()
+        else:
+            existing_file = UploadedFile.objects.filter(bucket=bucket, file_path=file_path).first()
+            
         is_new_version_val = request.data.get('is_new_version', 'false')
         print(f"DEBUG: is_new_version received = {is_new_version_val} (type: {type(is_new_version_val)})")
         is_new_version = str(is_new_version_val).lower() == 'true'
         print(f"DEBUG: is_new_version parsed = {is_new_version}")
         
         version_number = 1
-        physical_path = file_path
+        
+        # Obfuscate physical path if encryption is enabled
+        parts = file_path.split('/')
+        folder_path = '/'.join(parts[:-1]) if len(parts) > 1 else ''
+        ext = parts[-1].split('.')[-1] if '.' in parts[-1] else ''
+        
+        if field_encryption:
+            unique_name = f"{uuid.uuid4()}.{ext}" if ext else str(uuid.uuid4())
+            physical_path = f"{folder_path}/{unique_name}" if folder_path else unique_name
+        else:
+            physical_path = file_path
         
         if existing_file:
             if not is_new_version:
@@ -321,7 +360,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 
             latest_version = existing_file.get_latest_version()
             version_number = (latest_version.version_number + 1) if latest_version else 2
-            physical_path = f"{file_path}_v{version_number}"
+            if not field_encryption:
+                physical_path = f"{file_path}_v{version_number}"
         
         # Upload to Supabase
         storage = get_storage_service()
@@ -722,10 +762,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         
         # Check if user is owner of this file (can bypass ABAC for their own files)
         # This is already passed ABAC middleware, but we track ownership for audit
-        uploaded_file = UploadedFile.objects.filter(
-            bucket__name=bucket_name,
-            file_path=file_path
-        ).first()
+        uploaded_file = get_db_file_by_path(bucket_name, file_path)
         
         is_owner = uploaded_file and uploaded_file.uploaded_by == request.user
         
@@ -808,10 +845,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             )
         
         # Check if user is owner of this file (can bypass ABAC for their own files)
-        uploaded_file = UploadedFile.objects.filter(
-            bucket__name=bucket_name,
-            file_path=file_path
-        ).first()
+        uploaded_file = get_db_file_by_path(bucket_name, file_path)
         is_owner = uploaded_file and uploaded_file.uploaded_by == request.user
         
         version_param = request.query_params.get('version')
@@ -894,16 +928,12 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         
         try:
             # Soft delete logic
-            uploaded_files = UploadedFile.objects.filter(
-                bucket__name=bucket_name,
-                file_path=file_path
-            )
+            uploaded_file = get_db_file_by_path(bucket_name, file_path)
             
-            if uploaded_files.exists():
-                for f in uploaded_files:
-                    f.is_deleted = True
-                    f.deleted_at = timezone.now()
-                    f.save(update_fields=['is_deleted', 'deleted_at'])
+            if uploaded_file:
+                uploaded_file.is_deleted = True
+                uploaded_file.deleted_at = timezone.now()
+                uploaded_file.save(update_fields=['is_deleted', 'deleted_at'])
             else:
                 # Fallback if not in database but somehow exists in Supabase
                 # Or just do nothing, assuming we want soft delete to mean marking db records.
@@ -1010,10 +1040,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             )
         
         # Get direct file policies
-        file_record = UploadedFile.objects.filter(
-            bucket=bucket,
-            file_path=file_path
-        ).first()
+        file_record = get_db_file_by_path(bucket.name, file_path)
         
         file_policies = []
         if file_record:
@@ -1092,10 +1119,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         folder_path = None
         
         if target_type == 'file':
-            file_record = UploadedFile.objects.filter(
-                bucket=bucket,
-                file_path=file_path
-            ).first()
+            file_record = get_db_file_by_path(bucket.name, file_path)
             
             if not file_record:
                 return Response(

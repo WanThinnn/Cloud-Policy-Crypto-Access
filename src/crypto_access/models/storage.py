@@ -44,17 +44,18 @@ class UploadedFile(models.Model):
     ]
     
     bucket = models.ForeignKey(StorageBucket, on_delete=models.CASCADE, related_name='files')
-    file_path = models.CharField(max_length=500, help_text="Path within bucket")
+    file_path = EncryptedCharField(max_length=500, help_text="Path within bucket (Encrypted)")
+    file_path_hash = BlindIndexField(source_field='file_path', help_text="HMAC-SHA3-256 for secure path search", null=True)
     file_name = EncryptedCharField(max_length=500, help_text="File name (Encrypted)")
     file_name_hash = BlindIndexField(source_field='file_name', help_text="HMAC-SHA3-256 for secure search", null=True)
     file_type = models.CharField(max_length=20, choices=FILE_TYPE_CHOICES, default='other')
     mime_type = models.CharField(max_length=100)
     file_size = models.BigIntegerField(help_text="File size in bytes")
     
-    # Access URLs
-    public_url = models.URLField(max_length=1000, blank=True, null=True)
-    signed_url = models.URLField(max_length=1000, blank=True, null=True)
-    signed_url_expires_at = models.DateTimeField(blank=True, null=True)
+    # URL paths - can be cached
+    public_url = EncryptedCharField(max_length=1000, null=True, blank=True)
+    signed_url = EncryptedCharField(max_length=1000, null=True, blank=True)
+    signed_url_expires_at = models.DateTimeField(null=True, blank=True)
     
     # Metadata
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
