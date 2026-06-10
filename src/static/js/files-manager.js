@@ -901,7 +901,23 @@
 
         if (count > 0) {
             bar.classList.remove('hidden');
-            document.getElementById('selected-count').textContent = count;
+            
+            let foldersCount = 0;
+            let filesCount = 0;
+            for (const filePath of selectedFiles) {
+                const fileObj = allFiles.find(f => f.path === filePath || f.name === filePath);
+                if (fileObj && fileObj.type === 'folder') {
+                    foldersCount++;
+                } else {
+                    filesCount++;
+                }
+            }
+            
+            let typeStr = [];
+            if (filesCount > 0) typeStr.push(`<b>${filesCount}</b> file${filesCount > 1 ? 's' : ''}`);
+            if (foldersCount > 0) typeStr.push(`<b>${foldersCount}</b> folder${foldersCount > 1 ? 's' : ''}`);
+            document.getElementById('selected-text').innerHTML = typeStr.join(' and ') + ' selected';
+            
         } else {
             bar.classList.add('hidden');
         }
@@ -933,16 +949,36 @@
     async function bulkDelete() {
         if (selectedFiles.size === 0) return;
 
-        if (!confirm(`Move ${selectedFiles.size} selected files to trash?`)) return;
+        let foldersCount = 0;
+        let filesCount = 0;
 
-        showAlert(`Moving ${selectedFiles.size} files to trash...`, 'info');
+        for (const filePath of selectedFiles) {
+            const fileObj = allFiles.find(f => f.path === filePath || f.name === filePath);
+            if (fileObj && fileObj.type === 'folder') {
+                foldersCount++;
+            } else {
+                filesCount++;
+            }
+        }
+
+        let typeStr = [];
+        if (filesCount > 0) typeStr.push(`${filesCount} file${filesCount > 1 ? 's' : ''}`);
+        if (foldersCount > 0) typeStr.push(`${foldersCount} folder${foldersCount > 1 ? 's' : ''}`);
+        const itemsText = typeStr.join(' and ');
+
+        if (!confirm(`Move ${itemsText} to trash?`)) return;
+
+        showAlert(`Moving ${itemsText} to trash...`, 'info');
 
         let success = 0;
         let failed = 0;
 
         for (const filePath of selectedFiles) {
             try {
-                const url = `${API_BASE}files/delete_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
+                const fileObj = allFiles.find(f => f.path === filePath || f.name === filePath);
+                const isFolder = fileObj ? fileObj.type === 'folder' : false;
+                
+                const url = `${API_BASE}files/delete_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents&is_folder=${isFolder}`;
                 const response = await fetch(url, { 
                     method: 'DELETE',
                     headers 
@@ -952,20 +988,24 @@
                     success++;
                 } else if (response.status === 403) {
                     failed++;
-                    showAlert('🚫 You do not have permission to delete some files', 'error');
+                    showAlert('🚫 You do not have permission to delete some items', 'error');
                 } else {
                     failed++;
                 }
             } catch (error) {
                 failed++;
             }
-            await new Promise(resolve => setTimeout(resolve, 200));
         }
 
-        showAlert(`✅ Moved ${success} files to trash${failed > 0 ? `, ${failed} failed` : ''}`, 'success');
+        if (success > 0) {
+            showAlert(`✅ Moved ${success} items to trash${failed > 0 ? `, ${failed} failed` : ''}`, 'success');
+            folderCache.clear();
+            loadFolder(currentPath);
+        } else if (failed > 0) {
+            showAlert(`❌ Failed to delete ${failed} items`, 'error');
+        }
+
         clearSelection();
-        folderCache.clear();
-        loadFolder(currentPath);
     }
 
     // ============= UPLOAD =============
@@ -1278,7 +1318,7 @@
         currentContextIsFolder = isFolder;
         const menu = document.getElementById('context-menu');
         
-        const itemsToHideForFolders = ['preview', 'download', 'upload-new-version', 'versions'];
+        const itemsToHideForFolders = ['preview', 'download', 'upload-new-version', 'versions', 'assign_policy', 'view_policies'];
         itemsToHideForFolders.forEach(action => {
             const btn = menu.querySelector(`[data-action="${action}"]`);
             if (btn) {
@@ -1319,7 +1359,7 @@
                 downloadFile(currentContextFile);
                 break;
             case 'delete':
-                deleteFile(currentContextFile);
+                deleteFile(currentContextFile, currentContextIsFolder);
                 break;
             case 'assign_policy':
                 openAssignPolicyModal(currentContextFile);
@@ -1744,11 +1784,12 @@
     // Handle Version Upload has been merged into handleUpload logic
 
 
-    async function deleteFile(filePath) {
-        if (!confirm(`Delete file "${filePath.split('/').pop()}"?`)) return;
+    async function deleteFile(filePath, isFolder = false) {
+        const itemType = isFolder ? 'folder' : 'file';
+        if (!confirm(`Delete ${itemType} "${filePath.split('/').pop()}"?`)) return;
         
         try {
-            const url = `${API_BASE}files/delete_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
+            const url = `${API_BASE}files/delete_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents&is_folder=${isFolder}`;
             const response = await fetch(url, { 
                 method: 'DELETE',
                 headers 
@@ -1761,12 +1802,12 @@
             }
             
             if (response.ok) {
-                showAlert('✅ File deleted successfully', 'success');
+                showAlert(`✅ ${isFolder ? 'Folder' : 'File'} deleted successfully`, 'success');
                 folderCache.clear();
                 loadFolder(currentPath);
             } else {
                 const err = await response.json().catch(() => ({ error: 'Delete failed' }));
-                showAlert('❌ ' + (err.error || 'Delete file failed'), 'error');
+                showAlert('❌ ' + (err.error || `Delete ${isFolder ? 'folder' : 'file'} failed`), 'error');
             }
         } catch (error) {
             console.error('Delete error:', error);

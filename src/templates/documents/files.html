@@ -90,7 +90,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
             </div>
-            <span class="font-medium"><span id="selected-count" class="font-bold text-lg">0</span> selected files</span>
+            <span id="selected-text" class="font-medium text-lg">0 items selected</span>
             <div class="h-6 w-px bg-white dark:bg-gray-800/30 mx-2"></div>
             <button data-action="clear-selection" class="text-sm text-indigo-100 hover:text-white hover:underline transition-colors">Deselect all</button>
         </div>
@@ -722,7 +722,7 @@
 
 {% block extra_js %}
 <script src="{% static 'js/policy-builder.js' %}?v=3"></script>
-<script src="{% static 'js/files-manager.js' %}?v=21"></script>
+<script src="{% static 'js/files-manager.js' %}?v=25"></script>
 <!-- Hidden form for version upload -->
 <input type="file" id="version-file-input" class="hidden" onchange="handleVersionUpload(event)">
 

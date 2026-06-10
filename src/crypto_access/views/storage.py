@@ -988,23 +988,33 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        is_folder = request.query_params.get('is_folder', 'false').lower() == 'true'
+        
         try:
-            # Soft delete logic
-            uploaded_file = get_db_file_by_path(bucket_name, file_path)
-            
-            if uploaded_file:
-                uploaded_file.is_deleted = True
-                uploaded_file.deleted_at = timezone.now()
-                uploaded_file.save(update_fields=['is_deleted', 'deleted_at'])
+            if is_folder:
+                from crypto_access.models.storage import UploadedFile, StorageBucket
+                bucket = StorageBucket.objects.get(name=bucket_name)
+                db_files = UploadedFile.objects.filter(bucket=bucket, is_deleted=False)
+                count = 0
+                for db_file in db_files:
+                    if db_file.file_path == f"{file_path}/.folder" or db_file.file_path.startswith(f"{file_path}/"):
+                        db_file.is_deleted = True
+                        db_file.deleted_at = timezone.now()
+                        db_file.save(update_fields=['is_deleted', 'deleted_at'])
+                        count += 1
+                return Response({'message': f"Folder '{file_path}' and {count} items deleted successfully"})
             else:
-                # Fallback if not in database but somehow exists in Supabase
-                # Or just do nothing, assuming we want soft delete to mean marking db records.
-                # Actually, we shouldn't touch Supabase storage until Hard Delete
-                pass
-            
-            return Response({
-                'message': f"File '{file_path}' deleted successfully"
-            })
+                # Soft delete logic
+                uploaded_file = get_db_file_by_path(bucket_name, file_path)
+                
+                if uploaded_file:
+                    uploaded_file.is_deleted = True
+                    uploaded_file.deleted_at = timezone.now()
+                    uploaded_file.save(update_fields=['is_deleted', 'deleted_at'])
+                
+                return Response({
+                    'message': f"File '{file_path}' deleted successfully"
+                })
             
         except Exception as e:
             return Response(
