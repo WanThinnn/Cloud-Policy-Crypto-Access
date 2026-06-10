@@ -224,6 +224,21 @@
                 }
                 // Preview modal actions
                 case 'close-preview': closePreview(); break;
+                case 'toggle-preview-metadata': {
+                    const content = document.getElementById('preview-metadata-content-wrapper');
+                    const icon = document.getElementById('preview-metadata-icon');
+                    if (content) {
+                        content.classList.toggle('hidden');
+                        if (icon) {
+                            if (content.classList.contains('hidden')) {
+                                icon.classList.remove('rotate-180');
+                            } else {
+                                icon.classList.add('rotate-180');
+                            }
+                        }
+                    }
+                    break;
+                }
                 case 'download-preview': {
                     if(window.downloadFile && currentContextFile) {
                         window.downloadFile(currentContextFile);
@@ -715,6 +730,33 @@
         document.getElementById('preview-title').textContent = fileName;
         document.getElementById('preview-modal').classList.remove('hidden');
 
+        // Populate Metadata
+        const metadataContainer = document.getElementById('preview-metadata-container');
+        const metadataContent = document.getElementById('preview-metadata-content');
+        
+        // Find the file in allFiles
+        const fileObj = allFiles.find(f => {
+            const fPath = f.path || (currentPath ? `${currentPath}/${f.name.replace(/\/$/, '')}` : f.name.replace(/\/$/, ''));
+            return fPath === filePath;
+        });
+        
+        if (fileObj && fileObj.metadata && Object.keys(fileObj.metadata).length > 0) {
+            let metaHtml = '';
+            for (const [key, value] of Object.entries(fileObj.metadata)) {
+                const displayValue = typeof value === 'object' ? JSON.stringify(value) : escapeHtml(String(value));
+                metaHtml += `
+                <div class="bg-white dark:bg-gray-700 p-2 rounded border border-gray-100 dark:border-gray-600">
+                    <span class="text-gray-500 dark:text-gray-400 block mb-0.5 capitalize truncate" title="${key}">${escapeHtml(key.replace(/_/g, ' '))}</span>
+                    <span class="font-medium text-gray-900 dark:text-gray-200 truncate block" title="${displayValue}">${displayValue}</span>
+                </div>`;
+            }
+            metadataContent.innerHTML = metaHtml;
+            metadataContainer.classList.remove('hidden');
+        } else {
+            metadataContainer.classList.add('hidden');
+            metadataContent.innerHTML = '';
+        }
+
         const content = document.getElementById('preview-content');
 
         // Show loading
@@ -811,6 +853,12 @@
         document.getElementById('preview-modal').classList.add('hidden');
         document.getElementById('preview-content').innerHTML = '';
         currentContextFile = null;
+        
+        // Reset metadata toggle state
+        const metadataWrapper = document.getElementById('preview-metadata-content-wrapper');
+        const metadataIcon = document.getElementById('preview-metadata-icon');
+        if (metadataWrapper) metadataWrapper.classList.add('hidden');
+        if (metadataIcon) metadataIcon.classList.remove('rotate-180');
     }
 
     function downloadFromPreview() {

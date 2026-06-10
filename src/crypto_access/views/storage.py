@@ -278,6 +278,43 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         description = serializer.validated_data.get('description', '')
         tags = serializer.validated_data.get('tags', [])
         is_public = serializer.validated_data.get('is_public', False)
+        
+        # Metadata extraction
+        custom_metadata = request.data.get('metadata', '{}')
+        if isinstance(custom_metadata, str):
+            import json
+            try:
+                custom_metadata = json.loads(custom_metadata)
+            except:
+                custom_metadata = {}
+        
+        # Auto-detect context
+        client_ip = request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')
+        if client_ip and ',' in client_ip:
+            client_ip = client_ip.split(',')[0]
+            
+        uploader_info = {}
+        if request.user.is_authenticated:
+            uploader_info['uploader_username'] = request.user.username
+            uploader_info['uploader_email'] = request.user.email
+            try:
+                profile = getattr(request.user, 'profile', None)
+                if profile:
+                    uploader_info['uploader_name'] = profile.full_name
+                    uploader_info['uploader_role'] = profile.get_user_type_code()
+            except Exception:
+                pass
+            
+        file_metadata = {
+            'original_filename': file.name,
+            'client_ip': client_ip,
+            'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+            'upload_source': 'web_api',
+            'file_size_bytes': file.size,
+            'mime_type': file.content_type,
+            **uploader_info,
+            **custom_metadata
+        }
         policy_id = serializer.validated_data.get('policy_id')
         policy_obj = None
         cpabe_policy_str = None
@@ -407,7 +444,13 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 uploaded_file.file_size = file.size
                 uploaded_file.is_deleted = False
                 uploaded_file.deleted_at = None
-                uploaded_file.save(update_fields=['file_size', 'updated_at', 'is_deleted', 'deleted_at'])
+                
+                # Merge existing metadata with new metadata
+                if not isinstance(uploaded_file.metadata, dict):
+                    uploaded_file.metadata = {}
+                uploaded_file.metadata.update(file_metadata)
+                
+                uploaded_file.save(update_fields=['file_size', 'updated_at', 'is_deleted', 'deleted_at', 'metadata'])
             else:
                 uploaded_file = UploadedFile.objects.create(
                     bucket=bucket,
@@ -421,7 +464,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     signed_url_expires_at=signed_url_expires_at,
                     uploaded_by=request.user if request.user.is_authenticated else None,
                     description=description,
-                    tags=tags
+                    tags=tags,
+                    metadata=file_metadata
                 )
             
             # Create FileVersion
@@ -726,7 +770,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                         'id': db_file.id,
                         'created_at': db_file.uploaded_at,
                         'updated_at': db_file.updated_at,
-                        'path': db_file.file_path
+                        'path': db_file.file_path,
+                        'metadata': db_file.metadata
                     })
             
             return Response({

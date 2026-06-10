@@ -29,18 +29,18 @@ def get_encryption_key():
 class EncryptedFieldMixin:
     """Mixin to handle AES-GCM encryption for Django model fields."""
     
-    def encrypt_data(self, data: bytes) -> str:
+    def encrypt_data(self, data: bytes, aad: bytes = None) -> str:
         if not getattr(settings, 'FIELD_ENCRYPTION', False):
             return data.decode('utf-8')
             
         key = get_encryption_key()
         aesgcm = AESGCM(key)
         nonce = os.urandom(12)  # 96-bit nonce is standard for AES-GCM
-        ciphertext = aesgcm.encrypt(nonce, data, None)
+        ciphertext = aesgcm.encrypt(nonce, data, aad)
         # Store as base64 string with ENC: prefix
         return "ENC:" + base64.urlsafe_b64encode(nonce + ciphertext).decode('utf-8')
 
-    def decrypt_data(self, encrypted_string: str) -> bytes:
+    def decrypt_data(self, encrypted_string: str, aad: bytes = None) -> bytes:
         if not encrypted_string:
             return b""
             
@@ -53,9 +53,16 @@ class EncryptedFieldMixin:
                 encrypted_data = base64.urlsafe_b64decode(b64_string.encode('utf-8'))
                 nonce = encrypted_data[:12]
                 ciphertext = encrypted_data[12:]
-                return aesgcm.decrypt(nonce, ciphertext, None)
+                return aesgcm.decrypt(nonce, ciphertext, aad)
+            except InvalidTag:
+                # Fallback: maybe it was encrypted before we added AAD support
+                if aad is not None:
+                    try:
+                        return aesgcm.decrypt(nonce, ciphertext, None)
+                    except Exception:
+                        pass
+                raise ValueError("Data corruption, invalid key, or AAD mismatch for ENC: prefixed data.")
             except Exception as e:
-                # If it explicitly says ENC: and fails to decrypt, raise error
                 raise ValueError(f"Data corruption or invalid key for ENC: prefixed data: {e}")
         
         # Fallback for data encrypted without ENC: prefix or plaintext data
@@ -65,7 +72,14 @@ class EncryptedFieldMixin:
             encrypted_data = base64.urlsafe_b64decode(encrypted_string.encode('utf-8'))
             nonce = encrypted_data[:12]
             ciphertext = encrypted_data[12:]
-            return aesgcm.decrypt(nonce, ciphertext, None)
+            return aesgcm.decrypt(nonce, ciphertext, aad)
+        except InvalidTag:
+            if aad is not None:
+                try:
+                    return aesgcm.decrypt(nonce, ciphertext, None)
+                except Exception:
+                    pass
+            return encrypted_string.encode('utf-8')
         except Exception:
             # If it's not base64 or decryption fails, assume it's plaintext
             return encrypted_string.encode('utf-8')
@@ -80,14 +94,16 @@ class EncryptedCharField(EncryptedFieldMixin, models.CharField):
     def get_db_prep_value(self, value, connection, prepared=False):
         value = super().get_db_prep_value(value, connection, prepared)
         if value is not None and value != '':
-            return self.encrypt_data(str(value).encode('utf-8'))
+            aad = self.name.encode('utf-8') if self.name else None
+            return self.encrypt_data(str(value).encode('utf-8'), aad=aad)
         return value
 
     def from_db_value(self, value, expression, connection):
         if value is None:
             return value
         try:
-            decrypted_bytes = self.decrypt_data(value)
+            aad = self.name.encode('utf-8') if self.name else None
+            decrypted_bytes = self.decrypt_data(value, aad=aad)
             return decrypted_bytes.decode('utf-8')
         except Exception:
             return value # Return original if decryption fails (e.g. legacy plaintext data)
@@ -111,13 +127,15 @@ class EncryptedJSONField(EncryptedFieldMixin, models.JSONField):
             return value
         # Serialize JSON to string then encrypt
         json_string = json.dumps(value)
-        return self.encrypt_data(json_string.encode('utf-8'))
+        aad = self.name.encode('utf-8') if self.name else None
+        return self.encrypt_data(json_string.encode('utf-8'), aad=aad)
 
     def from_db_value(self, value, expression, connection):
         if value is None:
             return value
         try:
-            decrypted_bytes = self.decrypt_data(value)
+            aad = self.name.encode('utf-8') if self.name else None
+            decrypted_bytes = self.decrypt_data(value, aad=aad)
             return json.loads(decrypted_bytes.decode('utf-8'))
         except Exception:
             # Try to parse as normal JSON if decryption fails
