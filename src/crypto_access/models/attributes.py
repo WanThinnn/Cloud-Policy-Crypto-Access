@@ -9,6 +9,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from .base import BaseModel
+from .fields import EncryptedCharField
 
 
 class UserType(BaseModel):
@@ -142,9 +143,9 @@ class UserAttribute(BaseModel):
         on_delete=models.PROTECT,
         related_name='user_values'
     )
-    value = models.CharField(
-        max_length=255,
-        help_text="Attribute value"
+    value = EncryptedCharField(
+        max_length=500, # Increased for base64 ciphertext overhead
+        help_text="Attribute value (Encrypted)"
     )
     status = models.CharField(
         max_length=20,

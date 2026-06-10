@@ -8,6 +8,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from .base import BaseModel
+from .fields import EncryptedJSONField
 
 
 class AccessLog(BaseModel):
@@ -75,15 +76,15 @@ class AccessLog(BaseModel):
     )
     
     # User attributes at time of request (snapshot)
-    user_attributes = models.JSONField(
+    user_attributes = EncryptedJSONField(
         default=dict,
-        help_text="User's ABAC attributes at time of access"
+        help_text="User's ABAC attributes at time of access (Encrypted)"
     )
     
     # Environment attributes
-    environment_attributes = models.JSONField(
+    environment_attributes = EncryptedJSONField(
         default=dict,
-        help_text="Environment context (IP, time, device, etc.)"
+        help_text="Environment context (IP, time, device, etc.) (Encrypted)"
     )
     
     # Request details
@@ -243,15 +244,15 @@ class KeyRevocation(BaseModel):
     )
     
     # Old attributes (at time of revocation)
-    old_attributes = models.JSONField(
+    old_attributes = EncryptedJSONField(
         default=dict,
-        help_text="User attributes before change (for attribute_change reason)"
+        help_text="User attributes before change (Encrypted)"
     )
     
     # New attributes (after change)
-    new_attributes = models.JSONField(
+    new_attributes = EncryptedJSONField(
         default=dict,
-        help_text="User attributes after change"
+        help_text="User attributes after change (Encrypted)"
     )
     
     # Status

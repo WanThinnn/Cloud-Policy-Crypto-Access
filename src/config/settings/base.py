@@ -172,6 +172,10 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti',
 }
 
+# SQL DB Field Encryption Key
+FIELD_ENCRYPTION = os.environ.get('FIELD_ENCRYPTION', 'False').lower() in ('true', '1', 't')
+FIELD_ENCRYPTION_KEY = os.environ.get('FIELD_ENCRYPTION_KEY')
+
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')

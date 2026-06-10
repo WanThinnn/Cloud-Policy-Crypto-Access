@@ -188,6 +188,21 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         file_type = self.request.query_params.get('type', None)
         if file_type:
             queryset = queryset.filter(file_type=file_type)
+            
+        # Secure Search by file_name (via Blind Index)
+        search_name = self.request.query_params.get('search_name', None)
+        if search_name:
+            from django.conf import settings
+            if getattr(settings, 'FIELD_ENCRYPTION', False):
+                from crypto_access.models.fields import get_encryption_key
+                import hmac
+                import hashlib
+                key = get_encryption_key()
+                h = hmac.new(key, str(search_name).encode('utf-8'), hashlib.sha3_256)
+                hash_value = h.hexdigest()
+                queryset = queryset.filter(file_name_hash=hash_value)
+            else:
+                queryset = queryset.filter(file_name__icontains=search_name)
         
         # Filter by user
         my_files = self.request.query_params.get('my_files', None)
