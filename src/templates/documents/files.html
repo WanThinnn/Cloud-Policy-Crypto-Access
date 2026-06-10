@@ -348,7 +348,7 @@
 </div>
 
 <!-- Context Menu -->
-<div id="context-menu" class="hidden fixed bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 w-56 py-2 z-50 animate-fade-in-down">
+<div id="context-menu" class="hidden fixed bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 w-56 max-h-[60vh] overflow-y-auto py-2 z-50 animate-fade-in-down custom-scrollbar">
     <button data-action="create-folder-context" class="context-menu-item hidden w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl flex items-center gap-3 transition-colors group">
         <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
@@ -792,7 +792,7 @@
 
 {% block extra_js %}
 <script src="{% static 'js/policy-builder.js' %}?v=3"></script>
-<script src="{% static 'js/files-manager.js' %}?v=33"></script>
+<script src="{% static 'js/files-manager.js' %}?v=34"></script>
 <!-- Hidden form for version upload -->
 <input type="file" id="version-file-input" class="hidden" onchange="handleVersionUpload(event)">
 

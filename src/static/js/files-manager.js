@@ -1487,9 +1487,25 @@
             else d.classList.remove('hidden');
         });
 
-        menu.style.left = event.pageX + 'px';
-        menu.style.top = event.pageY + 'px';
         menu.classList.remove('hidden');
+        
+        let x = event.clientX;
+        let y = event.clientY;
+        
+        // Ensure menu doesn't go off screen
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
+        
+        if (x + menuWidth > window.innerWidth) {
+            x = window.innerWidth - menuWidth - 5;
+        }
+        if (y + menuHeight > window.innerHeight) {
+            y = window.innerHeight - menuHeight - 5;
+            if (y < 0) y = 5; // Prevent it from going above screen if it's very tall
+        }
+        
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
     }
 
     function hideContextMenu() {
