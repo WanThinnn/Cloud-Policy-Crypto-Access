@@ -17,6 +17,7 @@
     let availableFolders = [];
     let userPermissions = null;
     let availablePolicies = []; // Cache available policies
+    let clipboard = { action: null, items: [], text: '' }; // Clipboard state for copy/cut/paste
     
     // Caches
     const folderCache = new Map();
@@ -104,16 +105,24 @@
         // File list loading
         loadFolder('');
         const handleContextMenu = (e) => {
-            const fileItem = e.target.closest('.file-item');
-            if (fileItem) {
+            // Ignore if clicking on the toolbar
+            if (e.target.closest('.border-b.border-gray-100.bg-gray-50')) return;
+            
+            const row = e.target.closest('.file-item');
+            if (row) {
                 e.preventDefault();
-                const filePath = fileItem.dataset.filepath;
-                const isFolder = fileItem.dataset.isfolder === 'true';
+                const filePath = row.dataset.filepath;
+                const isFolder = row.dataset.isfolder === 'true';
                 showContextMenu(e, filePath, isFolder);
+            } else {
+                e.preventDefault();
+                showContextMenu(e, null, false);
             }
         };
-        document.getElementById('files-grid').addEventListener('contextmenu', handleContextMenu);
-        document.getElementById('files-list').addEventListener('contextmenu', handleContextMenu);
+        const filesContainer = document.getElementById('files-container');
+        if (filesContainer) {
+            filesContainer.addEventListener('contextmenu', handleContextMenu);
+        }
 
         // Upload modal
         document.getElementById('upload-btn').addEventListener('click', () => {
@@ -126,7 +135,6 @@
 
         // Drag & Drop
         const dropZone = document.getElementById('drop-zone');
-        const filesContainer = document.getElementById('files-container');
 
         if (filesContainer) {
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -174,6 +182,15 @@
                 case 'clear-selection': clearSelection(); break;
                 case 'bulk-download': bulkDownload(); break;
                 case 'bulk-delete': bulkDelete(); break;
+                case 'bulk-copy': setClipboard('copy', Array.from(selectedFiles)); break;
+                case 'bulk-cut': setClipboard('cut', Array.from(selectedFiles)); break;
+                
+                // Clipboard actions
+                case 'clipboard-paste': handlePaste(); break;
+                case 'clipboard-cancel': 
+                    clipboard = { action: null, items: [], text: '' };
+                    updateClipboardUI();
+                    break;
                 
                 // Breadcrumb / toolbar
                 case 'go-home': loadFolder(''); break;
@@ -194,6 +211,7 @@
                 // Context menu items
                 case 'preview': case 'download': case 'assign_policy':
                 case 'view_policies': case 'versions': case 'delete': case 'rename':
+                case 'copy': case 'cut':
                     contextAction(action); break;
                 
                 case 'upload-new-version':
@@ -358,7 +376,7 @@
             }
 
             showLoading();
-            const url = `${API_BASE}files/browse/?path=${encodeURIComponent(path)}&bucket=documents`;
+            const url = `${API_BASE}files/browse/?path=${encodeURIComponent(path)}&bucket=documents&t=${Date.now()}`;
             console.log('Loading folder:', url);
             const response = await fetch(url, { headers });
 
@@ -1008,6 +1026,111 @@
         clearSelection();
     }
 
+    // ============= CLIPBOARD (COPY/CUT/PASTE) =============
+    
+    function setClipboard(action, paths) {
+        if (paths.length === 0) return;
+        
+        let foldersCount = 0;
+        let filesCount = 0;
+        for (const filePath of paths) {
+            const fileObj = allFiles.find(f => f.path === filePath || f.name === filePath);
+            if (fileObj && fileObj.type === 'folder') {
+                foldersCount++;
+            } else {
+                filesCount++;
+            }
+        }
+        
+        let typeStr = [];
+        if (filesCount > 0) typeStr.push(`${filesCount} file${filesCount > 1 ? 's' : ''}`);
+        if (foldersCount > 0) typeStr.push(`${foldersCount} folder${foldersCount > 1 ? 's' : ''}`);
+        
+        clipboard = {
+            action: action,
+            items: Array.from(paths),
+            text: typeStr.join(' and ')
+        };
+        
+        showAlert(`Ready to paste ${paths.length} item(s)`, 'success');
+        
+        
+        updateClipboardUI();
+        clearSelection();
+    }
+    
+    function updateClipboardUI() {
+        const bar = document.getElementById('clipboard-bar');
+        const toolbarPasteBtn = document.getElementById('toolbar-paste-btn');
+        const toolbarPasteText = document.getElementById('toolbar-paste-text');
+        
+        if (clipboard.items.length > 0) {
+            if (bar) bar.classList.remove('hidden');
+            if (toolbarPasteBtn) {
+                toolbarPasteBtn.classList.remove('hidden');
+                if (toolbarPasteText) toolbarPasteText.textContent = `Paste ${clipboard.items.length} item${clipboard.items.length > 1 ? 's' : ''}`;
+            }
+            
+            const actionText = clipboard.action === 'copy' ? 'copied' : 'cut';
+            const textEl = document.getElementById('clipboard-text');
+            if(textEl) textEl.innerHTML = `<b>${clipboard.text}</b> ${actionText}`;
+            
+            const icon = document.getElementById('clipboard-icon');
+            if(icon) {
+                if (clipboard.action === 'cut') {
+                    icon.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"/></svg>`;
+                } else {
+                    icon.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`;
+                }
+            }
+        } else {
+            if(bar) bar.classList.add('hidden');
+            if(toolbarPasteBtn) toolbarPasteBtn.classList.add('hidden');
+        }
+    }
+    
+    async function handlePaste() {
+        if (clipboard.items.length === 0) return;
+        
+        const btn = document.getElementById('clipboard-paste-btn');
+        const origText = btn.textContent;
+        btn.textContent = 'Pasting...';
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch(`${API_BASE}files/clipboard_action/`, {
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: clipboard.action,
+                    items: clipboard.items,
+                    destination: currentPath,
+                    bucket_name: 'documents'
+                })
+            });
+            
+            if (response.ok) {
+                showAlert(`✅ Pasted successfully`, 'success');
+                clipboard = { action: null, items: [], text: '' };
+                updateClipboardUI();
+                folderCache.clear();
+                loadFolder(currentPath);
+            } else {
+                const err = await response.json().catch(() => ({ error: 'Paste failed' }));
+                showAlert(`❌ ${err.error || 'Paste failed'}`, 'error');
+            }
+        } catch (error) {
+            console.error('Paste error:', error);
+            showAlert('❌ Failed to paste items', 'error');
+        } finally {
+            btn.textContent = origText;
+            btn.disabled = false;
+        }
+    }
+
     // ============= UPLOAD =============
 
     async function openUploadModal() {
@@ -1318,24 +1441,51 @@
         currentContextIsFolder = isFolder;
         const menu = document.getElementById('context-menu');
         
-        const itemsToHideForFolders = ['preview', 'download', 'upload-new-version', 'versions', 'assign_policy', 'view_policies'];
-        itemsToHideForFolders.forEach(action => {
-            const btn = menu.querySelector(`[data-action="${action}"]`);
-            if (btn) {
-                if (isFolder) {
-                    btn.classList.add('hidden');
-                } else {
-                    btn.classList.remove('hidden');
-                }
+        const allButtons = Array.from(menu.querySelectorAll('button'));
+        
+        if (!filePath) {
+            allButtons.forEach(btn => btn.classList.add('hidden'));
+            
+            const newFolderBtn = menu.querySelector('[data-action="create-folder-context"]');
+            if (newFolderBtn) newFolderBtn.classList.remove('hidden');
+            
+            const pasteBtn = menu.querySelector('[data-action="clipboard-paste"]');
+            const divider = menu.querySelector('.bg-divider-1');
+            
+            if (pasteBtn && clipboard.items.length > 0) {
+                pasteBtn.classList.remove('hidden');
+                if (divider) divider.classList.remove('hidden');
+            } else {
+                if (divider) divider.classList.add('hidden');
             }
-        });
-
-        // Hide divider if upload-new-version is hidden (since it's right below it)
-        const divider = menu.querySelector('.h-px');
-        if (divider) {
-            if (isFolder) divider.classList.add('hidden');
-            else divider.classList.remove('hidden');
+        } else {
+            allButtons.forEach(btn => btn.classList.remove('hidden'));
+            
+            // Hide "New Folder" on files/folders
+            const newFolderBtn = menu.querySelector('[data-action="create-folder-context"]');
+            if (newFolderBtn) newFolderBtn.classList.add('hidden');
+            const topDivider = menu.querySelector('.bg-divider-1');
+            if (topDivider) topDivider.classList.add('hidden');
+            
+            const itemsToHideForFolders = ['preview', 'download', 'upload-new-version', 'versions', 'assign_policy', 'view_policies'];
+            itemsToHideForFolders.forEach(action => {
+                const btn = menu.querySelector(`[data-action="${action}"]`);
+                if (btn && isFolder) btn.classList.add('hidden');
+            });
+            
+            const pasteBtn = menu.querySelector('[data-action="clipboard-paste"]');
+            if (pasteBtn && isFolder && clipboard.items.length > 0) {
+                pasteBtn.classList.remove('hidden');
+            } else if (pasteBtn) {
+                pasteBtn.classList.add('hidden');
+            }
         }
+
+        const dividers = menu.querySelectorAll('.h-px:not(.bg-divider-1)');
+        dividers.forEach(d => {
+            if (!filePath) d.classList.add('hidden');
+            else d.classList.remove('hidden');
+        });
 
         menu.style.left = event.pageX + 'px';
         menu.style.top = event.pageY + 'px';
@@ -1348,6 +1498,17 @@
 
     function contextAction(action) {
         hideContextMenu();
+
+        if (action === 'clipboard-paste') {
+            handlePaste();
+            return;
+        }
+        
+        if (action === 'create-folder-context') {
+            document.getElementById('new-folder-modal').classList.remove('hidden');
+            document.getElementById('new-folder-input').focus();
+            return;
+        }
 
         if (!currentContextFile) return;
 
@@ -1372,6 +1533,12 @@
                 break;
             case 'rename':
                 openRenameModal(currentContextFile);
+                break;
+            case 'copy':
+                setClipboard('copy', [currentContextFile]);
+                break;
+            case 'cut':
+                setClipboard('cut', [currentContextFile]);
                 break;
         }
     }

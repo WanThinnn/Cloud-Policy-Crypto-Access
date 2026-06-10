@@ -1023,6 +1023,220 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             )
     
     @action(detail=False, methods=['post'])
+    def clipboard_action(self, request):
+        """
+        Handle Copy/Cut & Paste
+        POST /api/storage/files/clipboard_action/
+        Body: { "action": "copy"|"cut", "items": ["path1", "path2"], "destination": "dest", "bucket_name": "documents" }
+        """
+        action = request.data.get('action')
+        items = request.data.get('items', [])
+        destination = request.data.get('destination', '')
+        bucket_name = request.data.get('bucket_name', 'documents')
+        
+        if not action or not items:
+            return Response({'error': 'action and items are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        storage = get_storage_service()
+        
+        try:
+            from crypto_access.models.storage import UploadedFile, StorageBucket, FileVersion
+            bucket = StorageBucket.objects.get(name=bucket_name)
+            
+            # Helper for renaming
+            def get_unique_name(target_path, target_name):
+                base_name = target_name
+                ext = ''
+                if '.' in target_name and not target_name.startswith('.'):
+                    parts = target_name.rsplit('.', 1)
+                    base_name = parts[0]
+                    ext = '.' + parts[1]
+                
+                counter = 1
+                new_name = target_name
+                new_path = f"{target_path}/{new_name}" if target_path else new_name
+                
+                from django.conf import settings
+                field_encryption = getattr(settings, 'FIELD_ENCRYPTION', False)
+                def check_exists(path_to_check):
+                    if field_encryption:
+                        from crypto_access.models.fields import get_encryption_key
+                        import hmac, hashlib
+                        key = get_encryption_key(info=b"blind_index")
+                        h = hmac.new(key, str(path_to_check).encode('utf-8'), hashlib.sha3_256)
+                        return UploadedFile.objects.filter(bucket=bucket, file_path_hash=h.hexdigest(), is_deleted=False).exists()
+                    else:
+                        return UploadedFile.objects.filter(bucket=bucket, file_path=path_to_check, is_deleted=False).exists()
+                
+                while check_exists(new_path):
+                    new_name = f"{base_name} ({counter}){ext}"
+                    new_path = f"{target_path}/{new_name}" if target_path else new_name
+                    counter += 1
+                    
+                return new_name, new_path
+            
+            from django.conf import settings
+            field_encryption = getattr(settings, 'FIELD_ENCRYPTION', False)
+            def compute_hash(val):
+                if not field_encryption: return None
+                from crypto_access.models.fields import get_encryption_key
+                import hmac, hashlib
+                key = get_encryption_key(info=b"blind_index")
+                h = hmac.new(key, str(val).encode('utf-8'), hashlib.sha3_256)
+                return h.hexdigest()
+                
+            success_count = 0
+            all_files = list(UploadedFile.objects.filter(bucket=bucket, is_deleted=False))
+            
+            for item_path in items:
+                item_files = []
+                is_folder = False
+                
+                for f in all_files:
+                    if f.file_path == item_path:
+                        item_files.append((f, False))
+                    elif f.file_path == f"{item_path}/.folder":
+                        item_files.append((f, True))
+                        is_folder = True
+                    elif f.file_path.startswith(f"{item_path}/"):
+                        item_files.append((f, False))
+                        is_folder = True
+                
+                if not item_files:
+                    continue
+                
+                item_name = item_path.split('/')[-1]
+                new_root_name, new_root_path = get_unique_name(destination, item_name)
+                
+                # ABAC Verification before processing
+                from crypto_access.models.storage import FileAccessPolicy
+                for db_file, is_placeholder in item_files:
+                    if not is_placeholder:
+                        if db_file.uploaded_by != request.user:
+                            has_access = FileAccessPolicy.check_user_has_access(request.user, bucket_name, db_file.file_path)
+                            if not has_access:
+                                return Response({'error': f"Access denied for: {db_file.file_name}"}, status=status.HTTP_403_FORBIDDEN)
+                
+                # Sort files so that if we copy, we don't mess up. (Not strictly needed since we fetch them to memory)
+                for db_file, is_placeholder in item_files:
+                    if db_file.file_path == item_path or db_file.file_path == f"{item_path}/.folder":
+                        new_file_path = new_root_path if not is_placeholder else f"{new_root_path}/.folder"
+                        new_file_name = new_root_name if not is_placeholder else ".folder"
+                    else:
+                        relative_path = db_file.file_path[len(item_path):]
+                        new_file_path = new_root_path + relative_path
+                        new_file_name = new_file_path.split('/')[-1]
+                    
+                    physical_path_to_use = db_file.file_path
+                    latest_version = db_file.get_latest_version()
+                    if latest_version:
+                        physical_path_to_use = latest_version.physical_path
+                    
+                    new_physical_path = new_file_path
+                    if latest_version and physical_path_to_use != db_file.file_path:
+                        # Append a timestamp or version marker to avoid physical collision if needed,
+                        # but normally a new file path is unique. So using new_file_path as physical_path is fine.
+                        pass
+                        
+                    if action == 'copy':
+                        # Copy physical file with retry for orphaned files
+                        copy_counter = 1
+                        base_name = new_file_name
+                        ext = ''
+                        if '.' in new_file_name and not new_file_name.startswith('.'):
+                            parts = new_file_name.rsplit('.', 1)
+                            base_name = parts[0]
+                            ext = '.' + parts[1]
+                        
+                        while True:
+                            try:
+                                storage.copy_file(bucket_name, physical_path_to_use, new_physical_path)
+                                break
+                            except Exception as e:
+                                if 'Duplicate' in str(e) or 'already exists' in str(e):
+                                    new_file_name = f"{base_name} ({copy_counter}){ext}"
+                                    new_file_path = f"{destination}/{new_file_name}" if destination else new_file_name
+                                    new_physical_path = new_file_path
+                                    copy_counter += 1
+                                else:
+                                    raise
+                        
+                        # Copy DB record
+                        new_file = UploadedFile.objects.get(pk=db_file.pk)
+                        new_file.pk = None
+                        new_file.file_path = new_file_path
+                        new_file.file_name = new_file_name
+                        new_file.file_path_hash = compute_hash(new_file_path)
+                        new_file.file_name_hash = compute_hash(new_file_name)
+                        new_file.uploaded_by = request.user
+                        new_file.save()
+                        
+                        # Copy latest version
+                        if latest_version:
+                            new_version = FileVersion.objects.get(pk=latest_version.pk)
+                            new_version.pk = None
+                            new_version.file = new_file
+                            new_version.physical_path = new_physical_path
+                            new_version.version_number = 1
+                            new_version.uploaded_by = request.user
+                            new_version.save()
+                            
+                        # Re-assign Access Policies
+                        for policy_link in db_file.access_policies.all():
+                            from crypto_access.models.storage import FileAccessPolicy
+                            new_policy_link = FileAccessPolicy.objects.create(
+                                uploaded_file=new_file,
+                                policy=policy_link.policy,
+                                is_active=policy_link.is_active,
+                                assigned_by=policy_link.assigned_by,
+                                notes=policy_link.notes
+                            )
+                            new_policy_link.granted_users.set(policy_link.granted_users.all())
+                            
+                    elif action == 'cut':
+                        # Move physical file with retry
+                        move_counter = 1
+                        base_name = new_file_name
+                        ext = ''
+                        if '.' in new_file_name and not new_file_name.startswith('.'):
+                            parts = new_file_name.rsplit('.', 1)
+                            base_name = parts[0]
+                            ext = '.' + parts[1]
+                        
+                        while True:
+                            try:
+                                storage.move_file(bucket_name, physical_path_to_use, new_physical_path)
+                                break
+                            except Exception as e:
+                                if 'Duplicate' in str(e) or 'already exists' in str(e):
+                                    new_file_name = f"{base_name} ({move_counter}){ext}"
+                                    new_file_path = f"{destination}/{new_file_name}" if destination else new_file_name
+                                    new_physical_path = new_file_path
+                                    move_counter += 1
+                                else:
+                                    raise
+                        
+                        # Update DB record
+                        db_file.file_path = new_file_path
+                        db_file.file_name = new_file_name
+                        db_file.file_path_hash = compute_hash(new_file_path)
+                        db_file.file_name_hash = compute_hash(new_file_name)
+                        db_file.save(update_fields=['file_path', 'file_name', 'file_path_hash', 'file_name_hash'])
+                        
+                        if latest_version:
+                            latest_version.physical_path = new_physical_path
+                            latest_version.save(update_fields=['physical_path'])
+                
+                success_count += 1
+                
+            return Response({'message': f"Successfully {action}ed {success_count} item(s)"})
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'])
     def create_folder(self, request):
         """
         Create a folder in Supabase Storage
