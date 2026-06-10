@@ -100,19 +100,39 @@ class CPABEService:
         backup_msk = os.path.join(backup_dir, 'cpabe_msk.key')
         backup_pk = os.path.join(backup_dir, 'cpabe_pk.key')
         
-        # 1. Try Vault (primary source)
+        # 1. Fetch from Vault
         cpabe_msk_b64 = vault_service.get_secret('CPABE_MSK')
         cpabe_pk_b64 = vault_service.get_secret('CPABE_PK')
         
-        if cpabe_msk_b64 and cpabe_pk_b64:
-            logger.info("CP-ABE keys fetched from Vault.")
+        has_vault_keys = cpabe_msk_b64 and cpabe_pk_b64
+        has_backup_keys = os.path.exists(backup_msk) and os.path.exists(backup_pk)
+
+        # Split-brain check: Mismatch between Vault and Local Backup
+        if has_vault_keys and has_backup_keys:
+            vault_msk = base64.b64decode(cpabe_msk_b64)
+            with open(backup_msk, 'rb') as f:
+                local_msk = f.read()
+                
+            if vault_msk != local_msk:
+                err_msg = "CRITICAL ERROR: CP-ABE Key mismatch between Vault and local backup! System halted to prevent data loss. Please manually resolve this conflict."
+                logger.critical(err_msg)
+                raise CPABEError(err_msg)
+                
+            logger.info("CP-ABE keys fetched from Vault (matches local backup).")
+            self.msk_data = vault_msk
+            self.pk_data = base64.b64decode(cpabe_pk_b64)
+            return
+
+        # Vault has keys, but no backup exists
+        if has_vault_keys:
+            logger.info("CP-ABE keys fetched from Vault. Saving new local backup...")
             self.msk_data = base64.b64decode(cpabe_msk_b64)
             self.pk_data = base64.b64decode(cpabe_pk_b64)
             self._save_backup(backup_dir, backup_msk, backup_pk)
             return
 
-        # 2. Try local backup (fallback if Vault lost data)
-        if os.path.exists(backup_msk) and os.path.exists(backup_pk):
+        # Backup has keys, but Vault is empty
+        if has_backup_keys:
             logger.warning("Vault has no CP-ABE keys. Restoring from local backup...")
             with open(backup_msk, 'rb') as f:
                 self.msk_data = f.read()
