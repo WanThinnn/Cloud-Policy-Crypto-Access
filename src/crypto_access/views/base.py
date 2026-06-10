@@ -46,8 +46,8 @@ def dashboard_stats(request):
     try:
         total_users = User.objects.count()
         total_policies = AccessPolicy.objects.count()
-        total_documents = UploadedFile.objects.filter(is_deleted=False).count()
-        total_trash = UploadedFile.objects.filter(is_deleted=True).count()
+        total_documents = UploadedFile.objects.filter(is_deleted=False).exclude(mime_type='application/x-directory').count()
+        total_trash = UploadedFile.objects.filter(is_deleted=True).exclude(mime_type='application/x-directory').count()
         
         return Response({
             'users': total_users,
