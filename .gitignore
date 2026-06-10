@@ -504,9 +504,11 @@ LMS_Templates
 # Ignore all sensitive files inside config/
 config/keys/*
 config/certs/*
+
 # Keep the directory structure, READMEs, and dev certificates
 !config/keys/README.md
 !config/certs/README.md
 !config/certs/_.cyberfortress.local.crt
 !config/certs/_.cyberfortress.local.key
 !config/certs/CyberFortress-RootCA.crt
+!config/certs/.gitkeep
