@@ -1109,11 +1109,17 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 new_root_name, new_root_path = get_unique_name(destination, item_name)
                 
                 # ABAC Verification before processing
-                from crypto_access.models.storage import FileAccessPolicy
+                from crypto_access.services.casbin_service import casbin_service
+                
+                # Check write permission for destination
+                if not casbin_service.check_access(request.user, 'document', 'write'):
+                    return Response({'error': "You do not have permission to paste here."}, status=status.HTTP_403_FORBIDDEN)
+                
                 for db_file, is_placeholder in item_files:
                     if not is_placeholder:
                         if db_file.uploaded_by != request.user:
-                            has_access = FileAccessPolicy.check_user_has_access(request.user, bucket_name, db_file.file_path)
+                            required_action = 'read' if action == 'copy' else 'write'
+                            has_access, _ = casbin_service.check_file_access_with_fallback(request.user, bucket_name, db_file.file_path, required_action)
                             if not has_access:
                                 return Response({'error': f"Access denied for: {db_file.file_name}"}, status=status.HTTP_403_FORBIDDEN)
                 
