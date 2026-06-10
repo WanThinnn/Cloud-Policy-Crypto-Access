@@ -165,7 +165,7 @@
 
 <!-- Upload Modal -->
 <div id="upload-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
             <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
@@ -241,127 +241,33 @@
                     <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                     </svg>
-                    Assign access rights (optional)
+                    Assign access rights
                 </label>
                 
                 <select id="upload-policy-select" class="w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm">
                     <option value="">-- No policy (use default ABAC) --</option>
                     <!-- Policies will be loaded here -->
                 </select>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Select policy to control who can access this file</p>
                 
-                <!-- Quick create new policy -->
-                <div class="mt-3">
-                    <button type="button" data-action="toggle-new-policy-form" class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 flex items-center gap-1">
+                <!-- Notice for user -->
+                <div id="upload-policy-notice" class="mt-2 text-xs text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 p-2 rounded border border-blue-100 dark:border-blue-800 flex items-start gap-1">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>To keep the system organized, creating new policies during <strong>Version Upload</strong> is disabled. Please assign a policy later if needed.</span>
+                </div>
+                
+                <div id="upload-policy-create-toggle" class="mt-3">
+                    <button type="button" data-action="toggle-upload-new-policy" class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 flex items-center gap-1">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
                         Create new policy for this file
                     </button>
                     
-                    <div id="new-policy-form-upload" class="hidden mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-4">
-                        <div class="flex justify-between items-center">
-                            <label class="block text-sm font-medium text-blue-800">🔧 Create new Policy</label>
-                            <button type="button" data-action="toggle-upload-advanced" id="upload-toggle-advanced" class="text-xs text-blue-600 hover:underline">
-                                Advanced mode
-                            </button>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Policy Name *</label>
-                                <input type="text" id="upload-new-policy-name" placeholder="e.g.: hr_read_document" pattern="[a-z][a-z0-9_]*"
-                                    class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
-                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Lowercase, numbers and underscores</p>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Priority (1 = highest)</label>
-                                <input type="number" id="upload-new-policy-priority" value="100" min="1" max="999"
-                                    class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Description</label>
-                            <input type="text" id="upload-new-policy-description" placeholder="Policy description"
-                                class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
-                        </div>
-                        
-                        <!-- Simple Mode: Policy Builder -->
-                        <div id="upload-simple-mode" class="space-y-3">
-                            <p class="text-xs text-blue-700">Select conditions for users to apply this policy:</p>
-                            
-                            <div id="upload-condition-rules" class="space-y-2">
-                                <!-- Rules will be added here -->
-                            </div>
-                            
-                            <button type="button" data-action="add-upload-rule" class="text-xs text-blue-600 hover:text-blue-800 flex items-center">
-                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                </svg>
-                                Add condition
-                            </button>
-                            
-                            <div class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
-                                💡 <strong>Hint:</strong> Select <span class="text-green-600 dark:text-green-400 font-medium">AND</span> if all conditions must be met, 
-                                <span class="text-orange-600 font-medium">OR</span> if only 1 of the conditions must be met.
-                            </div>
-                            
-                            <div class="p-2 bg-white dark:bg-gray-800 rounded border">
-                                <span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Condition preview:</span>
-                                <div id="upload-condition-preview" class="font-mono text-xs text-green-700 mt-1">
-                                    (No conditions yet)
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Advanced Mode: Raw Expression -->
-                        <div id="upload-advanced-mode" class="hidden">
-                            <p class="text-xs text-blue-700 mb-2">Enter ABAC expression directly:</p>
-                            <textarea id="upload-new-policy-condition" rows="2"
-                                class="w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm font-mono"
-                                placeholder="r.sub.user_type == 'admin' and r.sub.department == 'it'"
-                                oninput="updateUploadPreviewFromAdvanced()"></textarea>
-                            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
-                                <strong>Syntax:</strong> <code>r.sub.attribute == 'value'</code> | <code>and</code>, <code>or</code> to combine
-                            </div>
-                        </div>
-                        
-                        <input type="hidden" id="upload-policy-condition-final">
-                        
-                        <div class="grid grid-cols-3 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Resource</label>
-                                <select id="upload-new-policy-resource" class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
-                                    <option value="document">📄 Document</option>
-                                    <option value="key">🔑 Key Revocation List</option>
-                                    <option value="*">⭐ All</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Actions</label>
-                                <select id="upload-new-policy-action" class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
-                                    <option value="read">👁️ View</option>
-                                    <option value="write">✏️ Create</option>
-                                    <option value="update">📝 Update</option>
-                                    <option value="delete">🗑️ Delete</option>
-                                    <option value="download">⬇️ Download</option>
-                                    <option value="*">⭐ All</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 dark:text-gray-500">Effect</label>
-                                <select id="upload-new-policy-effect" class="mt-1 w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm">
-                                    <option value="allow">✅ Allow</option>
-                                    <option value="deny">❌ Deny</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                        </div>
-                    </div>
+                    <div id="upload-policy-builder-slot" class="hidden mt-3 p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800"></div>
+                </div>
                 </div>
             </div>
+        </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t">
                 <button type="button" id="cancel-upload" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
@@ -564,112 +470,7 @@
             
             <!-- New Policy Tab -->
             <div id="panel-new" class="hidden space-y-4">
-                <div class="flex justify-between items-center">
-                    <label class="block text-sm font-medium text-blue-800">🔧 Build conditions (Policy Builder)</label>
-                    <button type="button" data-action="toggle-assign-advanced" id="assign-toggle-advanced" class="text-xs text-blue-600 hover:underline">
-                        Advanced mode
-                    </button>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Policy Name *</label>
-                        <input type="text" id="new-policy-name" pattern="[a-z][a-z0-9_]*"
-                            class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                            placeholder="e.g.: hr_read_document">
-                        <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">Lowercase, numbers and underscores</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority (1 = highest)</label>
-                        <input type="number" id="new-policy-priority" value="100" min="1" max="999"
-                            class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                    <input type="text" id="new-policy-description" 
-                        class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        placeholder="Policy description">
-                </div>
-                
-                <!-- Simple Mode: Policy Builder -->
-                <div id="assign-simple-mode" class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-3">
-                    <p class="text-sm text-blue-700">Select conditions for users to apply this policy:</p>
-                    
-                    <div id="assign-condition-rules" class="space-y-2">
-                        <!-- Rules will be added here -->
-                    </div>
-                    
-                    <button type="button" data-action="add-assign-rule" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Add condition
-                    </button>
-                    
-                    <div class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
-                        💡 <strong>Hint:</strong> Select <span class="text-green-600 dark:text-green-400 font-medium">AND</span> if all conditions must be met, 
-                        <span class="text-orange-600 font-medium">OR</span> if only 1 of the conditions must be met.
-                    </div>
-                    
-                    <div class="p-2 bg-white dark:bg-gray-800 rounded border">
-                        <span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Condition preview:</span>
-                        <div id="assign-condition-preview" class="font-mono text-sm text-green-700 mt-1">
-                            (No conditions yet)
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Advanced Mode: Raw Expression -->
-                <div id="assign-advanced-mode" class="hidden bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <p class="text-sm text-blue-700 mb-2">Enter ABAC expression directly:</p>
-                    <textarea id="new-policy-condition" rows="3"
-                        class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
-                        placeholder="r.sub.user_type == 'admin' and r.sub.department == 'it'"
-                        oninput="updateAssignPreviewFromAdvanced()"></textarea>
-                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
-                        <strong>Syntax:</strong>
-                        <ul class="list-disc ml-4 mt-1">
-                            <li><code>r.sub.attribute == 'value'</code> - Equals</li>
-                            <li><code>r.sub.attribute in ['val1', 'val2']</code> - In list</li>
-                            <li><code>and</code>, <code>or</code> - Combine conditions</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <input type="hidden" id="assign-policy-condition-final">
-                
-                <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resource</label>
-                        <select id="new-policy-resource" class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="document">📄 Document</option>
-                            <option value="key">🔑 Key Revocation List</option>
-                            <option value="user">👤 Manage users</option>
-                            <option value="policy">📋 Manage policies</option>
-                            <option value="*">⭐ All resources</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Actions</label>
-                        <select id="new-policy-action" class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="read">👁️ View (Read)</option>
-                            <option value="write">✏️ Create (Write)</option>
-                            <option value="update">📝 Update (Update)</option>
-                            <option value="delete">🗑️ Delete (Delete)</option>
-                            <option value="download">⬇️ Download (Download)</option>
-                            <option value="*">⭐ All actions</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Effect</label>
-                        <select id="new-policy-effect" class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                            <option value="allow">✅ Allow (Allow)</option>
-                            <option value="deny">❌ Deny (Deny)</option>
-                        </select>
-                    </div>
-                </div>
+                <div id="assign-policy-builder-slot"></div>
             </div>
             
             <!-- Common Settings -->
@@ -784,10 +585,144 @@
         </div>
     </div>
 </div>
+
+<!-- Shared Policy Builder Container (Moved between modals dynamically) -->
+<div id="shared-policy-builder-container" class="hidden space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Policy Name *</label>
+            <input type="text" id="new-policy-name" pattern="[a-z][a-z0-9_]*"
+                class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g.: hr_read_document">
+            <p class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">Lowercase, numbers and underscores</p>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority (1 = highest)</label>
+            <input type="number" id="new-policy-priority" value="100" min="1" max="999"
+                class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500">
+        </div>
+    </div>
+    
+    <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+        <input type="text" id="new-policy-description" 
+            class="w-full bg-white dark:bg-gray-700 dark:text-white px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            placeholder="Policy description">
+    </div>
+    
+    <!-- Policy Builder Section -->
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div class="flex justify-between items-center mb-3">
+            <label class="block text-sm font-medium text-blue-800">🔧 Build conditions (Policy Builder)</label>
+            <button type="button" id="toggle-advanced" class="text-xs text-blue-600 hover:underline">
+                Advanced mode
+            </button>
+        </div>
+        
+        <!-- Simple Mode: Natural Language Builder -->
+        <div id="simple-mode" class="space-y-3">
+            <p class="text-sm text-blue-700 mb-2">Select conditions for users to apply this policy:</p>
+            
+            <!-- Visual Query Builder Container -->
+            <div id="query-builder-root" class="space-y-2">
+                <!-- Root group will be injected here -->
+            </div>
+            
+            <button type="button" id="add-rule-btn" style="display:none;" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add condition
+            </button>
+
+            <!-- Guide -->
+            <div class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 pt-2">
+                💡 <strong>Hint:</strong> Select <span class="text-green-600 dark:text-green-400 font-medium">AND</span> if all conditions must be met, 
+                <span class="text-orange-600 font-medium">OR</span> if only 1 of the conditions must be met.
+            </div>
+            
+            <!-- Preview -->
+            <div class="mt-3 p-2 bg-white dark:bg-gray-800 rounded border">
+                <span class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Condition preview:</span>
+                <div id="condition-preview" class="font-mono text-sm text-green-700 mt-1">
+                    <!-- Preview will be shown here -->
+                </div>
+            </div>
+        </div>
+        
+        <div id="modal-alert" class="hidden rounded-md p-3 mt-3 text-sm border"></div>
+        
+        <!-- Advanced Mode: Raw Expression -->
+        <div id="advanced-mode" class="hidden">
+            <p class="text-sm text-blue-700 mb-2">Enter ABAC expression directly:</p>
+            <textarea id="subject_condition_input" rows="3"
+                class="block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                placeholder="r.sub.user_type == 'admin' and r.sub.department == 'it'"
+                oninput="updatePreview()"></textarea>
+            <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                <p><strong>Syntax:</strong></p>
+                <ul class="list-disc ml-4 space-y-1">
+                    <li><code>r.sub.attribute == 'value'</code> - Equals</li>
+                    <li><code>r.sub.attribute in ['val1', 'val2']</code> - In list</li>
+                    <li><code>and</code>, <code>or</code> - Combine conditions</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hidden input for actual condition -->
+    <input type="hidden" id="subject_condition_final">
+    
+    <div class="grid grid-cols-3 gap-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resource (Multiple allowed)</label>
+            <select id="new-policy-resource" required multiple size="5"
+                class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="document">📄 Document</option>
+                <option value="key">🔑 Key Revocation List</option>
+                <option value="*">⭐ All</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Actions</label>
+            <select id="new-policy-action" required
+                class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="read">👁️ View</option>
+                <option value="write">✏️ Create</option>
+                <option value="update">📝 Update</option>
+                <option value="delete">🗑️ Delete</option>
+                <option value="download">⬇️ Download</option>
+                <option value="*">⭐ All</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Effect</label>
+            <select id="new-policy-effect" required
+                class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="allow">✅ Allow (Allow)</option>
+                <option value="deny">❌ Deny (Deny)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Test Policy Alert -->
+    <div id="test-policy-alert" class="hidden rounded-md p-4 mb-4 border relative">
+        <span id="test-policy-alert-message" class="text-sm font-medium whitespace-pre-wrap"></span>
+    </div>
+
+    <!-- Test Policy Button -->
+    <div class="flex justify-start">
+        <button type="button" id="test-policy-btn" class="px-4 py-2 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-md hover:bg-yellow-200 text-sm font-medium flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+            Test Policy
+        </button>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/files-manager.js' %}?v=18"></script>
+<script src="{% static 'js/policy-builder.js' %}?v=3"></script>
+<script src="{% static 'js/files-manager.js' %}?v=21"></script>
 <!-- Hidden form for version upload -->
 <input type="file" id="version-file-input" class="hidden" onchange="handleVersionUpload(event)">
 

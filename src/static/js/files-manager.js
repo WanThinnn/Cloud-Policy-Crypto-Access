@@ -179,10 +179,17 @@
                 case 'go-home': loadFolder(''); break;
                 case 'create-folder': createFolder(); break;
                 
-                // Upload modal - policy builder
-                case 'toggle-new-policy-form': toggleNewPolicyForm(); break;
-                case 'toggle-upload-advanced': toggleUploadAdvancedMode(); break;
-                case 'add-upload-rule': addUploadRule(); break;
+                case 'toggle-upload-new-policy': {
+                    const slot = document.getElementById('upload-policy-builder-slot');
+                    slot.classList.toggle('hidden');
+                    if (!slot.classList.contains('hidden')) {
+                        // Move shared builder to upload slot
+                        slot.appendChild(document.getElementById('shared-policy-builder-container'));
+                        document.getElementById('shared-policy-builder-container').classList.remove('hidden');
+                        if (window.initPolicyBuilder) window.initPolicyBuilder();
+                    }
+                    break;
+                }
                 
                 // Context menu items
                 case 'preview': case 'download': case 'assign_policy':
@@ -203,8 +210,6 @@
                 // Assign policy modal
                 case 'switch-tab-existing': switchPolicyTab('existing'); break;
                 case 'switch-tab-new': switchPolicyTab('new'); break;
-                case 'toggle-assign-advanced': toggleAssignAdvancedMode(); break;
-                case 'add-assign-rule': addAssignRule(); break;
                 case 'close-assign-modal': closeAssignPolicyModal(); break;
                 case 'submit-assign-policy': submitAssignPolicy(); break;
                 
@@ -978,7 +983,6 @@
             }
         }
         
-        document.getElementById('new-policy-form-upload').classList.add('hidden');
         if (!document.getElementById('file-input').files.length) {
             document.getElementById('file-selected-name').classList.add('hidden');
         }
@@ -990,6 +994,8 @@
             // Show version policy UI
             document.getElementById('version-policy-section').classList.remove('hidden');
             document.getElementById('normal-policy-section').classList.add('hidden');
+            document.getElementById('upload-policy-create-toggle')?.classList.add('hidden');
+            document.getElementById('upload-policy-notice')?.classList.remove('hidden');
             
             // Check radio button change
             document.querySelectorAll('input[name="version_policy_action"]').forEach(r => {
@@ -1009,7 +1015,13 @@
             
             document.getElementById('version-policy-section').classList.add('hidden');
             document.getElementById('normal-policy-section').classList.remove('hidden');
+            document.getElementById('upload-policy-create-toggle')?.classList.remove('hidden');
+            document.getElementById('upload-policy-notice')?.classList.add('hidden');
         }
+        
+        // Hide shared builder if it's in upload slot
+        const uploadSlot = document.getElementById('upload-policy-builder-slot');
+        if (uploadSlot) uploadSlot.classList.add('hidden');
         
         // Load policies
         await loadPoliciesForUpload();
@@ -1049,8 +1061,7 @@
     function closeUploadModal() {
         document.getElementById('upload-modal').classList.add('hidden');
         document.getElementById('upload-form').reset();
-        document.getElementById('upload-progress-container').classList.add('hidden');
-        document.getElementById('new-policy-form-upload').classList.add('hidden');
+        document.getElementById('upload-modal').classList.add('hidden');
         window.isVersionUpload = false;
         window.versionUploadFilePath = null;
     }
@@ -1084,403 +1095,7 @@
         }
     }
     
-    // ============= POLICY BUILDER LOGIC =============
-    // These will be loaded dynamically from database
-    let AVAILABLE_ATTRIBUTES = [];
-
-    const OPERATORS = [
-        { key: '==', label: 'equals' },
-        { key: '!=', label: 'not equals' },
-        { key: 'in', label: 'in list' },
-        { key: 'not in', label: 'not in list' },
-    ];
-
-    let uploadRuleCounter = 0;
-    let assignRuleCounter = 0;
-    let uploadAdvancedMode = false;
-    let assignAdvancedMode = false;
-    let policyBuilderAttributesLoaded = false;
-
-    // Load attributes from database for Policy Builder
-    async function loadPolicyBuilderAttributes() {
-        if (policyBuilderAttributesLoaded && AVAILABLE_ATTRIBUTES.length > 0) {
-            return AVAILABLE_ATTRIBUTES;
-        }
-        
-        try {
-            console.log('Loading policy builder attributes...');
-            const response = await fetch('/api/admin/policy-builder-attributes/', { 
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Content-Type': 'application/json'
-                },
-            });
-            console.log('Response status:', response.status);
-            if (response.ok) {
-                AVAILABLE_ATTRIBUTES = await response.json();
-                policyBuilderAttributesLoaded = true;
-                console.log('Loaded policy builder attributes:', AVAILABLE_ATTRIBUTES);
-            } else {
-                console.error('Failed to load policy builder attributes:', response.status);
-                // Fallback to empty - user will need to use advanced mode
-                AVAILABLE_ATTRIBUTES = [];
-            }
-        } catch (error) {
-            console.error('Error loading policy builder attributes:', error);
-            AVAILABLE_ATTRIBUTES = [];
-        }
-        return AVAILABLE_ATTRIBUTES;
-    }
-
-    function createRuleHTML(prefix, ruleId) {
-        const attrOptions = AVAILABLE_ATTRIBUTES.map(a => 
-            `<option value="${a.key}">${a.label}</option>`
-        ).join('');
-        
-        const opOptions = OPERATORS.map(o => 
-            `<option value="${o.key}">${o.label}</option>`
-        ).join('');
-
-        return `
-            <div class="${prefix}-rule-wrapper" data-rule-id="${ruleId}">
-                <div class="connector-row flex items-center justify-center py-1 ${ruleId === 1 ? 'hidden' : ''}" data-rule-id="${ruleId}">
-                    <select class="connector-select bg-gray-100 border border-gray-300 rounded px-2 py-0.5 text-xs font-medium" 
-                        data-rule-id="${ruleId}" onchange="${prefix === 'upload' ? 'updateUploadPreview()' : 'updateAssignPreview()'}">
-                        <option value="and" class="text-green-700">AND</option>
-                        <option value="or" class="text-orange-700">OR</option>
-                    </select>
-                </div>
-                <div class="${prefix}-rule flex items-center gap-2 p-2 bg-white rounded border text-sm" data-rule-id="${ruleId}">
-                    <span class="text-xs text-gray-600">If</span>
-                    <select class="attr-select border border-gray-300 rounded px-2 py-1 text-xs" data-rule-id="${ruleId}"
-                        onchange="${prefix}UpdateValueSelector(${ruleId})">
-                        ${attrOptions}
-                    </select>
-                    <select class="op-select border border-gray-300 rounded px-2 py-1 text-xs" data-rule-id="${ruleId}"
-                        onchange="${prefix}UpdateValueSelector(${ruleId})">
-                        ${opOptions}
-                    </select>
-                    <div class="value-container flex-1" data-rule-id="${ruleId}">
-                    </div>
-                    <button type="button" class="remove-rule-btn text-red-500 hover:text-red-700" 
-                        onclick="${prefix}RemoveRule(${ruleId})">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    // Upload Policy Builder functions
-    async function addUploadRule() {
-        console.log('addUploadRule called');
-        // Ensure attributes are loaded
-        await loadPolicyBuilderAttributes();
-        console.log('Attributes loaded, count:', AVAILABLE_ATTRIBUTES.length);
-        
-        if (AVAILABLE_ATTRIBUTES.length === 0) {
-            showAlert('⚠️ No attributes. Please use advanced mode.', 'warning');
-            return;
-        }
-        
-        const container = document.getElementById('upload-condition-rules');
-        console.log('Container found:', container);
-        const ruleId = ++uploadRuleCounter;
-        const ruleHTML = createRuleHTML('upload', ruleId);
-        console.log('Rule HTML created for ruleId:', ruleId);
-        container.insertAdjacentHTML('beforeend', ruleHTML);
-        uploadUpdateValueSelector(ruleId);
-        console.log('Rule added successfully');
-    }
-
-    function uploadUpdateValueSelector(ruleId) {
-        const wrapper = document.querySelector(`.upload-rule-wrapper[data-rule-id="${ruleId}"]`);
-        const rule = wrapper.querySelector('.upload-rule');
-        const attrSelect = rule.querySelector('.attr-select');
-        const opSelect = rule.querySelector('.op-select');
-        const valueContainer = wrapper.querySelector(`.value-container[data-rule-id="${ruleId}"]`);
-        
-        const selectedAttr = AVAILABLE_ATTRIBUTES.find(a => a.key === attrSelect.value);
-        if (!selectedAttr) return;
-        
-        const isMultiSelect = opSelect.value === 'in' || opSelect.value === 'not in';
-        const attrValues = selectedAttr.values || [];
-
-        if (isMultiSelect) {
-            valueContainer.innerHTML = `
-                <div class="flex flex-wrap gap-1">
-                    ${attrValues.map(v => `
-                        <label class="inline-flex items-center bg-gray-100 rounded px-1.5 py-0.5 text-xs cursor-pointer hover:bg-gray-200">
-                            <input type="checkbox" class="value-checkbox mr-1 w-3 h-3" value="${v}" onchange="updateUploadPreview()">
-                            ${v}
-                        </label>
-                    `).join('')}
-                </div>
-            `;
-        } else {
-            valueContainer.innerHTML = `
-                <select class="value-select border border-gray-300 rounded px-2 py-1 text-xs" onchange="updateUploadPreview()">
-                    ${attrValues.map(v => `<option value="${v}">${v}</option>`).join('')}
-                </select>
-            `;
-        }
-        updateUploadPreview();
-    }
-
-    function uploadRemoveRule(ruleId) {
-        const wrapper = document.querySelector(`.upload-rule-wrapper[data-rule-id="${ruleId}"]`);
-        if (wrapper) wrapper.remove();
-        uploadUpdateConnectorVisibility();
-        updateUploadPreview();
-    }
-
-    function uploadUpdateConnectorVisibility() {
-        const wrappers = document.querySelectorAll('.upload-rule-wrapper');
-        wrappers.forEach((wrapper, index) => {
-            const connectorRow = wrapper.querySelector('.connector-row');
-            if (connectorRow) {
-                connectorRow.classList.toggle('hidden', index === 0);
-            }
-        });
-    }
-
-    function buildUploadCondition() {
-        const wrappers = document.querySelectorAll('.upload-rule-wrapper');
-        const parts = [];
-
-        wrappers.forEach((wrapper, index) => {
-            const rule = wrapper.querySelector('.upload-rule');
-            const attr = rule.querySelector('.attr-select').value;
-            const op = rule.querySelector('.op-select').value;
-            
-            let value;
-            if (op === 'in' || op === 'not in') {
-                const checkboxes = rule.querySelectorAll('.value-checkbox:checked');
-                const values = Array.from(checkboxes).map(cb => `'${cb.value}'`);
-                if (values.length === 0) return;
-                value = `[${values.join(', ')}]`;
-            } else {
-                const select = rule.querySelector('.value-select');
-                if (!select) return;
-                value = `'${select.value}'`;
-            }
-
-            const condition = `r.sub.${attr} ${op} ${value}`;
-            
-            if (index > 0) {
-                const connectorSelect = wrapper.querySelector('.connector-select');
-                const connector = connectorSelect ? connectorSelect.value : 'and';
-                parts.push(` ${connector} `);
-            }
-            parts.push(condition);
-        });
-
-        return parts.join('');
-    }
-
-    function updateUploadPreview() {
-        const preview = document.getElementById('upload-condition-preview');
-        const condition = uploadAdvancedMode 
-            ? document.getElementById('upload-new-policy-condition').value
-            : buildUploadCondition();
-        
-        if (condition) {
-            preview.textContent = condition;
-            preview.classList.remove('text-gray-400');
-            preview.classList.add('text-green-700');
-        } else {
-            preview.textContent = '(No conditions)';
-            preview.classList.remove('text-green-700');
-            preview.classList.add('text-gray-400');
-        }
-        
-        document.getElementById('upload-policy-condition-final').value = condition;
-    }
-
-    function updateUploadPreviewFromAdvanced() {
-        updateUploadPreview();
-    }
-
-    function toggleUploadAdvancedMode() {
-        uploadAdvancedMode = !uploadAdvancedMode;
-        const simpleMode = document.getElementById('upload-simple-mode');
-        const advancedMode = document.getElementById('upload-advanced-mode');
-        const toggleBtn = document.getElementById('upload-toggle-advanced');
-
-        if (uploadAdvancedMode) {
-            const builtCondition = buildUploadCondition();
-            document.getElementById('upload-new-policy-condition').value = builtCondition;
-            
-            simpleMode.classList.add('hidden');
-            advancedMode.classList.remove('hidden');
-            toggleBtn.textContent = 'Simple mode';
-        } else {
-            simpleMode.classList.remove('hidden');
-            advancedMode.classList.add('hidden');
-            toggleBtn.textContent = 'Advanced mode';
-        }
-        updateUploadPreview();
-    }
-
-    // Assign Policy Builder functions (similar but with different prefix)
-    async function addAssignRule() {
-        // Ensure attributes are loaded
-        await loadPolicyBuilderAttributes();
-        
-        if (AVAILABLE_ATTRIBUTES.length === 0) {
-            showAlert('⚠️ No attributes. Please use advanced mode.', 'warning');
-            return;
-        }
-        
-        const container = document.getElementById('assign-condition-rules');
-        const ruleId = ++assignRuleCounter;
-        container.insertAdjacentHTML('beforeend', createRuleHTML('assign', ruleId));
-        assignUpdateValueSelector(ruleId);
-    }
-
-    function assignUpdateValueSelector(ruleId) {
-        const wrapper = document.querySelector(`.assign-rule-wrapper[data-rule-id="${ruleId}"]`);
-        const rule = wrapper.querySelector('.assign-rule');
-        const attrSelect = rule.querySelector('.attr-select');
-        const opSelect = rule.querySelector('.op-select');
-        const valueContainer = wrapper.querySelector(`.value-container[data-rule-id="${ruleId}"]`);
-        
-        const selectedAttr = AVAILABLE_ATTRIBUTES.find(a => a.key === attrSelect.value);
-        if (!selectedAttr) return;
-        
-        const isMultiSelect = opSelect.value === 'in' || opSelect.value === 'not in';
-
-        if (isMultiSelect) {
-            valueContainer.innerHTML = `
-                <div class="flex flex-wrap gap-1">
-                    ${(selectedAttr.values || []).map(v => `
-                        <label class="inline-flex items-center bg-gray-100 rounded px-1.5 py-0.5 text-xs cursor-pointer hover:bg-gray-200">
-                            <input type="checkbox" class="value-checkbox mr-1 w-3 h-3" value="${v}" onchange="updateAssignPreview()">
-                            ${v}
-                        </label>
-                    `).join('')}
-                </div>
-            `;
-        } else {
-            valueContainer.innerHTML = `
-                <select class="value-select border border-gray-300 rounded px-2 py-1 text-xs" onchange="updateAssignPreview()">
-                    ${(selectedAttr.values || []).map(v => `<option value="${v}">${v}</option>`).join('')}
-                </select>
-            `;
-        }
-        updateAssignPreview();
-    }
-
-    function assignRemoveRule(ruleId) {
-        const wrapper = document.querySelector(`.assign-rule-wrapper[data-rule-id="${ruleId}"]`);
-        if (wrapper) wrapper.remove();
-        assignUpdateConnectorVisibility();
-        updateAssignPreview();
-    }
-
-    function assignUpdateConnectorVisibility() {
-        const wrappers = document.querySelectorAll('.assign-rule-wrapper');
-        wrappers.forEach((wrapper, index) => {
-            const connectorRow = wrapper.querySelector('.connector-row');
-            if (connectorRow) {
-                connectorRow.classList.toggle('hidden', index === 0);
-            }
-        });
-    }
-
-    function buildAssignCondition() {
-        const wrappers = document.querySelectorAll('.assign-rule-wrapper');
-        const parts = [];
-
-        wrappers.forEach((wrapper, index) => {
-            const rule = wrapper.querySelector('.assign-rule');
-            const attr = rule.querySelector('.attr-select').value;
-            const op = rule.querySelector('.op-select').value;
-            
-            let value;
-            if (op === 'in' || op === 'not in') {
-                const checkboxes = rule.querySelectorAll('.value-checkbox:checked');
-                const values = Array.from(checkboxes).map(cb => `'${cb.value}'`);
-                if (values.length === 0) return;
-                value = `[${values.join(', ')}]`;
-            } else {
-                const select = rule.querySelector('.value-select');
-                if (!select) return;
-                value = `'${select.value}'`;
-            }
-
-            const condition = `r.sub.${attr} ${op} ${value}`;
-            
-            if (index > 0) {
-                const connectorSelect = wrapper.querySelector('.connector-select');
-                const connector = connectorSelect ? connectorSelect.value : 'and';
-                parts.push(` ${connector} `);
-            }
-            parts.push(condition);
-        });
-
-        return parts.join('');
-    }
-
-    function updateAssignPreview() {
-        const preview = document.getElementById('assign-condition-preview');
-        const condition = assignAdvancedMode 
-            ? document.getElementById('new-policy-condition').value
-            : buildAssignCondition();
-        
-        if (condition) {
-            preview.textContent = condition;
-            preview.classList.remove('text-gray-400');
-            preview.classList.add('text-green-700');
-        } else {
-            preview.textContent = '(No conditions)';
-            preview.classList.remove('text-green-700');
-            preview.classList.add('text-gray-400');
-        }
-        
-        document.getElementById('assign-policy-condition-final').value = condition;
-    }
-
-    function updateAssignPreviewFromAdvanced() {
-        updateAssignPreview();
-    }
-
-    function toggleAssignAdvancedMode() {
-        assignAdvancedMode = !assignAdvancedMode;
-        const simpleMode = document.getElementById('assign-simple-mode');
-        const advancedMode = document.getElementById('assign-advanced-mode');
-        const toggleBtn = document.getElementById('assign-toggle-advanced');
-
-        if (assignAdvancedMode) {
-            const builtCondition = buildAssignCondition();
-            document.getElementById('new-policy-condition').value = builtCondition;
-            
-            simpleMode.classList.add('hidden');
-            advancedMode.classList.remove('hidden');
-            toggleBtn.textContent = 'Simple mode';
-        } else {
-            simpleMode.classList.remove('hidden');
-            advancedMode.classList.add('hidden');
-            toggleBtn.textContent = 'Advanced mode';
-        }
-        updateAssignPreview();
-    }
-    
-    function toggleNewPolicyForm() {
-        const form = document.getElementById('new-policy-form-upload');
-        form.classList.toggle('hidden');
-        
-        if (!form.classList.contains('hidden')) {
-            // Clear existing policy selection when creating new
-            document.getElementById('upload-policy-select').value = '';
-            // Initialize with one rule if empty
-            if (document.querySelectorAll('.upload-rule-wrapper').length === 0) {
-                addUploadRule();
-            }
-        }
-    }
+    // ============= UPLOAD API CALL =============
     
 
     async function handleUpload(e) {
@@ -1520,13 +1135,15 @@
             const action = document.querySelector('input[name="version_policy_action"]:checked').value;
             if (action !== 'keep') {
                 selectedPolicyId = document.getElementById('upload-policy-select').value;
-                const newPolicyForm = document.getElementById('new-policy-form-upload');
-                isCreatingNewPolicy = !newPolicyForm.classList.contains('hidden');
             }
         } else {
-            selectedPolicyId = document.getElementById('upload-policy-select').value;
-            const newPolicyForm = document.getElementById('new-policy-form-upload');
-            isCreatingNewPolicy = !newPolicyForm.classList.contains('hidden');
+            // Check if builder is active
+            const uploadSlot = document.getElementById('upload-policy-builder-slot');
+            if (uploadSlot && !uploadSlot.classList.contains('hidden') && uploadSlot.querySelector('#shared-policy-builder-container')) {
+                isCreatingNewPolicy = true;
+            } else {
+                selectedPolicyId = document.getElementById('upload-policy-select').value;
+            }
         }
 
         // Prepare form data for API
@@ -1536,21 +1153,21 @@
         formData.append('is_public', 'false');
 
         if (isCreatingNewPolicy) {
-            formData.append('create_new_policy', 'true');
-            const name = document.getElementById('upload-new-policy-name').value.trim();
-            const description = document.getElementById('upload-new-policy-description').value.trim();
-            const condition = document.getElementById('upload-policy-condition-final').value.trim() 
-                || document.getElementById('upload-new-policy-condition')?.value.trim() || '';
-            const effect = document.getElementById('upload-new-policy-effect')?.value || 'allow';
-            const priority = document.getElementById('upload-new-policy-priority')?.value || 100;
-            const resource = document.getElementById('upload-new-policy-resource')?.value || 'document';
-            const action = document.getElementById('upload-new-policy-action')?.value || 'read';
+            const name = document.getElementById('new-policy-name').value.trim();
+            const condition = document.getElementById('subject_condition_final').value.trim();
+            const effect = document.getElementById('new-policy-effect').value;
+            const description = document.getElementById('new-policy-description')?.value.trim() || '';
+            const priority = parseInt(document.getElementById('new-policy-priority')?.value) || 100;
+            const resourceSelect = document.getElementById('new-policy-resource');
+            const resource = resourceSelect ? Array.from(resourceSelect.selectedOptions).map(o => o.value).join(',') : 'document';
+            const action = document.getElementById('new-policy-action')?.value || 'read';
 
             if (!name || !condition) {
-                showAlert('Policy Name and Condition are required for new policy', 'error');
+                showAlert('❌ Please fill in all policy information (name and conditions)', 'error');
                 return;
             }
 
+            formData.append('create_new_policy', 'true');
             formData.append('new_policy_name', name);
             formData.append('new_policy_description', description);
             formData.append('new_policy_subject_condition', condition);
@@ -1808,20 +1425,21 @@
         document.getElementById('tab-existing').classList.toggle('border-indigo-600', tab === 'existing');
         document.getElementById('tab-existing').classList.toggle('text-indigo-600', tab === 'existing');
         document.getElementById('tab-existing').classList.toggle('border-transparent', tab !== 'existing');
-        document.getElementById('tab-existing').classList.toggle('text-gray-500', tab !== 'existing');
+        // Update tabs styling
+        document.getElementById('tab-existing').className = `flex-1 py-3 text-sm font-medium border-b-2 text-center transition-colors ${tab === 'existing' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`;
+        document.getElementById('tab-new').className = `flex-1 py-3 text-sm font-medium border-b-2 text-center transition-colors ${tab === 'new' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`;
         
-        document.getElementById('tab-new').classList.toggle('border-indigo-600', tab === 'new');
-        document.getElementById('tab-new').classList.toggle('text-indigo-600', tab === 'new');
-        document.getElementById('tab-new').classList.toggle('border-transparent', tab !== 'new');
-        document.getElementById('tab-new').classList.toggle('text-gray-500', tab !== 'new');
-        
-        // Show/hide panels
+        // Update panels visibility
         document.getElementById('panel-existing').classList.toggle('hidden', tab !== 'existing');
         document.getElementById('panel-new').classList.toggle('hidden', tab !== 'new');
         
-        // Initialize Policy Builder when switching to new tab
-        if (tab === 'new' && document.querySelectorAll('.assign-rule-wrapper').length === 0) {
-            addAssignRule();
+        if (tab === 'new') {
+            const slot = document.getElementById('assign-policy-builder-slot');
+            if (slot) {
+                slot.appendChild(document.getElementById('shared-policy-builder-container'));
+                document.getElementById('shared-policy-builder-container').classList.remove('hidden');
+                if (window.initPolicyBuilder) window.initPolicyBuilder();
+            }
         }
     }
     
@@ -1834,20 +1452,14 @@
         document.getElementById('policy-search').value = '';
         document.getElementById('new-policy-name').value = '';
         document.getElementById('new-policy-description').value = '';
-        const conditionInput = document.getElementById('new-policy-condition');
+        const conditionInput = document.getElementById('subject_condition_input');
         if (conditionInput) conditionInput.value = '';
         document.getElementById('assign-notes').value = '';
         
-        // Reset Policy Builder
-        document.getElementById('assign-condition-rules').innerHTML = '';
-        assignRuleCounter = 0;
-        assignAdvancedMode = false;
-        const simpleMode = document.getElementById('assign-simple-mode');
-        const advancedMode = document.getElementById('assign-advanced-mode');
-        if (simpleMode) simpleMode.classList.remove('hidden');
-        if (advancedMode) advancedMode.classList.add('hidden');
-        const toggleBtn = document.getElementById('assign-toggle-advanced');
-        if (toggleBtn) toggleBtn.textContent = 'Advanced mode';
+        // Initialize Policy Builder safely
+        if (window.initPolicyBuilder) {
+            await window.initPolicyBuilder();
+        }
         
         // Reset dropdowns
         const effectSelect = document.getElementById('new-policy-effect');
@@ -1896,22 +1508,28 @@
             if (currentPolicyTab === 'existing') {
                 if (!selectedPolicyId) {
                     showAlert('❌ Please select a policy', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Assign Permission';
                     return;
                 }
                 payload.policy_id = selectedPolicyId;
             } else {
                 // Create new policy with all fields from Policy Builder
                 const name = document.getElementById('new-policy-name').value.trim();
-                const condition = document.getElementById('assign-policy-condition-final').value.trim() 
-                    || document.getElementById('new-policy-condition')?.value.trim() || '';
+                const condition = document.getElementById('subject_condition_final').value.trim();
                 const effect = document.getElementById('new-policy-effect').value;
                 const description = document.getElementById('new-policy-description')?.value.trim() || '';
                 const priority = parseInt(document.getElementById('new-policy-priority')?.value) || 100;
-                const resource = document.getElementById('new-policy-resource')?.value || 'document';
+                
+                const resourceSelect = document.getElementById('new-policy-resource');
+                const resource = resourceSelect ? Array.from(resourceSelect.selectedOptions).map(o => o.value).join(',') : 'document';
+                
                 const action = document.getElementById('new-policy-action')?.value || 'read';
                 
                 if (!name || !condition) {
                     showAlert('❌ Please fill in all policy information (name and conditions)', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Assign Permission';
                     return;
                 }
                 
@@ -2471,26 +2089,7 @@
     window.contextAction = contextAction;
     window.createFolder = createFolder;
     
-    // Upload policy functions
-    window.toggleNewPolicyForm = toggleNewPolicyForm;
-    window.toggleUploadAdvancedMode = toggleUploadAdvancedMode;
-    window.addUploadRule = addUploadRule;
-    window.uploadUpdateValueSelector = uploadUpdateValueSelector;
-    window.uploadRemoveRule = uploadRemoveRule;
-    window.updateUploadPreview = updateUploadPreview;
-    window.updateUploadPreviewFromAdvanced = updateUploadPreviewFromAdvanced;
-    
-    console.log('files-manager.js: Upload policy functions exported to window');
-    console.log('window.addUploadRule:', typeof window.addUploadRule);
-    
-    // Assign Policy Builder functions
-    window.toggleAssignAdvancedMode = toggleAssignAdvancedMode;
-    window.addAssignRule = addAssignRule;
-    window.assignUpdateValueSelector = assignUpdateValueSelector;
-    window.assignRemoveRule = assignRemoveRule;
-    window.updateAssignPreview = updateAssignPreview;
-    window.updateAssignPreviewFromAdvanced = updateAssignPreviewFromAdvanced;
-    
+
     // Policy assignment functions
     window.selectPolicy = selectPolicy;
     window.filterPolicies = filterPolicies;
@@ -2512,7 +2111,67 @@
     window.openVersionHistoryModal = openVersionHistoryModal;
     window.closeVersionHistoryModal = closeVersionHistoryModal;
     window.downloadFileVersion = downloadFileVersion;
+    window.closeVersionHistoryModal = closeVersionHistoryModal;
+    window.downloadFileVersion = downloadFileVersion;
     window.previewFileVersion = previewFileVersion;
+
+    function showTestPolicyAlert(message, type = 'info') {
+        const alert = document.getElementById('test-policy-alert');
+        const alertMsg = document.getElementById('test-policy-alert-message');
+        if (!alert || !alertMsg) return;
+
+        const colors = {
+            success: 'bg-green-50 text-green-800 border-green-200',
+            error: 'bg-red-50 text-red-800 border-red-200',
+            info: 'bg-blue-50 text-blue-800 border-blue-200'
+        };
+
+        alert.className = `rounded-md p-4 mb-4 border relative ${colors[type]}`;
+        alertMsg.textContent = message;
+        alert.classList.remove('hidden');
+
+        setTimeout(() => {
+            alert.classList.add('hidden');
+        }, 8000);
+    }
+
+    // Test Policy handler
+    document.getElementById('test-policy-btn')?.addEventListener('click', async () => {
+        if (window.updatePreview) window.updatePreview();
+        const condition = document.getElementById('subject_condition_final')?.value;
+        if (!condition) {
+            showTestPolicyAlert('Please build a condition first to test.', 'error');
+            return;
+        }
+        
+        try {
+            const btn = document.getElementById('test-policy-btn');
+            const origText = btn.innerHTML;
+            btn.innerHTML = '<div class="w-4 h-4 border-2 border-yellow-800 border-t-transparent rounded-full animate-spin"></div> Testing...';
+            btn.disabled = true;
+            
+            const response = await fetch(`/api/admin/policies/test_policy/`, {
+                method: 'POST',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ condition })
+            });
+            const data = await response.json();
+            
+            btn.innerHTML = origText;
+            btn.disabled = false;
+            
+            if (data.error) {
+                showTestPolicyAlert(`Test Failed: ${data.error}`, 'error');
+            } else if (data.cpabe_valid && data.abac_valid) {
+                showTestPolicyAlert(`Success! ABAC and CP-ABE are valid. CP-ABE Policy: ${data.cpabe_policy}`, 'success');
+            }
+        } catch (error) {
+            showTestPolicyAlert('Error testing policy: ' + error.message, 'error');
+            const btn = document.getElementById('test-policy-btn');
+            btn.innerHTML = '🧪 Test Policy';
+            btn.disabled = false;
+        }
+    });
 
     // ============= RENAME =============
     function openRenameModal(filePath) {
