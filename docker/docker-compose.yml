@@ -19,6 +19,7 @@ services:
       - ${DB_DIR:-sqlite_volume}:/app/data
       - ${KEYS_DIR:-keys_volume}:/app/config/keys
       - ./scripts/init_data.py:/app/init_data.py:ro
+      - ./scripts/vault_manager.py:/app/vault_manager.py:ro
       - ./src/crypto_access/migrations:/app/crypto_access/migrations
 
     expose:
@@ -30,9 +31,13 @@ services:
       - PYTHONUNBUFFERED=1
       - DJANGO_SETTINGS_MODULE=config.settings.production
       - REDIS_URL=redis://redis_cache:6379/1
+      - VAULT_ADDR=${VAULT_ADDR:-http://vault:8200}
+      - VAULT_TOKEN=${VAULT_TOKEN:-root}
+      - VAULT_SECRET_PATH=${VAULT_SECRET_PATH:-secret/data/crypto_access}
     depends_on:
       - nginx
       - redis_cache
+      - vault
       # - db  # Uncomment if using postgres
     networks:
       - app-network
@@ -51,6 +56,23 @@ services:
   #   networks:
   #     - app-network
   #   restart: unless-stopped
+
+  vault:
+    image: hashicorp/vault:latest
+    container_name: vault_server
+    ports:
+      - "8200:8200"
+    command: server
+    environment:
+      - VAULT_API_ADDR=http://127.0.0.1:8200
+    volumes:
+      - ./docker/vault/config.hcl:/vault/config/config.hcl:ro
+      - vault_data:/vault/file
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - app-network
+    restart: unless-stopped
 
   redis_cache:
     image: redis:7-alpine
@@ -104,6 +126,7 @@ volumes:
   static_volume:
   sqlite_volume:
   keys_volume:
+  vault_data:
 
 networks:
   app-network:

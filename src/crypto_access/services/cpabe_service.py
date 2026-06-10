@@ -5,6 +5,8 @@ import tempfile
 import logging
 from typing import List
 from django.conf import settings
+from crypto_access.services.vault_service import vault_service
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -92,16 +94,44 @@ class CPABEService:
         self._lib.getErrorMessage.restype = ctypes.c_char_p
         
     def _ensure_keys_exist(self):
-        """Run setup to generate master and public keys if they don't exist"""
+        """Run setup to generate master and public keys if they don't exist in Vault"""
         if not os.path.exists(self.keys_dir):
             os.makedirs(self.keys_dir)
             
-        if not os.path.exists(self.msk_path) or not os.path.exists(self.pk_path):
-            logger.info("Generating CP-ABE Master and Public keys...")
-            res = self._lib.setup(self.keys_dir.encode('utf-8'))
-            if res != 0:
-                err_msg = self._lib.getErrorMessage(res).decode('utf-8')
-                raise CPABEError(f"Setup failed ({res}): {err_msg}")
+        cpabe_msk_b64 = vault_service.get_secret('CPABE_MSK')
+        cpabe_pk_b64 = vault_service.get_secret('CPABE_PK')
+        
+        if cpabe_msk_b64 and cpabe_pk_b64:
+            logger.info("CP-ABE keys fetched from Vault.")
+            self.msk_data = base64.b64decode(cpabe_msk_b64)
+            self.pk_data = base64.b64decode(cpabe_pk_b64)
+            return
+
+        logger.info("Generating CP-ABE Master and Public keys...")
+        
+        # We must generate to disk first because C library expects path
+        tmp_dir = tempfile.mkdtemp()
+        res = self._lib.setup(tmp_dir.encode('utf-8'))
+        if res != 0:
+            err_msg = self._lib.getErrorMessage(res).decode('utf-8')
+            raise CPABEError(f"Setup failed ({res}): {err_msg}")
+            
+        msk_path = os.path.join(tmp_dir, 'cpabe_msk.key')
+        pk_path = os.path.join(tmp_dir, 'cpabe_pk.key')
+        
+        with open(msk_path, 'rb') as f:
+            self.msk_data = f.read()
+        with open(pk_path, 'rb') as f:
+            self.pk_data = f.read()
+            
+        logger.info("Pushing CP-ABE keys to Vault...")
+        vault_service.put_secret('CPABE_MSK', base64.b64encode(self.msk_data).decode('utf-8'))
+        vault_service.put_secret('CPABE_PK', base64.b64encode(self.pk_data).decode('utf-8'))
+        
+        # Clean up
+        os.remove(msk_path)
+        os.remove(pk_path)
+        os.rmdir(tmp_dir)
                 
     def expand_hierarchical_attributes(self, attrs: dict) -> List[str]:
         """
@@ -151,15 +181,22 @@ class CPABEService:
         attr_str = " ".join(attr_strings)
         logger.info(f"Generating Private Key with attributes: {attr_str}")
         
-        res = self._lib.generateSecretKey(
-            self.msk_path.encode('utf-8'),
-            attr_str.encode('utf-8'),
-            output_path.encode('utf-8')
-        )
-        
-        if res != 0:
-            err_msg = self._lib.getErrorMessage(res).decode('utf-8')
-            raise CPABEError(f"Key generation failed ({res}): {err_msg}")
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_msk:
+            tmp_msk.write(self.msk_data)
+            tmp_msk_path = tmp_msk.name
+            
+        try:
+            res = self._lib.generateSecretKey(
+                tmp_msk_path.encode('utf-8'),
+                attr_str.encode('utf-8'),
+                output_path.encode('utf-8')
+            )
+            
+            if res != 0:
+                err_msg = self._lib.getErrorMessage(res).decode('utf-8')
+                raise CPABEError(f"Key generation failed ({res}): {err_msg}")
+        finally:
+            os.remove(tmp_msk_path)
             
     def encrypt_file(self, input_path: str, output_path: str, policy: str):
         """Encrypt a file using CP-ABE policy"""
@@ -170,16 +207,23 @@ class CPABEService:
         if not self._encrypt_func:
             raise CPABEError("Encryption function not found in library")
             
-        result = self._encrypt_func(
-            self.pk_path.encode('utf-8'),
-            input_path.encode('utf-8'),
-            policy.encode('utf-8'),
-            output_path.encode('utf-8')
-        )
-        
-        if result != 0:
-            err_msg = self._lib.getErrorMessage(result).decode('utf-8')
-            raise CPABEError(f"Encryption failed ({result}): {err_msg}")
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_pk:
+            tmp_pk.write(self.pk_data)
+            tmp_pk_path = tmp_pk.name
+            
+        try:
+            result = self._encrypt_func(
+                tmp_pk_path.encode('utf-8'),
+                input_path.encode('utf-8'),
+                policy.encode('utf-8'),
+                output_path.encode('utf-8')
+            )
+            
+            if result != 0:
+                err_msg = self._lib.getErrorMessage(result).decode('utf-8')
+                raise CPABEError(f"Encryption failed ({result}): {err_msg}")
+        finally:
+            os.remove(tmp_pk_path)
             
     def decrypt_file(self, private_key_path: str, input_path: str, output_path: str):
         """Decrypt a file using a user's private key"""
@@ -211,9 +255,8 @@ class CPABEService:
         if not self._encrypt_buffer_func:
             raise CPABEError("Buffer encryption function not found in library")
 
-        # Read public key file into memory
-        with open(self.pk_path, 'rb') as f:
-            pk_data = f.read()
+        # Use memory public key data
+        pk_data = self.pk_data
 
         pk_ptr = ctypes.cast(ctypes.create_string_buffer(pk_data), ctypes.POINTER(ctypes.c_ubyte))
         pt_ptr = ctypes.cast(ctypes.create_string_buffer(plaintext), ctypes.POINTER(ctypes.c_ubyte))

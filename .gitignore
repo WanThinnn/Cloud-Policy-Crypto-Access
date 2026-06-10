@@ -503,3 +503,7 @@ src/config/keys
 !src/lib/libhybrid-cp-abe.so
 
 LMS_Templates
+
+# Vault Data
+data/vault_data/
+config/keys/

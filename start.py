@@ -184,7 +184,12 @@ def main(argv: list[str]) -> int:
         elif cmd in {"up"}:
             # print(f"{status_line}\n")
             run(c + ["up", "-d"])
-            print(color_info(f"[OK] Services started.\n"))
+            print(color_info(f"\n[+] Waiting for Vault to start and running Auto-Unseal..."))
+            try:
+                run(c + ["exec", "web", "python", "vault_manager.py"])
+            except subprocess.CalledProcessError:
+                print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
+            print(color_info(f"\n[OK] Services started.\n"))
             print(color_info(f"{env_access_urls(use_ssl)}"))
         elif cmd in {"down"}:
             # print(f"{status_line}\n")
@@ -205,6 +210,8 @@ def main(argv: list[str]) -> int:
             run(add_manage_args(c + ["exec", "web", "python", "manage.py", "migrate"], extra))
         elif cmd == "initdata":
             # print(f"{status_line}\n")
+            print(color_info("\n[0/4] Initializing and unsealing Vault..."))
+            run(c + ["exec", "web", "python", "vault_manager.py"])
             print(color_info("\n[1/4] Running database migrations..."))
             run(add_manage_args(c + ["exec", "web", "python", "manage.py", "migrate"], []))
             print(color_info("\n[2/4] Initializing superuser..."))
@@ -236,6 +243,11 @@ def main(argv: list[str]) -> int:
             run(compose_cmd(compose_files, use_ssl, use_tunnel) + ["down", "-v"])
             run(compose_cmd(compose_files, use_ssl, use_tunnel) + ["build", "--no-cache"])
             run(compose_cmd(compose_files, use_ssl, use_tunnel) + ["up", "-d"])
+            print(color_info(f"\n[+] Waiting for Vault to start and running Auto-Unseal..."))
+            try:
+                run(c + ["exec", "web", "python", "vault_manager.py"])
+            except subprocess.CalledProcessError:
+                print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
             print(f"[OK] Rebuilt and started services.\n")
             print(f"{env_access_urls(use_ssl)}")
         elif cmd == "help":

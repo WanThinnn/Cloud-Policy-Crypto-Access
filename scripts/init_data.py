@@ -12,6 +12,17 @@ from django.core.management import call_command
 def init():
     print("Initializing Database Data...")
 
+    # Push FIELD_ENCRYPTION_KEY to Vault if it exists in settings
+    from django.conf import settings
+    from crypto_access.services.vault_service import vault_service
+    key_b64 = getattr(settings, 'FIELD_ENCRYPTION_KEY', None)
+    if key_b64:
+        existing = vault_service.get_secret('FIELD_ENCRYPTION_KEY')
+        if not existing:
+            print("Pushing FIELD_ENCRYPTION_KEY to Vault KV Engine...")
+            vault_service.put_secret('FIELD_ENCRYPTION_KEY', key_b64)
+            print("Successfully stored FIELD_ENCRYPTION_KEY in Vault.")
+
     # Create Superuser if not exists
     admin_username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')
     admin_email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@cyberfortress.local')

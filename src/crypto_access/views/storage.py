@@ -45,7 +45,7 @@ def get_db_file_by_path(bucket_name, file_path):
         from crypto_access.models.fields import get_encryption_key
         import hmac
         import hashlib
-        key = get_encryption_key()
+        key = get_encryption_key(info=b"blind_index")
         h = hmac.new(key, str(file_path).encode('utf-8'), hashlib.sha3_256)
         hash_value = h.hexdigest()
         return UploadedFile.objects.filter(bucket__name=bucket_name, file_path_hash=hash_value).first()
@@ -213,7 +213,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 from crypto_access.models.fields import get_encryption_key
                 import hmac
                 import hashlib
-                key = get_encryption_key()
+                key = get_encryption_key(info=b"blind_index")
                 h = hmac.new(key, str(search_name).encode('utf-8'), hashlib.sha3_256)
                 hash_value = h.hexdigest()
                 queryset = queryset.filter(file_name_hash=hash_value)
@@ -363,7 +363,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             from crypto_access.models.fields import get_encryption_key
             import hmac
             import hashlib
-            key = get_encryption_key()
+            key = get_encryption_key(info=b"blind_index")
             h = hmac.new(key, str(file_path).encode('utf-8'), hashlib.sha3_256)
             hash_value = h.hexdigest()
             existing_file = UploadedFile.objects.filter(bucket=bucket, file_path_hash=hash_value).first()
@@ -391,7 +391,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         if existing_file:
             if not is_new_version:
                 return Response(
-                    {'error': 'File này đã tồn tại. Vui lòng đổi tên file để tải lên file mới, hoặc nhấp chuột phải vào file cũ và chọn "Tải lên phiên bản mới".'},
+                    {'error': 'This file already exists. Please rename the file before uploading a new one, or right-click the existing file and select "Upload New Version".'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
                 
