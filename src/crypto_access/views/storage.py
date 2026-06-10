@@ -14,6 +14,7 @@ import logging
 import hashlib
 import json
 from django.core.cache import cache
+from django.db import transaction
 from django.db.models import Q
 import tempfile
 import os
@@ -606,9 +607,12 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         storage = get_storage_service()
         
         try:
+            file_version = uploaded_file.get_latest_version()
+            physical_path = file_version.physical_path if file_version else uploaded_file.file_path
+            
             signed_url = storage.create_signed_url(
                 bucket_name=uploaded_file.bucket.name,
-                file_path=uploaded_file.file_path,
+                file_path=physical_path,
                 expires_in=expires_in
             )
             
@@ -730,49 +734,62 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         path = request.query_params.get('path', '')
         
         try:
-            # 1. Get folders from Supabase (to preserve empty folders)
-            supabase_items = storage.list_files(
-                bucket_name=bucket_name,
-                path=path,
-                limit=100
-            )
-            folders = [f for f in supabase_items if f.get('id') is None]
+            # Get all files from Database for this bucket (using ABAC filtered queryset)
+            db_files = self.get_queryset().filter(bucket__name=bucket_name)
             
             result = []
-            for f in folders:
-                f_path = f"{path}/{f.get('name', '')}" if path else f.get('name', '')
-                result.append({
-                    'name': f.get('name', ''),
-                    'type': 'folder',
-                    'size': None,
-                    'id': None,
-                    'created_at': f.get('created_at'),
-                    'updated_at': f.get('updated_at'),
-                    'path': f_path
-                })
-                
-            # 2. Get files from Database for THIS path (using ABAC filtered queryset)
-            db_files = self.get_queryset().filter(
-                bucket__name=bucket_name
-            )
+            folders_set = set()
             
             for db_file in db_files:
-                # Get the directory part of the file_path
                 parts = db_file.file_path.split('/')
                 file_dir = '/'.join(parts[:-1]) if len(parts) > 1 else ''
                 
-                # Only include files exactly in the current path (not subdirectories)
-                if file_dir == path:
-                    result.append({
-                        'name': db_file.file_name,
-                        'type': 'file',
-                        'size': db_file.file_size,
-                        'id': db_file.id,
-                        'created_at': db_file.uploaded_at,
-                        'updated_at': db_file.updated_at,
-                        'path': db_file.file_path,
-                        'metadata': db_file.metadata
-                    })
+                if db_file.file_name == '.folder':
+                    # It's an empty folder placeholder
+                    folder_name = parts[-2] if len(parts) > 1 else parts[0]
+                    folder_dir = '/'.join(parts[:-2]) if len(parts) > 2 else ''
+                    
+                    if folder_dir == path and folder_name not in folders_set:
+                        folders_set.add(folder_name)
+                        f_path = f"{path}/{folder_name}" if path else folder_name
+                        result.append({
+                            'name': folder_name,
+                            'type': 'folder',
+                            'size': None,
+                            'id': db_file.id,
+                            'created_at': db_file.uploaded_at,
+                            'updated_at': db_file.updated_at,
+                            'path': f_path
+                        })
+                else:
+                    # It's a regular file
+                    if file_dir == path:
+                        result.append({
+                            'name': db_file.file_name,
+                            'type': 'file',
+                            'size': db_file.file_size,
+                            'id': db_file.id,
+                            'created_at': db_file.uploaded_at,
+                            'updated_at': db_file.updated_at,
+                            'path': db_file.file_path,
+                            'metadata': db_file.metadata
+                        })
+                    elif db_file.file_path.startswith(path + '/') or (not path and '/' in db_file.file_path):
+                        # It's in a subdirectory, so we infer a logical folder
+                        relative = db_file.file_path[len(path)+1:] if path else db_file.file_path
+                        subfolder_name = relative.split('/')[0]
+                        if subfolder_name not in folders_set:
+                            folders_set.add(subfolder_name)
+                            f_path = f"{path}/{subfolder_name}" if path else subfolder_name
+                            result.append({
+                                'name': subfolder_name,
+                                'type': 'folder',
+                                'size': None,
+                                'id': None,
+                                'created_at': db_file.uploaded_at,
+                                'updated_at': db_file.updated_at,
+                                'path': f_path
+                            })
             
             return Response({
                 'path': path,
@@ -1034,16 +1051,202 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 content_type='text/plain'
             )
             
+            # Create UploadedFile record for logical empty folder tracking
+            from crypto_access.models.storage import UploadedFile, StorageBucket
+            bucket = StorageBucket.objects.get(name=bucket_name)
+            
+            from django.conf import settings
+            field_encryption = getattr(settings, 'FIELD_ENCRYPTION', False)
+            def get_hash(val):
+                if not field_encryption: return None
+                from crypto_access.models.fields import get_encryption_key
+                import hmac, hashlib
+                key = get_encryption_key(info=b"blind_index")
+                h = hmac.new(key, str(val).encode('utf-8'), hashlib.sha3_256)
+                return h.hexdigest()
+                
+            UploadedFile.objects.create(
+                bucket=bucket,
+                file_name='.folder',
+                file_path=folder_path,
+                file_name_hash=get_hash('.folder'),
+                file_path_hash=get_hash(folder_path),
+                file_type='other',
+                mime_type='application/x-directory',
+                file_size=0,
+                uploaded_by=request.user if hasattr(request, 'user') and request.user.is_authenticated else None
+            )
+            
             return Response({
                 'message': f"Folder '{folder_name}' created successfully",
                 'path': folder_path.replace('/.folder', '')
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
+            error_msg = str(e).lower()
+            if 'duplicate' in error_msg or 'already exists' in error_msg or '409' in error_msg:
+                return Response(
+                    {'error': f"A folder named '{folder_name}' already exists"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             return Response(
                 {'error': f"Failed to create folder: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=['post'])
+    def rename_item(self, request):
+        """
+        Rename a file or folder
+        POST /api/storage/files/rename/
+        Body: { "old_path": "hr/file.txt", "new_name": "new_file.txt", "type": "file|folder", "bucket_name": "documents" }
+        """
+        old_path = request.data.get('old_path', '')
+        new_name = request.data.get('new_name', '')
+        item_type = request.data.get('type', 'file')
+        bucket_name = request.data.get('bucket_name', 'documents')
+        
+        if not old_path or not new_name:
+            return Response(
+                {'error': 'old_path and new_name are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Validate new name
+        import re
+        if not re.match(r'^[a-zA-Z0-9_.-]+$', new_name):
+            return Response(
+                {'error': 'Name can only contain letters, numbers, dot, underscore and hyphen'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            bucket = StorageBucket.objects.get(name=bucket_name)
+        except StorageBucket.DoesNotExist:
+            return Response({'error': f"Bucket '{bucket_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Check permissions
+        is_admin = hasattr(request.user, 'profile') and request.user.profile.is_admin()
+        is_data_owner = hasattr(request.user, 'profile') and request.user.profile.user_type_ref and request.user.profile.user_type_ref.code == 'data_owner'
+        
+        if not (is_admin or is_data_owner):
+            return Response({'error': 'You do not have permission to rename items'}, status=status.HTTP_403_FORBIDDEN)
+            
+        # Helper for encryption hashing
+        from django.conf import settings
+        field_encryption = getattr(settings, 'FIELD_ENCRYPTION', False)
+        def get_hash(val):
+            if not field_encryption: return None
+            from crypto_access.models.fields import get_encryption_key
+            import hmac
+            import hashlib
+            key = get_encryption_key(info=b"blind_index")
+            h = hmac.new(key, str(val).encode('utf-8'), hashlib.sha3_256)
+            return h.hexdigest()
+
+        try:
+            with transaction.atomic():
+                if item_type == 'file':
+                    # Find file
+                    if field_encryption:
+                        file_obj = UploadedFile.objects.filter(bucket=bucket, file_path_hash=get_hash(old_path)).first()
+                    else:
+                        file_obj = UploadedFile.objects.filter(bucket=bucket, file_path=old_path).first()
+                        
+                    if not file_obj:
+                        return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+                    
+                    # Ensure only owner or admin can rename
+                    if not is_admin and file_obj.uploaded_by_id != request.user.id:
+                        return Response({'error': 'You can only rename your own files'}, status=status.HTTP_403_FORBIDDEN)
+                    
+                    parts = old_path.split('/')
+                    folder_path = '/'.join(parts[:-1]) if len(parts) > 1 else ''
+                    new_path = f"{folder_path}/{new_name}" if folder_path else new_name
+                    
+                    # Check if new path already exists
+                    if field_encryption:
+                        exists = UploadedFile.objects.filter(bucket=bucket, file_path_hash=get_hash(new_path)).exists()
+                    else:
+                        exists = UploadedFile.objects.filter(bucket=bucket, file_path=new_path).exists()
+                        
+                    if exists:
+                        return Response({'error': 'A file with this name already exists'}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    file_obj.file_name = new_name
+                    file_obj.file_path = new_path
+                    if field_encryption:
+                        file_obj.file_name_hash = get_hash(new_name)
+                        file_obj.file_path_hash = get_hash(new_path)
+                    file_obj.save()
+                    
+                    return Response({'message': f"File renamed to '{new_name}'", 'new_path': new_path})
+                    
+                elif item_type == 'folder':
+                    old_folder_path = old_path.rstrip('/')
+                    parts = old_folder_path.split('/')
+                    parent_path = '/'.join(parts[:-1]) if len(parts) > 1 else ''
+                    new_folder_path = f"{parent_path}/{new_name}" if parent_path else new_name
+                    
+                    # Get all files in this bucket
+                    all_files = UploadedFile.objects.filter(bucket=bucket)
+                    
+                    # Process files in the folder
+                    files_to_update = []
+                    for f in all_files:
+                        if f.file_path.startswith(f"{old_folder_path}/") or f.file_path == f"{old_folder_path}/.folder":
+                            if not is_admin and f.uploaded_by_id != request.user.id:
+                                return Response({'error': 'You can only rename folders where you own all the files inside'}, status=status.HTTP_403_FORBIDDEN)
+                            files_to_update.append(f)
+                            
+                    # Check if new folder name already exists (by checking if a .folder exists)
+                    if field_encryption:
+                        exists = UploadedFile.objects.filter(bucket=bucket, file_path_hash=get_hash(f"{new_folder_path}/.folder")).exists()
+                    else:
+                        exists = UploadedFile.objects.filter(bucket=bucket, file_path=f"{new_folder_path}/.folder").exists()
+                    
+                    if exists:
+                        return Response({'error': 'A folder with this name already exists'}, status=status.HTTP_400_BAD_REQUEST)
+                        
+                    # Update all files
+                    storage = get_storage_service()
+                    for f in files_to_update:
+                        old_fpath = f.file_path
+                        new_fpath = old_fpath.replace(old_folder_path, new_folder_path, 1)
+                        f.file_path = new_fpath
+                        if field_encryption:
+                            f.file_path_hash = get_hash(new_fpath)
+                        f.save()
+                    # Update Folder Policies
+                    policies = FileAccessPolicy.objects.filter(uploaded_file__isnull=True, target_type='folder')
+                    for p in policies:
+                        if p.folder_path == old_folder_path + '/':
+                            p.folder_path = new_folder_path + '/'
+                            p.save()
+                        elif p.folder_path.startswith(old_folder_path + '/'):
+                            p.folder_path = p.folder_path.replace(old_folder_path + '/', new_folder_path + '/', 1)
+                            p.save()
+                            
+                    # Move .folder object in Supabase
+                    try:
+                        storage = get_storage_service()
+                        old_supa_folder = f"{old_folder_path}/.folder"
+                        new_supa_folder = f"{new_folder_path}/.folder"
+                        storage.move_file(bucket_name, old_supa_folder, new_supa_folder)
+                    except Exception as e:
+                        error_msg = str(e).lower()
+                        if 'duplicate' in error_msg or 'already exists' in error_msg or '409' in error_msg:
+                            raise Exception(f"A folder named '{new_name}' already exists")
+                        raise e
+                        
+                    return Response({'message': f"Folder renamed to '{new_name}'", 'new_path': new_folder_path})
+                else:
+                    return Response({'error': 'Invalid item type'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            msg = str(e)
+            if msg.startswith("A folder named"):
+                return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': f"Failed to rename: {msg}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ============= FILE ACCESS POLICY MANAGEMENT =============
     

@@ -11,7 +11,9 @@
     let currentView = 'grid'; // grid or list
     let selectedFiles = new Set();
     let allFiles = [];
+    let currentBucket = 'documents';
     let currentContextFile = null;
+    let currentContextIsFolder = false;
     let availableFolders = [];
     let userPermissions = null;
     let availablePolicies = []; // Cache available policies
@@ -107,9 +109,7 @@
                 e.preventDefault();
                 const filePath = fileItem.dataset.filepath;
                 const isFolder = fileItem.dataset.isfolder === 'true';
-                if (!isFolder) {
-                    showContextMenu(e, filePath, isFolder);
-                }
+                showContextMenu(e, filePath, isFolder);
             }
         };
         document.getElementById('files-grid').addEventListener('contextmenu', handleContextMenu);
@@ -186,7 +186,7 @@
                 
                 // Context menu items
                 case 'preview': case 'download': case 'assign_policy':
-                case 'view_policies': case 'versions': case 'delete':
+                case 'view_policies': case 'versions': case 'delete': case 'rename':
                     contextAction(action); break;
                 
                 case 'upload-new-version':
@@ -195,6 +195,10 @@
                     openUploadModal();
                     hideContextMenu();
                     break;
+                    
+                // Rename modal
+                case 'close-rename-modal': closeRenameModal(); break;
+                case 'submit-rename': submitRename(); break;
                 
                 // Assign policy modal
                 case 'switch-tab-existing': switchPolicyTab('existing'); break;
@@ -1653,10 +1657,28 @@
     function showContextMenu(event, filePath, isFolder) {
         event.preventDefault();
 
-        if (isFolder) return; // No context menu for folders
-
         currentContextFile = filePath;
+        currentContextIsFolder = isFolder;
         const menu = document.getElementById('context-menu');
+        
+        const itemsToHideForFolders = ['preview', 'download', 'upload-new-version', 'versions'];
+        itemsToHideForFolders.forEach(action => {
+            const btn = menu.querySelector(`[data-action="${action}"]`);
+            if (btn) {
+                if (isFolder) {
+                    btn.classList.add('hidden');
+                } else {
+                    btn.classList.remove('hidden');
+                }
+            }
+        });
+
+        // Hide divider if upload-new-version is hidden (since it's right below it)
+        const divider = menu.querySelector('.h-px');
+        if (divider) {
+            if (isFolder) divider.classList.add('hidden');
+            else divider.classList.remove('hidden');
+        }
 
         menu.style.left = event.pageX + 'px';
         menu.style.top = event.pageY + 'px';
@@ -1690,6 +1712,9 @@
                 break;
             case 'versions':
                 openVersionHistoryModal(currentContextFile);
+                break;
+            case 'rename':
+                openRenameModal(currentContextFile);
                 break;
         }
     }
@@ -2488,5 +2513,77 @@
     window.closeVersionHistoryModal = closeVersionHistoryModal;
     window.downloadFileVersion = downloadFileVersion;
     window.previewFileVersion = previewFileVersion;
+
+    // ============= RENAME =============
+    function openRenameModal(filePath) {
+        const type = currentContextIsFolder ? 'folder' : 'file';
+        const name = filePath.split('/').filter(Boolean).pop();
+        
+        document.getElementById('rename-old-path').value = filePath;
+        document.getElementById('rename-item-type').value = type;
+        document.getElementById('rename-bucket').value = currentBucket;
+        document.getElementById('rename-new-name').value = name;
+        document.getElementById('rename-modal').classList.remove('hidden');
+    }
+    
+    function closeRenameModal() {
+        document.getElementById('rename-modal').classList.add('hidden');
+        document.getElementById('rename-form').reset();
+    }
+    
+    async function submitRename() {
+        const newName = document.getElementById('rename-new-name').value.trim();
+        const oldPath = document.getElementById('rename-old-path').value;
+        const itemType = document.getElementById('rename-item-type').value;
+        const bucket = document.getElementById('rename-bucket').value;
+        
+        if (!newName) {
+            showAlert('Please enter a new name', 'error');
+            return;
+        }
+        
+        try {
+            const submitBtn = document.getElementById('submit-rename');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Renaming...</span>';
+            
+            const response = await fetch(`${API_BASE}files/rename_item/`, {
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    old_path: oldPath,
+                    new_name: newName,
+                    type: itemType,
+                    bucket_name: bucket
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showAlert(`Successfully renamed to ${newName}`, 'success');
+                closeRenameModal();
+                folderCache.clear();
+                loadFolder(currentPath);
+            } else {
+                showAlert(data.error || 'Failed to rename item', 'error');
+            }
+        } catch (error) {
+            console.error('Error renaming item:', error);
+            showAlert('An unexpected error occurred', 'error');
+        } finally {
+            const submitBtn = document.getElementById('submit-rename');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>Save</span>';
+        }
+    }
+
+    // Expose rename functions to window object if needed
+    window.openRenameModal = openRenameModal;
+    window.closeRenameModal = closeRenameModal;
+    window.submitRename = submitRename;
 
 })(); // End of IIFE

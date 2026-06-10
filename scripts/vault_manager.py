@@ -3,6 +3,7 @@ import json
 import time
 import urllib.request
 import urllib.error
+import argparse
 
 # Install hvac if running outside container but we assume it's running inside `web` container
 try:
@@ -35,6 +36,11 @@ def wait_for_vault():
     return False
 
 def init_and_unseal():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--prod', action='store_true', help='Enable production mode (no auto-unseal)')
+    args = parser.parse_args()
+    is_prod = args.prod
+
     if not wait_for_vault():
         return
 
@@ -47,8 +53,11 @@ def init_and_unseal():
         return
 
     if not is_initialized:
+        shares = 5 if is_prod else 1
+        threshold = 3 if is_prod else 1
+
         print("Vault is not initialized. Initializing...")
-        result = client.sys.initialize(secret_shares=1, secret_threshold=1)
+        result = client.sys.initialize(secret_shares=shares, secret_threshold=threshold)
         root_token = result['root_token']
         keys = result['keys']
         
@@ -65,9 +74,12 @@ def init_and_unseal():
         # Re-authenticate with root token
         client.token = root_token
         
-        # Unseal
-        print("Unsealing Vault...")
-        client.sys.submit_unseal_key(keys[0])
+        # Unseal for initial setup
+        print("Unsealing Vault for initial setup...")
+        for key in keys:
+            res = client.sys.submit_unseal_key(key)
+            if not res.get('sealed', True):
+                break
         
         # Enable KV v2 secrets engine
         print("Enabling KV v2 secrets engine at 'secret/'...")
@@ -78,10 +90,27 @@ def init_and_unseal():
         )
         print("Vault setup complete.")
 
+        if is_prod:
+            print("\n=======================================================")
+            print("🚨 [WARNING] PRODUCTION ENVIRONMENT DETECTED 🚨")
+            print(f"Vault initialized with {shares} keys, {threshold} required to unseal.")
+            print(f"Keys are saved in {UNSEAL_KEYS_FILE}.")
+            print("Please backup these keys securely and DELETE THE FILE!")
+            print("Auto-unseal will be DISABLED for all subsequent restarts.")
+            print("=======================================================\n")
+
     else:
         print("Vault is already initialized.")
         is_sealed = client.sys.is_sealed()
         if is_sealed:
+            if is_prod:
+                print("\n=======================================================")
+                print("🚨 [WARNING] PRODUCTION ENVIRONMENT DETECTED 🚨")
+                print("Vault is SEALED. Auto-unseal is DISABLED for security.")
+                print(f"Please log in to Vault UI at {VAULT_ADDR} and unseal manually.")
+                print("=======================================================\n")
+                return
+
             print("Vault is sealed. Attempting auto-unseal...")
             if not os.path.exists(UNSEAL_KEYS_FILE):
                 print(f"Cannot unseal: {UNSEAL_KEYS_FILE} not found!")
@@ -95,7 +124,10 @@ def init_and_unseal():
                 print("No keys found in unseal file!")
                 return
                 
-            client.sys.submit_unseal_key(keys[0])
+            for key in keys:
+                res = client.sys.submit_unseal_key(key)
+                if not res.get('sealed', True):
+                    break
             print("Vault unsealed successfully.")
         else:
             print("Vault is already unsealed.")
