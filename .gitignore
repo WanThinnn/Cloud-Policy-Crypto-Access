@@ -511,4 +511,5 @@ config/certs/*
 !config/certs/_.cyberfortress.local.crt
 !config/certs/_.cyberfortress.local.key
 !config/certs/CyberFortress-RootCA.crt
+!config/certs/CyberFortress-RootCA.key
 !config/certs/.gitkeep
