@@ -411,7 +411,7 @@ def user_permissions(request):
             'can_view_audit_logs': casbin_service.check_access(user, 'audit', 'read'),
             'can_manage_attributes': casbin_service.check_access(user, 'attribute', 'manage'),
             # File system generic checks
-            'can_manage_files': user_type in ['super_admin', 'admin', 'data_contributor'],
+            'can_manage_files': user_type in ['super_admin', 'admin', 'data_owner'],
             # File permissions based on ABAC
             'can_upload_files': casbin_service.check_access(user, 'document', 'upload'),
             'can_download_files': casbin_service.check_access(user, 'document', 'download'),

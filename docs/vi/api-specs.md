@@ -73,7 +73,15 @@ Prefix: `/api/storage/`
 | GET/POST | `/files/` | API chính xử lý Upload File. Dữ liệu POST bao gồm `file` và `policy` (Chính sách CP-ABE mong muốn). File sẽ được mã hóa AES, khóa AES mã hóa CP-ABE trước khi lưu. **Đồng thời**, các thông tin metadata, tên file và đường dẫn cũng được tự động trích xuất và mã hóa bằng AES-256-GCM trước khi lưu xuống SQL. | Có |
 | GET | `/files/{id}/` | Lấy metadata của file. | Có |
 | GET | `/files/{id}/download/` | Yêu cầu tải nội dung file. Hệ thống thực hiện check ABAC -> sinh khóa CP-ABE (nếu chưa cache) -> giải mã -> trả về stream data. | Có |
-| DELETE | `/files/{id}/` | Đưa file vào thùng rác (Trash) hoặc xóa cứng (Permanent delete) nếu có quyền. | File Owner/Admin |
+| DELETE | `/files/{id}/` | Xóa mềm file (đưa vào Thùng rác). Xóa cứng (Permanent delete) chỉ dành cho Admin/Owner. | File Owner/Admin |
+| POST | `/files/clipboard_action/` | Sao chép (Copy), Cắt (Cut) & Dán (Paste) file/thư mục. Hỗ trợ phát hiện trùng lặp (tự đổi tên) và kiểm tra quyền ABAC ở cả nguồn và đích. | Có |
+| POST | `/files/rename/` | Đổi tên file hoặc thư mục. Hỗ trợ cập nhật trường mã hóa và tính lại Blind Index. | Data Owner/Admin |
+| POST | `/files/create_folder/` | Tạo thư mục mới (thư mục ảo thông qua placeholder `.folder`). | Có |
+| GET | `/files/trash/` | Liệt kê tất cả file đã xóa mềm trong Thùng rác cho user hiện tại hoặc toàn bộ (Admin). | Có |
+| POST | `/files/restore/` | Khôi phục file đã xóa mềm từ Thùng rác. | File Owner/Admin |
+| DELETE | `/files/permanent_delete/` | Xóa cứng file khỏi Thùng rác và Cloud Storage. | File Owner/Admin |
+| GET | `/files/{id}/versions/` | Liệt kê tất cả phiên bản của file. | Có |
+| POST | `/files/{id}/assign_access/` | Gán chính sách truy cập CP-ABE và cấp quyền trực tiếp cho user. Hỗ trợ kết hợp chính sách thông minh (OR-merge re-encryption). | File Owner/Admin |
 
 ## 3. Cách Sử Dụng API Từ Frontend
 

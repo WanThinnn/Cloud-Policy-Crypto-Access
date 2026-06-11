@@ -20,9 +20,10 @@ See more demo images in `img/`.
 - **Field-Level SQL Encryption & Blind Indexing**: Protects sensitive metadata in the relational database. Fields such as physical paths, original filenames, signed URLs, and auto-extracted upload metadata are heavily encrypted using AES-256-GCM. Queries on these fields utilize HMAC-SHA3-256 Blind Indexes to maintain searchability while ensuring absolute privacy.
 - **Advanced Policy Engine**: Implements an Abstract Syntax Tree (AST) evaluator for ABAC and CP-ABE policies, supporting arbitrarily complex nested boolean logic (e.g., `(A and B) or C`) with visual UI builder integration.
 - **Intelligent Policy Combination**: Automatically re-encrypts and merges policies using `OR` logic when new access rights are granted to existing files.
+- **Interactive File Management SPA**: A dynamic single-page file manager featuring hierarchical folder navigation, drag-and-drop uploads, clipboard operations (Copy/Cut/Paste), file versioning, soft-delete with Trash & Restore, inline renaming, and a visual CP-ABE Policy Builder.
 - **Zero Frontend Key Exposure**: Private keys are strictly generated, utilized, and destroyed within the Backend's memory space.
 - **Redis Caching**: Highly optimized Redis caching for CP-ABE Private Keys and Casbin policies, ensuring near-instantaneous file previews.
-- **Dockerized Architecture**: Fully containerized environment with Nginx, Gunicorn, Django, and Redis for seamless production deployment.
+- **Dockerized Architecture**: Fully containerized environment with Nginx, Gunicorn, Django, HashiCorp Vault, and Redis for seamless production deployment.
 
 ## Technology Stack
 
@@ -168,7 +169,7 @@ python start.py createsuperuser
 ## Security Notice
 - **Zero Persistent Keys**: CP-ABE private keys are never stored on disk or in the database. They are generated dynamically (on-the-fly) and temporarily cached in Redis.
 - **XSS Protection**: JWT Tokens are securely stored in HttpOnly cookies, rendering them immune to XSS attacks.
-- Ensure the `keys` directory is properly secured in production. The `cpabe_msk.key` (Master Key) must never be exposed.
+- Ensure the `keys` directory is properly secured in production. The `cpabe_msk.key` (Master Key) must never be exposed. Development keys in `src/keys/` are automatically git-ignored.
 - **Disaster Recovery / Migration**: The CP-ABE Public Key and Master Key are **automatically generated** by the backend upon startup if they do not exist in the `./keys` folder. However, if you migrate your server or move to a completely new machine, you **MUST** manually copy the `cpabe_pub.key` and `cpabe_msk.key` from your old machine to the new `./keys` directory. If you lose the old Master Key, all previously encrypted files in your storage will become permanently inaccessible.
 - **Metadata Privacy**: Real physical file paths are obfuscated using random UUIDs on the Cloud Storage side, ensuring that cloud providers or infrastructure attackers cannot infer directory structures or file identities.
 - Always use `HTTPS` in production to prevent Man-in-the-Middle (MITM) attacks during token transmission.

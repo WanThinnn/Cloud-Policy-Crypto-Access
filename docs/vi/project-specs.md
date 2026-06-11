@@ -78,12 +78,10 @@ Tham chiếu thuộc tính: → BM4 (user_attributes)
 
 | Loại người dùng | Mô tả                   | Quyền đặc biệt                                   |
 | --------------- | ----------------------- | ------------------------------------------------ |
-| `super_admin`   | Quản trị viên cao nhất  | Quản lý hệ thống, người dùng, chính sách, khóa   |
+| `super_admin`   | Quản trị viên cao nhất  | Toàn quyền hệ thống                              |
 | `admin`         | Quản trị viên phòng ban | Quản lý người dùng trong phạm vi phòng ban       |
-| `data_owner`    | Chủ sở hữu dữ liệu      | Tạo, mã hóa, định nghĩa chính sách file          |
-| `data_user`     | Người dùng dữ liệu      | Đọc/ghi file theo chính sách được cấp            |
-| `auditor`       | Kiểm toán viên          | Chỉ xem logs và báo cáo, không truy cập nội dung |
-| `guest`         | Khách                   | Quyền hạn chế, thời hạn ngắn                     |
+| `data_owner`    | Chủ sở hữu dữ liệu (DO)| Tạo, upload, mã hóa file; định nghĩa chính sách CP-ABE; quản lý phiên bản và quyền truy cập |
+| `data_user`     | Người dùng dữ liệu (DU) | Đọc/tải file theo chính sách ABAC và CP-ABE được cấp |
 
 Mỗi loại có tập quyền hạn cơ bản được kế thừa, nhưng quyền truy cập tài nguyên cụ thể vẫn được kiểm soát bởi chính sách ABAC dựa trên thuộc tính (BM4). Chỉ Super Admin mới có thể tạo người dùng và gán loại. Người dùng không được tự phép đăng ký mới tài khoản. Mỗi người dùng phải có đầy đủ các thuộc tính bắt buộc theo lược đồ thuộc tính (BM9) và được lưu trữ trong BM4 để phục vụ kiểm soát truy cập ABAC và CP-ABE.
 
@@ -519,4 +517,8 @@ Cấu hình Bảo mật:
 | 7   | system_schemas  | Lược đồ thuộc tính      | BM9      |
 | 8   | access_logs     | Nhật ký truy cập        | BM12     |
 | 9   | system_config   | Cấu hình hệ thống       | BM14     |
+| 10  | storage_buckets | Nhóm file logic          | —        |
+| 11  | file_access_policies | Cấp quyền truy cập file/folder | — |
+| 12  | key_revocations | Nhật ký thu hồi khóa     | —        |
+
 

@@ -39,11 +39,10 @@ Furthermore, to mitigate the risk of data leaks from the relational database (SQ
 
 ### **R1: User Types**
 User types are defined in the attribute schema and can be expanded according to enterprise needs. Default types include:
-- `super_admin`: Highest administrator
-- `admin`: Department administrator
-- `data_owner`: Data owner (creates, encrypts, defines file policies)
-- `data_user`: Data user (reads/writes files according to granted policies)
-- `auditor`: Auditor (can only view logs and reports)
+- `super_admin`: Highest administrator — Full system access
+- `admin`: Department administrator — Manages users within their department
+- `data_owner`: Data Owner (DO) — Creates, uploads, encrypts files; defines CP-ABE policies; manages file versions and access rights
+- `data_user`: Data User (DU) — Reads/downloads files according to granted ABAC and CP-ABE policies
 
 ### **R2: Upload Encrypted File & Metadata Extraction**
 Files uploaded to the system are strictly encrypted based on CP-ABE attribute policies. Nobody, except the file owner, can alter its access policy. During upload, the system automatically extracts comprehensive **metadata**: IP, User-Agent, Uploader Identity (Username, Email, Full Name, Role), File Size, and MIME Type. This metadata is strictly encrypted in the database, while the physical object is stored under a randomized UUID name in the cloud storage.
@@ -80,3 +79,6 @@ The system features an **Abstract Syntax Tree (AST) evaluator**, allowing polici
 | 7 | system_schemas | Attribute schemas | F9 |
 | 8 | access_logs | Access logs | F12 |
 | 9 | system_config | System configuration | F14 |
+| 10 | storage_buckets | Logical file grouping | — |
+| 11 | file_access_policies | Per-file/folder access grants | — |
+| 12 | key_revocations | Key revocation audit trail | — |

@@ -38,11 +38,11 @@ class Command(BaseCommand):
                 'priority': 10,
             },
             
-            # 3. Data Contributor (DO) - document management
+            # 3. Data Owner (DO) - document management
             {
-                'name': 'data_contributor_document_manage',
-                'description': 'Data Contributors (DO) can manage documents',
-                'subject_condition': "r.sub.user_type == 'data_contributor'",
+                'name': 'data_owner_document_manage',
+                'description': 'Data Owners (DO) can manage documents',
+                'subject_condition': "r.sub.user_type == 'data_owner'",
                 'resource': 'document',
                 'action': 'manage',
                 'effect': 'allow',

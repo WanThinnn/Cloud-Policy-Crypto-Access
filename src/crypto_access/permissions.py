@@ -48,7 +48,7 @@ class IsDataOwnerOrAdmin(permissions.BasePermission):
         
         if hasattr(request.user, 'profile'):
             user_type = request.user.profile.get_user_type_code()
-            return user_type in ['super_admin', 'admin', 'data_contributor']
+            return user_type in ['super_admin', 'admin', 'data_owner']
         return False
 
 

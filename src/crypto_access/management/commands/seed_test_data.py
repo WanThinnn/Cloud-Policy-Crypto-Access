@@ -50,7 +50,7 @@ class Command(BaseCommand):
                 'email': 'it_owner@company.com',
                 'password': 'Test@123',
                 'full_name': 'Trần IT Manager',
-                'user_type': 'data_contributor',
+                'user_type': 'data_owner',
                 'attributes': {
                     'department': 'it',
                     'role': 'director',
