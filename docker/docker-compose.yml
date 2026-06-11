@@ -94,8 +94,7 @@ services:
       - ssl
     volumes:
       - static_volume:/app/staticfiles
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./config/certs:/etc/nginx/certs:ro
+      - ./config/certs:/opt/nginx/certs:ro
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME:-cloudsafe.cyberfortress.local}
       - SSL_CERT_FILE=${SSL_CERT_FILE:-_.cyberfortress.local.crt}
