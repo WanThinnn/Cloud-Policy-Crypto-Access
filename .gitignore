@@ -508,8 +508,10 @@ config/certs/*
 # Keep the directory structure, READMEs, and dev certificates
 !config/keys/README.md
 !config/certs/README.md
-!config/certs/_.cyberfortress.local.crt
-!config/certs/_.cyberfortress.local.key
-!config/certs/CyberFortress-RootCA.crt
-!config/certs/CyberFortress-RootCA.key
+!config/certs/_.pq-cyberfortress.local.crt
+!config/certs/_.pq-cyberfortress.local.key
+!config/certs/pq-CyberFortress-RootCA.crt
+!config/certs/pq-CyberFortress-RootCA.key
+!config/certs/pq-CyberFortress-RootCA.srl
+!config/certs/generate_pq_certs.py
 !config/certs/.gitkeep
