@@ -16,6 +16,8 @@ Song song đó, hệ thống áp dụng phương pháp **mã hóa lai (hybrid en
 
 Hơn thế nữa, để đối phó với rủi ro rò rỉ dữ liệu từ cơ sở dữ liệu (SQL DB), hệ thống ứng dụng kỹ thuật **Mã hóa mức trường (Field-level Encryption)** bằng thuật toán **AES-256-GCM** kết hợp **Chỉ mục mù (Blind Indexing)** bằng **HMAC-SHA3-256**. Các thông tin nhạy cảm của tài liệu như đường dẫn vật lý, tên gốc, URL chia sẻ và các siêu dữ liệu (metadata) đều được mã hóa tuyệt đối trước khi lưu vào CSDL. Đường dẫn lưu trữ thực tế của file trên Cloud Storage được che giấu bằng các chuỗi ngẫu nhiên (UUID). Tên bảng (`file_name`) hay (`file_path`) dùng thuật toán băm SHA3-256 để tìm kiếm nhằm bảo vệ sự riêng tư.
 
+Đặc biệt, để đón đầu và chống lại các mối đe dọa từ máy tính lượng tử trong tương lai (tấn công 'Harvest Now, Decrypt Later'), tầng giao vận của hệ thống được bảo vệ bằng **Mật mã học Hậu Lượng Tử (Post-Quantum Cryptography - PQC)**. Máy chủ Nginx được xây dựng dựa trên bản phân phối của dự án OpenQuantumSafe (OQS), thiết lập kết nối HTTPS độc quyền qua **TLS 1.3** và sử dụng cơ chế **Trao đổi khóa lai ML-KEM** (`X25519MLKEM768`). Điều này đảm bảo an toàn tuyệt đối cho dữ liệu trên đường truyền mà vẫn giữ được tính tương thích ngược với các trình duyệt phổ thông.
+
 Ngoài các chức năng kiểm soát truy cập, hệ thống còn hỗ trợ **quản lý người dùng, quản lý thuộc tính và lược đồ thuộc tính, quản lý khóa mã hóa, quản lý chính sách truy cập, phân quyền Super Admin**, cũng như cung cấp **các báo cáo thống kê và audit** phục vụ công tác giám sát, đánh giá và tuân thủ an toàn thông tin trong doanh nghiệp.
 
 Mục tiêu chính của đề tài bao gồm:
@@ -500,6 +502,7 @@ Cấu hình Bảo mật:
 - IP whitelist: 192.168.0.0/16, 10.0.0.0/8  
 - Thời gian session: 8 giờ (quản lý qua HttpOnly Cookie chứa JWT Access/Refresh Token chống XSS)
 - Cấu hình Redis: Redis tập trung thông qua django-redis để lưu RAM cho các mã byte của CP-ABE Key
+- Post-Quantum TLS: Kích hoạt mặc định (Hybrid X25519MLKEM768 qua OQS Nginx)
 - Số lần đăng nhập sai tối đa: 5  
 
 ---

@@ -23,6 +23,7 @@ See more demo images in `img/`.
 - **Interactive File Management SPA**: A dynamic single-page file manager featuring hierarchical folder navigation, drag-and-drop uploads, clipboard operations (Copy/Cut/Paste), file versioning, soft-delete with Trash & Restore, inline renaming, and a visual CP-ABE Policy Builder.
 - **Zero Frontend Key Exposure**: Private keys are strictly generated, utilized, and destroyed within the Backend's memory space.
 - **Redis Caching**: Highly optimized Redis caching for CP-ABE Private Keys and Casbin policies, ensuring near-instantaneous file previews.
+- **Post-Quantum TLS Ready**: Built on the OpenQuantumSafe (OQS) Nginx fork, the system automatically enforces **Hybrid ML-KEM-768 (Kyber)** key exchange over TLS 1.3 to protect all data in transit from quantum computer attacks (Harvest Now, Decrypt Later).
 - **Dockerized Architecture**: Fully containerized environment with Nginx, Gunicorn, Django, HashiCorp Vault, and Redis for seamless production deployment.
 
 ## Technology Stack
@@ -30,8 +31,9 @@ See more demo images in `img/`.
 ### Backend & Infrastructure
 - **Framework**: Django 5.x & Django REST Framework
 - **Database & Storage**: Supabase PostgreSQL & Supabase Storage
+- **Security & Cryptography**: HashiCorp Vault, OpenQuantumSafe (OQS), Post-Quantum Hybrid TLS 1.3 (ML-KEM)
 - **Caching & Message Broker**: Redis 7
-- **Web Server**: Nginx & Gunicorn
+- **Web Server**: OQS Nginx & Gunicorn
 - **Deployment**: Docker & Docker Compose
 
 ### Security & Cryptography

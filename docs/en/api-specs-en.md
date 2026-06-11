@@ -30,6 +30,7 @@ In addition to protecting the file contents, the system secures sensitive data w
 - **HMAC-SHA3-256 Blind Indexing**: Allows secure searching on encrypted columns without revealing plaintext data.
 - **Path Obfuscation**: The physical file names stored in Cloud Storage (Supabase) are randomized UUID strings, bearing no relation to the original filename or business logic.
 - **Auto-Extract Metadata**: Upon upload, the system automatically collects IP, User-Agent, uploader identity, file size, and MIME type, encrypting the entire JSON metadata block.
+- **Post-Quantum TLS 1.3 (ML-KEM)**: All API connections from the Client are routed through the Nginx Reverse Proxy utilizing Post-Quantum Key Exchange (Hybrid X25519MLKEM768), entirely neutralizing the risk of "Harvest Now, Decrypt Later" quantum attacks.
 
 ## 2. REST API Specifications
 

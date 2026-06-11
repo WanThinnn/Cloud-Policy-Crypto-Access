@@ -16,6 +16,8 @@ Simultaneously, the system applies a **hybrid encryption** approach to protect d
 
 Furthermore, to mitigate the risk of data leaks from the relational database (SQL DB), the system employs **Field-level Encryption** using **AES-256-GCM** combined with **Blind Indexing** via **HMAC-SHA3-256**. Sensitive document details such as the physical file path, original name, shared URLs, and all extracted metadata are heavily encrypted before being saved into the DB. The actual storage path of the file on the Cloud Storage is obfuscated using random UUID strings to prevent directory traversal or structure guessing. Database queries on fields like `file_name` and `file_path` are securely performed using SHA3-256 hashes to preserve absolute privacy.
 
+Additionally, to future-proof the system against quantum computing threats (Harvest Now, Decrypt Later), the system's transport layer is secured using **Post-Quantum Cryptography (PQC)**. The reverse proxy (Nginx) is built upon the OpenQuantumSafe (OQS) fork, establishing HTTPS connections exclusively via **TLS 1.3** and utilizing the **Hybrid ML-KEM (Kyber) Key Exchange** mechanism (`X25519MLKEM768`). This ensures quantum-resistant data transmission while maintaining backward compatibility with standard browsers.
+
 ## **1.2. List of Requirements**
 
 | No. | Requirement Name | Form | Regulation | Note |
@@ -472,6 +474,7 @@ Security Configuration:
 - IP Whitelist: 192.168.0.0/16, 10.0.0.0/8  
 - Session Duration: 8 hours (managed via HttpOnly Cookie with JWT Access/Refresh Token against XSS)
 - Redis Configuration: Centralized Redis via django-redis to cache byte codes of CP-ABE Keys in RAM
+- Post-Quantum TLS: Enabled by default (Hybrid X25519MLKEM768 via OQS Nginx)
 - Max Failed Logins: 5  
 
 ---
