@@ -147,7 +147,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         
         # Calculate cache key based on attributes
         attrs_str = json.dumps(user_attrs, sort_keys=True)
-        attrs_hash = hashlib.sha256(attrs_str.encode('utf-8')).hexdigest()
+        attrs_hash = hashlib.sha3_256(attrs_str.encode('utf-8')).hexdigest()
         cache_key = f"cpabe_key_{user.id}_{attrs_hash}"
         cached_key_data = cache.get(cache_key)
         

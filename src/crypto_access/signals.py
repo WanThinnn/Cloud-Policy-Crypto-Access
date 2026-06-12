@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def get_cache_key_id(user_id, attributes):
     """Generate the exact Redis cache key used by the CP-ABE service to represent the Key ID"""
     attrs_str = json.dumps(attributes, sort_keys=True)
-    attrs_hash = hashlib.sha256(attrs_str.encode('utf-8')).hexdigest()
+    attrs_hash = hashlib.sha3_256(attrs_str.encode('utf-8')).hexdigest()
     return f"cpabe_key_{user_id}_{attrs_hash}"
 
 
