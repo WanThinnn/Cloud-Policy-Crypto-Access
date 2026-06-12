@@ -4,7 +4,6 @@
 # Usage: ./scripts/release.sh <version>
 # Example: ./scripts/release.sh 1.1.0
 # =============================================================================
-
 set -e
 
 # Colors
@@ -12,7 +11,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Check if version is provided
 if [ -z "$1" ]; then
@@ -22,16 +21,15 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-VERSION="$1"
+# Normalize version (strip 'v' prefix if given)
+VERSION="${1#v}"
 TAG="v${VERSION}"
-
-# Normalize version format (remove 'v' prefix if provided)
-VERSION="${VERSION#v}"
-TAG="v${VERSION}"
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
 echo -e "${BLUE}=== Cloud-Policy-Crypto-Access Release Script ===${NC}"
 echo -e "Version: ${GREEN}${VERSION}${NC}"
 echo -e "Tag:     ${GREEN}${TAG}${NC}"
+echo -e "Branch:  ${GREEN}${CURRENT_BRANCH}${NC}"
 echo ""
 
 # Confirm with user
@@ -51,7 +49,7 @@ else
 fi
 
 # Step 2: Check if tag exists on remote
-if git ls-remote --tags origin | grep -q "refs/tags/${TAG}"; then
+if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
     echo -e "${YELLOW}[2/6] Deleting existing remote tag ${TAG}...${NC}"
     git push origin ":refs/tags/${TAG}"
 else
@@ -62,11 +60,10 @@ fi
 echo -e "${BLUE}[3/6] Updating VERSION file...${NC}"
 echo "${VERSION}" > VERSION
 
-# Step 4: Update README badge (optional - only if badge exists)
-if grep -q "version-.*-blue" README.md; then
+# Step 4: Update README badge (optional)
+if grep -q "version-[0-9][0-9.]*-blue" README.md 2>/dev/null; then
     echo -e "${BLUE}[4/6] Updating README badge...${NC}"
-    # Update version badge: version-X.X.X-blue
-    sed -i "s/version-[0-9.]*\(-\{0,2\}[A-Za-z0-9]*\)\{0,1\}-blue/version-${VERSION//-/--}-blue/g" README.md
+    sed -i "s/version-[0-9][0-9.]*-blue/version-${VERSION}-blue/g" README.md
 else
     echo -e "${GREEN}[4/6] No README badge to update${NC}"
 fi
@@ -78,10 +75,10 @@ if git diff --cached --quiet; then
     echo -e "${GREEN}No changes to commit${NC}"
 else
     git commit -m "chore: bump version to ${VERSION}"
-    git push origin main
+    git push origin "${CURRENT_BRANCH}"   # ← Fix: dùng branch hiện tại
 fi
 
-# Step 6: Create and push new tag
+# Step 6: Create and push tag
 echo -e "${BLUE}[6/6] Creating and pushing tag ${TAG}...${NC}"
 git tag "${TAG}"
 git push origin "${TAG}"
@@ -93,4 +90,3 @@ echo -e "  - Build Docker image wanthinnn/cloud-policy-crypto-access:${VERSION}"
 echo -e "  - Push 'latest' and version tags to Docker Hub"
 echo ""
 echo -e "Check progress at: ${BLUE}https://github.com/WanThinnn/Cloud-Policy-Crypto-Access/actions${NC}"
-echo ""

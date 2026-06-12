@@ -8,6 +8,7 @@ on:
       - '.gitignore'
       - 'docs/**'
       - '*.md'
+      - 'scripts/**'
     tags:
       - 'v*'
 
@@ -48,11 +49,10 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/v')   # ← Chỉ chạy khi push tag v*
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          name: Release v${{ steps.get_version.outputs.version }}
+          tag_name: ${{ github.ref_name }}
           draft: false
           prerelease: false
           make_latest: true
