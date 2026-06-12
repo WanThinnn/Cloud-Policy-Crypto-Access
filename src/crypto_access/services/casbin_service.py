@@ -445,7 +445,7 @@ class CasbinService:
         # Check cache first
         user_attrs = self.get_user_attributes(user)
         attrs_str = json.dumps(user_attrs, sort_keys=True)
-        attrs_hash = hashlib.sha256(attrs_str.encode()).hexdigest()[:16]
+        attrs_hash = hashlib.sha3_256(attrs_str.encode()).hexdigest()[:16]
         cache_key = f"allowed_policies_{user.id}_{action}_{attrs_hash}"
         cached = cache.get(cache_key)
         if cached is not None:

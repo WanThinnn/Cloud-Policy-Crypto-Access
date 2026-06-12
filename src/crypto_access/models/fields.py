@@ -50,7 +50,7 @@ def get_encryption_key(info: bytes = b"") -> bytes:
                 return _derived_keys_cache[cache_key]
                 
             hkdf = HKDF(
-                algorithm=hashes.SHA256(),
+                algorithm=hashes.SHA3_256(),
                 length=32,
                 salt=b"cyberfortress_static_salt_v1", 
                 info=info,
