@@ -2,7 +2,7 @@
 Storage Views - API endpoints for file operations
 """
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, throttle_classes
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
@@ -34,6 +34,7 @@ from ..serializers.storage import (
 from ..services.storage_service import get_storage_service
 from ..services.cpabe_service import cpabe_service
 from ..services.casbin_service import casbin_service
+from ..throttles import CPABEDecryptThrottle, CPABEEncryptThrottle
 import tempfile
 import time
 
@@ -255,6 +256,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         return queryset
     
     @action(detail=False, methods=['post'])
+    @throttle_classes([CPABEEncryptThrottle])
     def upload(self, request):
         """
         Upload file to Supabase Storage
@@ -510,6 +512,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             )
     
     @action(detail=True, methods=['get'])
+    @throttle_classes([CPABEDecryptThrottle])
     def download(self, request, pk=None):
         """Download file from Supabase Storage"""
         uploaded_file = self.get_object()
@@ -814,6 +817,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             )
     
     @action(detail=False, methods=['get'])
+    @throttle_classes([CPABEDecryptThrottle])
     def download_by_path(self, request):
         """
         Download file by path from Supabase
@@ -900,6 +904,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             )
             
     @action(detail=False, methods=['get'])
+    @throttle_classes([CPABEDecryptThrottle])
     def preview_by_path(self, request):
         """
         Preview file by path from Supabase (displays in browser instead of downloading)

@@ -63,6 +63,12 @@ from .errors import (
     custom_500,
 )
 
+# Import session views
+from .session_views import (
+    SessionViewSet,
+    sessions_page,
+)
+
 __all__ = [
     # Base views
     'index',
@@ -115,5 +121,9 @@ __all__ = [
     'KeyRevocationViewSet',
     'audit_logs_page',
     'key_revocations_page',
+    
+    # Session views
+    'SessionViewSet',
+    'sessions_page',
 ]
 

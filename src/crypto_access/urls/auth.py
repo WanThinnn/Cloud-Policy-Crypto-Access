@@ -1,15 +1,20 @@
 """
 Authentication URLs
 """
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
-from ..views import auth
+from ..views import auth, SessionViewSet, sessions_page
 
 # Separate URL patterns for template pages and API endpoints
 # Template pages are included via /auth/ prefix in config/urls.py
 # API endpoints are included via /api/auth/ prefix in config/urls.py
 
+router = DefaultRouter()
+router.register(r'sessions', SessionViewSet, basename='session')
+
 urlpatterns = [
+    path('', include(router.urls)),
     # These work for both /auth/* and /api/auth/* prefixes
     # Template pages: /auth/login/, /auth/register/
     # API endpoints: /api/auth/login/, /api/auth/register/
@@ -55,5 +60,8 @@ template_patterns = [
     path('password-reset-complete/', 
          auth_views.PasswordResetCompleteView.as_view(template_name='accounts/password_reset_complete.html'), 
          name='password_reset_complete'),
+    
+    # Sessions Page
+    path('sessions/', sessions_page, name='sessions_page'),
 ]
 

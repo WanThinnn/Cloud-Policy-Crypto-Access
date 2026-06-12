@@ -20,12 +20,28 @@ class AccessLogViewSet(viewsets.ReadOnlyModelViewSet):
     
     @action(detail=False, methods=['post'])
     def verify_chain(self, request):
-        """Verify the integrity of the audit log chain"""
-        is_valid, corrupted_logs = AccessLog.verify_chain()
-        return Response({
-            'is_valid': is_valid,
-            'corrupted_logs': corrupted_logs
-        })
+        """Verify the integrity of the audit log chain.
+        Pass ?mode=deep for full O(N) scan. Default is quick O(1) check.
+        """
+        mode = request.query_params.get('mode', 'quick')
+        
+        if mode == 'deep':
+            result = AccessLog.deep_verify_chain()
+            return Response({
+                'is_valid': result['is_valid'],
+                'mode': result['mode'],
+                'corrupted_logs': result.get('corrupted_logs', []),
+                'total_checked': result.get('total_checked', 0),
+                'detail': f"Deep scan completed. {result.get('total_checked', 0)} logs checked."
+            })
+        else:
+            result = AccessLog.verify_chain_quick()
+            return Response({
+                'is_valid': result['is_valid'],
+                'mode': result['mode'],
+                'corrupted_logs': [],
+                'detail': result.get('detail', '')
+            })
     
     def get_queryset(self):
         queryset = super().get_queryset()

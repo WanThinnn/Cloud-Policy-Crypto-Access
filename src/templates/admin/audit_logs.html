@@ -19,11 +19,19 @@
                 <label for="end_date" class="text-sm font-medium text-gray-700 dark:text-gray-300">To:</label>
                 <input type="date" id="end_date" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white px-2 py-1.5">
             </div>
-            <button id="verify-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center shadow-sm">
+            <div class="relative group">
+                <button id="verify-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center shadow-sm">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                    Quick Verify
+                </button>
+            </div>
+            <button id="verify-deep-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md flex items-center shadow-sm">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
-                Verify Integrity
+                Deep Scan
             </button>
             <button id="refresh-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center shadow-sm">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,7 +69,8 @@ document.addEventListener('DOMContentLoaded', function() {
     loadLogs();
     
     document.getElementById('refresh-btn').addEventListener('click', loadLogs);
-    document.getElementById('verify-btn').addEventListener('click', verifyChain);
+    document.getElementById('verify-btn').addEventListener('click', () => verifyChain('quick'));
+    document.getElementById('verify-deep-btn').addEventListener('click', () => verifyChain('deep'));
 });
 
 function getCookie(name) {
@@ -93,14 +102,15 @@ function showAlert(message, type = 'error') {
     }
 }
 
-async function verifyChain() {
-    const btn = document.getElementById('verify-btn');
+async function verifyChain(mode = 'quick') {
+    const btnId = mode === 'quick' ? 'verify-btn' : 'verify-deep-btn';
+    const btn = document.getElementById(btnId);
     const originalText = btn.innerHTML;
     btn.innerHTML = 'Verifying...';
     btn.disabled = true;
     
     try {
-        const response = await fetch('/api/admin/audit-logs/verify_chain/', {
+        const response = await fetch(`/api/admin/audit-logs/verify_chain/?mode=${mode}`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -112,12 +122,12 @@ async function verifyChain() {
         const data = await response.json();
         
         if (data.is_valid) {
-            showAlert("SUCCESS: The audit log chain is cryptographically intact and hasn't been tampered with.", 'success');
+            showAlert(`SUCCESS (${data.mode}): ${data.detail || "The audit log chain is intact."}`, 'success');
             corruptedLogsList = [];
         } else {
-            const idsList = data.corrupted_logs.join(', ');
-            showAlert(`FAILED: Tampering detected! ${data.corrupted_logs.length} log(s) are corrupted or broke the chain: ${idsList}`, 'error');
-            corruptedLogsList = data.corrupted_logs;
+            const idsList = data.corrupted_logs ? data.corrupted_logs.join(', ') : '';
+            showAlert(`FAILED (${data.mode}): ${data.detail || "Tampering detected!"} ${idsList ? "Corrupted: " + idsList : ""}`, 'error');
+            corruptedLogsList = data.corrupted_logs || [];
         }
         
         // Reload logs to reflect corrupted status visually

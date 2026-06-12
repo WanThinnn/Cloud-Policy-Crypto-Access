@@ -20,6 +20,9 @@ from .audit import AccessLog, KeyRevocation
 # System Settings
 from .settings import SystemSetting
 
+# Session Management
+from .session import ActiveSession
+
 __all__ = [
     # Base
     'BaseModel',
@@ -42,4 +45,7 @@ __all__ = [
     'AccessLog',
     'KeyRevocation',
     'SystemSetting',
+    
+    # Session
+    'ActiveSession',
 ]

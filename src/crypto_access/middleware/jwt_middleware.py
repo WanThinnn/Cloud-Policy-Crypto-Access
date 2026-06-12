@@ -43,6 +43,23 @@ class JWTAuthenticationMiddleware:
                     user = self.jwt_authenticator.get_user(validated_token)
                     
                     if user:
+                        # --- Session Management Check ---
+                        from crypto_access.models import ActiveSession
+                        from django.utils import timezone
+                        from datetime import timedelta
+                        
+                        jti = validated_token.get('jti')
+                        if jti:
+                            session = ActiveSession.objects.filter(session_key=jti, is_active=True).first()
+                            if not session:
+                                logger.warning(f"[JWT-AUTH] Token rejected: Session {jti} is inactive or revoked.")
+                                raise AuthenticationFailed("Session has expired or been revoked")
+                            
+                            # Throttle last_active updates to every 5 minutes to save DB queries
+                            if timezone.now() - session.last_active > timedelta(minutes=5):
+                                session.last_active = timezone.now()
+                                session.save(update_fields=['last_active'])
+                                
                         request.user = user
                         logger.debug(f"[JWT-AUTH] Authenticated user: {user.username}")
                     

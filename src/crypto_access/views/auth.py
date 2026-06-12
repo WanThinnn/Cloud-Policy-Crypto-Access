@@ -16,6 +16,8 @@ from django.conf import settings
 from datetime import timedelta
 import secrets
 import logging
+import uuid
+from rest_framework_simplejwt.tokens import AccessToken
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,15 @@ from ..serializers import (
     PasswordResetConfirmSerializer,
     UserDetailSerializer,
 )
-from ..models import UserProfile
+from ..models import UserProfile, ActiveSession, AccessLog
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 
 # Template views
@@ -159,6 +169,68 @@ def login(request):
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
         
+        # --- Session Management & Impossible Travel ---
+        ip_address = get_client_ip(request)
+        user_agent_str = request.META.get('HTTP_USER_AGENT', '')
+        
+        browser = "Unknown Browser"
+        os_name = "Unknown OS"
+        if "Chrome" in user_agent_str: browser = "Chrome"
+        elif "Firefox" in user_agent_str: browser = "Firefox"
+        elif "Safari" in user_agent_str and "Chrome" not in user_agent_str: browser = "Safari"
+        elif "Edge" in user_agent_str: browser = "Edge"
+        
+        if "Windows" in user_agent_str: os_name = "Windows"
+        elif "Mac OS" in user_agent_str: os_name = "macOS"
+        elif "Linux" in user_agent_str: os_name = "Linux"
+        elif "Android" in user_agent_str: os_name = "Android"
+        elif "iPhone" in user_agent_str or "iPad" in user_agent_str: os_name = "iOS"
+        
+        # Impossible Travel Check
+        # Check SystemSetting for threshold, default 30 mins (1800s)
+        from ..models import SystemSetting
+        import json
+        settings_obj = SystemSetting.objects.filter(key='IMPOSSIBLE_TRAVEL_MINUTES').first()
+        threshold_minutes = int(settings_obj.value) if settings_obj and settings_obj.is_active else 30
+        
+        last_session = ActiveSession.objects.filter(user=user, is_active=True).order_by('-last_active').first()
+        if last_session and last_session.ip_address and ip_address:
+            is_local = lambda ip: ip.startswith('172.') or ip.startswith('192.168.') or ip.startswith('10.') or ip.startswith('127.')
+            if not is_local(ip_address) and not is_local(last_session.ip_address):
+                if ip_address != last_session.ip_address:
+                    time_diff = timezone.now() - last_session.last_active
+                    if time_diff.total_seconds() < (threshold_minutes * 60):
+                        if hasattr(user, 'profile'):
+                            user.profile.account_status = 'suspended'
+                            user.profile.save()
+                        
+                        AccessLog.objects.create(
+                            user=user,
+                            resource_type='account',
+                            action='login',
+                            result='deny',
+                            error_message='Impossible Travel detected. Account suspended.'
+                        )
+                        return Response({
+                            'error': 'Suspicious login activity detected (Impossible Travel). Account has been locked for your security.'
+                        }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Extract JTI from token to use as session key
+        try:
+            access_obj = AccessToken(access_token)
+            session_key = access_obj.get('jti', str(uuid.uuid4()))
+        except Exception:
+            session_key = str(uuid.uuid4())
+            
+        ActiveSession.objects.create(
+            user=user,
+            session_key=session_key,
+            ip_address=ip_address,
+            browser=browser,
+            os_name=os_name,
+            device_name=user_agent_str[:200]
+        )
+        
         response = Response({
             'message': 'Login successful',
             'user': UserDetailSerializer(user).data
@@ -193,11 +265,22 @@ def logout(request):
     }
     """
     try:
-        # Get refresh token from cookies instead of body
         refresh_token = request.COOKIES.get('refresh_token') or request.data.get('refresh')
+        access_token = request.COOKIES.get('access_token') or request.META.get('HTTP_AUTHORIZATION', '').replace('Bearer ', '')
+        
         if refresh_token:
             token = RefreshToken(refresh_token)
             token.blacklist()
+            
+        # Revoke Active Session
+        if access_token:
+            try:
+                access_obj = AccessToken(access_token)
+                session_key = access_obj.get('jti')
+                if session_key:
+                    ActiveSession.objects.filter(session_key=session_key).update(is_active=False)
+            except Exception as e:
+                logger.warning(f"Failed to extract jti on logout: {e}")
             
         response = Response({
             'message': 'Logout successful'

@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Devices & Sessions - Secure Storage{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Active Sessions</h1>
+            <button id="revoke-all-btn" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded shadow">
+                Log Out All Other Devices
+            </button>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+            <ul id="sessions-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+                <!-- Sessions will be populated here -->
+                <li class="p-6 text-center text-gray-500 dark:text-gray-400">Loading sessions...</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSessions();
+        
+        document.getElementById('revoke-all-btn').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to sign out of all other devices? You will remain signed in on this device.')) return;
+            
+            try {
+                const response = await fetch('/api/auth/sessions/revoke_all/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) throw new Error('Failed to revoke sessions');
+                const data = await response.json();
+                showAlert(data.message, 'success');
+                loadSessions();
+            } catch (e) {
+                showAlert(e.message, 'error');
+            }
+        });
+    });
+
+    async function loadSessions() {
+        try {
+            const response = await fetch('/api/auth/sessions/');
+            if (!response.ok) throw new Error('Failed to load sessions');
+            
+            const data = await response.json();
+            const sessions = data.results !== undefined ? data.results : data;
+            
+            const list = document.getElementById('sessions-list');
+            list.innerHTML = '';
+            
+            if (sessions.length === 0) {
+                list.innerHTML = '<li class="p-6 text-center text-gray-500">No active sessions found.</li>';
+                return;
+            }
+            
+            // The first one in the list (since it's ordered by -last_active) or the current token's session 
+            // is likely this device. But we can't definitively know without comparing jti.
+            // We will just show them all.
+            sessions.forEach((session, index) => {
+                const isCurrent = index === 0; // Usually the most recently active one is the current one
+                
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="flex items-center justify-between px-6 py-6 sm:p-8">
+                        <div class="flex items-center gap-8 w-full">
+                            <div class="flex-shrink-0 h-16 w-16 flex items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 ring-4 ring-white dark:ring-gray-800 shadow-sm">
+                                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  ${getDeviceIcon(session.os_name, session.device_name)}
+                                </svg>
+                            </div>
+                            <div class="flex flex-col justify-center ml-3">
+                                <div class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                                    <span>${session.os_name || 'Unknown OS'} - ${session.browser || 'Unknown Browser'}</span>
+                                    ${isCurrent ? '<span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 shadow-sm border border-green-200 dark:border-green-800">Current Device</span>' : ''}
+                                </div>
+                                <div class="text-base text-gray-600 dark:text-gray-300 mt-1.5 flex items-center gap-2">
+                                    <span class="font-medium">IP:</span> ${session.ip_address} <span class="text-gray-300 dark:text-gray-600">&bull;</span> <span class="font-medium">Last Active:</span> ${new Date(session.last_active).toLocaleString()}
+                                </div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400 mt-2.5 truncate max-w-xl bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-md inline-block border border-gray-100 dark:border-gray-600">
+                                    ${session.device_name}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ml-6 flex-shrink-0">
+                            ${!isCurrent ? `
+                            <button onclick="revokeSession(${session.id})" class="bg-white dark:bg-gray-800 border border-red-300 dark:border-red-800 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400 px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow-sm">
+                                Sign Out
+                            </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        } catch (error) {
+            document.getElementById('sessions-list').innerHTML = `<li class="p-6 text-center text-red-500">Error: ${error.message}</li>`;
+        }
+    }
+
+    async function revokeSession(id) {
+        if (!confirm('Sign out this device?')) return;
+        
+        try {
+            const response = await fetch(`/api/auth/sessions/${id}/revoke/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) throw new Error('Failed to revoke session');
+            showAlert('Session revoked successfully', 'success');
+            loadSessions();
+        } catch (e) {
+            showAlert(e.message, 'error');
+        }
+    }
+
+    function getDeviceIcon(os, userAgent) {
+        if (!os) return '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />';
+        
+        if (os.includes('iOS') || os.includes('Android')) {
+            return '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />';
+        }
+        return '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />';
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showAlert(message, type) {
+        // Implementation of showAlert if available globally, otherwise simple alert
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(message, type);
+        } else {
+            alert(message);
+        }
+    }
+</script>
+{% endblock %}

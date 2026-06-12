@@ -168,24 +168,120 @@ class AccessLog(BaseModel):
                     
                 self.log_hash = self.calculate_hash()
                 super().save(*args, **kwargs)
+                
+                # Update chain state in cache for O(1) verification
+                from django.core.cache import cache
+                chain_state = {
+                    'last_hash': self.log_hash,
+                    'total_count': AccessLog.objects.count(),
+                }
+                cache.set('audit_chain_state', chain_state, timeout=None)
         else:
             super().save(*args, **kwargs)
+    
+    @classmethod
+    def verify_chain_quick(cls):
+        """
+        O(1) Quick verification of audit log chain integrity.
+        Checks the latest log entry against cached chain state
+        and recomputes its hash to detect tampering.
+        
+        Returns:
+            dict: {
+                'is_valid': bool,
+                'mode': 'quick',
+                'detail': str
+            }
+        """
+        from django.core.cache import cache
+        
+        total_count = cls.objects.count()
+        if total_count == 0:
+            return {'is_valid': True, 'mode': 'quick', 'detail': 'No logs exist.'}
+        
+        # Get the latest log
+        last_log = cls.objects.order_by('-timestamp', '-id').first()
+        if not last_log or not last_log.log_hash:
+            return {
+                'is_valid': False, 'mode': 'quick',
+                'detail': 'Latest log has no hash — chain is not initialized.'
+            }
+        
+        # 1) Recompute the latest log's hash to check for field tampering
+        recalculated = last_log.calculate_hash()
+        if recalculated != last_log.log_hash:
+            return {
+                'is_valid': False, 'mode': 'quick',
+                'detail': f'Latest log [{last_log.log_id}] hash mismatch — data has been tampered with.'
+            }
+        
+        # 2) Check against cached chain state
+        chain_state = cache.get('audit_chain_state')
+        if chain_state:
+            if chain_state['last_hash'] != last_log.log_hash:
+                return {
+                    'is_valid': False, 'mode': 'quick',
+                    'detail': 'Chain state mismatch — logs may have been inserted or deleted.'
+                }
+            if chain_state['total_count'] != total_count:
+                return {
+                    'is_valid': False, 'mode': 'quick',
+                    'detail': f"Log count mismatch (expected {chain_state['total_count']}, found {total_count}) — logs may have been deleted or inserted."
+                }
+        else:
+            # No cached state — rebuild it
+            cache.set('audit_chain_state', {
+                'last_hash': last_log.log_hash,
+                'total_count': total_count,
+            }, timeout=None)
+        
+        # 3) Spot-check: verify the link between the last 2 logs
+        second_last = cls.objects.order_by('-timestamp', '-id')[1:2].first()
+        if second_last:
+            if last_log.previous_hash != second_last.log_hash:
+                return {
+                    'is_valid': False, 'mode': 'quick',
+                    'detail': f'Chain link broken between [{second_last.log_id}] and [{last_log.log_id}].'
+                }
+        elif last_log.previous_hash != "GENESIS_BLOCK":
+            return {
+                'is_valid': False, 'mode': 'quick',
+                'detail': 'First log does not point to GENESIS_BLOCK — chain origin corrupted.'
+            }
+        
+        return {
+            'is_valid': True, 'mode': 'quick',
+            'detail': f'Quick check passed ({total_count} logs, latest hash verified).'
+        }
             
     @classmethod
-    def verify_chain(cls):
+    def deep_verify_chain(cls):
         """
-        Verify the integrity of the entire audit log chain.
+        O(N) Deep verification — scans every log entry sequentially.
+        Use when quick check fails or for periodic full audit.
+        
         Returns:
-            (bool, list): (is_valid, list of corrupted/tampered log_ids)
+            dict: {
+                'is_valid': bool,
+                'mode': 'deep',
+                'corrupted_logs': list of log_ids,
+                'total_checked': int
+            }
         """
-        logs = list(cls.objects.all().order_by('timestamp', 'id'))
-        if not logs:
-            return True, []
+        logs = cls.objects.all().order_by('timestamp', 'id').only(
+            'id', 'log_id', 'user_id', 'resource_type', 'resource_id',
+            'action', 'result', 'timestamp', 'previous_hash', 'log_hash'
+        )
+        
+        if not logs.exists():
+            return {'is_valid': True, 'mode': 'deep', 'corrupted_logs': [], 'total_checked': 0}
             
         corrupted = []
         expected_prev_hash = "GENESIS_BLOCK"
+        total = 0
         
-        for log in logs:
+        for log in logs.iterator():
+            total += 1
             if log.previous_hash != expected_prev_hash:
                 corrupted.append(log.log_id)
                 
@@ -195,8 +291,35 @@ class AccessLog(BaseModel):
                     corrupted.append(log.log_id)
             
             expected_prev_hash = log.log_hash
+        
+        # Update chain state after deep scan
+        if not corrupted:
+            from django.core.cache import cache
+            cache.set('audit_chain_state', {
+                'last_hash': expected_prev_hash,
+                'total_count': total,
+            }, timeout=None)
             
-        return len(corrupted) == 0, corrupted
+        return {
+            'is_valid': len(corrupted) == 0,
+            'mode': 'deep',
+            'corrupted_logs': corrupted,
+            'total_checked': total
+        }
+    
+    @classmethod
+    def verify_chain(cls):
+        """
+        Legacy wrapper — runs quick check first, falls back to deep scan.
+        Returns:
+            (bool, list): (is_valid, list of corrupted log_ids)
+        """
+        quick = cls.verify_chain_quick()
+        if quick['is_valid']:
+            return True, []
+        # Quick check failed — run deep scan to find all corrupted entries
+        deep = cls.deep_verify_chain()
+        return deep['is_valid'], deep.get('corrupted_logs', [])
     
     @classmethod
     def generate_log_id(cls):
