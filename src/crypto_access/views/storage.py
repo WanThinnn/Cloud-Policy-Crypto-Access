@@ -335,8 +335,9 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 priority=serializer.validated_data.get('new_policy_priority', 100)
             )
             cpabe_policy_str = policy_obj.cpabe_policy
-        elif not policy_id and policy_name:
+        elif not policy_id and serializer.validated_data.get('new_policy_name'):
             # Create a new FileAccessPolicy
+            policy_name = serializer.validated_data.get('new_policy_name')
             policy_obj, created = FileAccessPolicy.objects.get_or_create(
                 name=policy_name,
                 defaults={
