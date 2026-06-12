@@ -1730,12 +1730,12 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                             policy_to_encrypt = " or ".join(f"({p})" for p in all_cpabe)
                             
                             # Decrypt existing file data first
-                            enc_data = storage.download_file(physical_path, bucket_name=bucket_name, user=request.user)
+                            enc_data = storage.download_file(bucket_name, physical_path, user=request.user)
                             file_data = self._decrypt_file_if_needed(
                                 enc_data, bucket_name, file_path, request.user, is_owner=True, cpabe_policy_str=cpabe_policy_str
                             )
                         else:
-                            file_data = storage.download_file(physical_path, bucket_name=bucket_name, user=request.user)
+                            file_data = storage.download_file(bucket_name, physical_path, user=request.user)
                             policy_to_encrypt = policy.cpabe_policy
                         
                 # Create the assignment
