@@ -4,9 +4,10 @@ Audit Models for ABAC System
 - KeyRevocation (BM13): Key revocation list
 """
 
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
+import hashlib
 from .base import BaseModel
 from .fields import EncryptedJSONField
 
@@ -113,6 +114,21 @@ class AccessLog(BaseModel):
         help_text="When the access request occurred"
     )
     
+    # Tamper-proof hash chain
+    previous_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        help_text="SHA3-256 hash of the previous log entry"
+    )
+    log_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text="SHA3-256 hash of this log entry"
+    )
+    
     class Meta:
         db_table = 'crypto_access_logs'
         verbose_name = 'Access Log'
@@ -126,6 +142,61 @@ class AccessLog(BaseModel):
     
     def __str__(self):
         return f"{self.log_id}: {self.user} -> {self.resource_type}/{self.action} [{self.result}]"
+        
+    def calculate_hash(self):
+        """Calculate SHA3-256 hash for this log entry."""
+        user_id = str(self.user.id) if self.user else "System"
+        timestamp_str = self.timestamp.isoformat() if self.timestamp else ""
+        prev_hash = self.previous_hash or ""
+        
+        data = f"{self.log_id}|{user_id}|{self.resource_type}|{self.resource_id or ''}|{self.action}|{self.result}|{timestamp_str}|{prev_hash}"
+        return hashlib.sha3_256(data.encode('utf-8')).hexdigest()
+        
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        
+        if is_new and not self.log_hash:
+            with transaction.atomic():
+                last_log = AccessLog.objects.select_for_update().order_by('-timestamp', '-id').first()
+                if last_log and last_log.log_hash:
+                    self.previous_hash = last_log.log_hash
+                else:
+                    self.previous_hash = "GENESIS_BLOCK"
+                
+                if not self.timestamp:
+                    self.timestamp = timezone.now()
+                    
+                self.log_hash = self.calculate_hash()
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
+            
+    @classmethod
+    def verify_chain(cls):
+        """
+        Verify the integrity of the entire audit log chain.
+        Returns:
+            (bool, list): (is_valid, list of corrupted/tampered log_ids)
+        """
+        logs = list(cls.objects.all().order_by('timestamp', 'id'))
+        if not logs:
+            return True, []
+            
+        corrupted = []
+        expected_prev_hash = "GENESIS_BLOCK"
+        
+        for log in logs:
+            if log.previous_hash != expected_prev_hash:
+                corrupted.append(log.log_id)
+                
+            calculated = log.calculate_hash()
+            if calculated != log.log_hash:
+                if log.log_id not in corrupted:
+                    corrupted.append(log.log_id)
+            
+            expected_prev_hash = log.log_hash
+            
+        return len(corrupted) == 0, corrupted
     
     @classmethod
     def generate_log_id(cls):

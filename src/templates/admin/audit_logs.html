@@ -19,11 +19,17 @@
                 <label for="end_date" class="text-sm font-medium text-gray-700 dark:text-gray-300">To:</label>
                 <input type="date" id="end_date" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white px-2 py-1.5">
             </div>
-            <button id="refresh-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center">
+            <button id="verify-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center shadow-sm">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                Verify Integrity
+            </button>
+            <button id="refresh-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center shadow-sm">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
-                Filter & Refresh
+                Refresh
             </button>
         </div>
     </div>
@@ -37,7 +43,7 @@
             <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Log ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Log ID & Hash Chain</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resource / Action</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
@@ -55,7 +61,75 @@ document.addEventListener('DOMContentLoaded', function() {
     loadLogs();
     
     document.getElementById('refresh-btn').addEventListener('click', loadLogs);
+    document.getElementById('verify-btn').addEventListener('click', verifyChain);
 });
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+let corruptedLogsList = [];
+
+function showAlert(message, type = 'error') {
+    const alertEl = document.getElementById('alert');
+    alertEl.textContent = message;
+    alertEl.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
+    
+    if (type === 'error') {
+        alertEl.classList.add('bg-red-100', 'text-red-800');
+    } else {
+        alertEl.classList.add('bg-green-100', 'text-green-800');
+    }
+}
+
+async function verifyChain() {
+    const btn = document.getElementById('verify-btn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Verifying...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/admin/audit-logs/verify_chain/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) throw new Error('Verification request failed');
+        const data = await response.json();
+        
+        if (data.is_valid) {
+            showAlert("SUCCESS: The audit log chain is cryptographically intact and hasn't been tampered with.", 'success');
+            corruptedLogsList = [];
+        } else {
+            const idsList = data.corrupted_logs.join(', ');
+            showAlert(`FAILED: Tampering detected! ${data.corrupted_logs.length} log(s) are corrupted or broke the chain: ${idsList}`, 'error');
+            corruptedLogsList = data.corrupted_logs;
+        }
+        
+        // Reload logs to reflect corrupted status visually
+        loadLogs();
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Error verifying chain: ' + error.message, 'error');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
 
 async function loadLogs() {
     const tbody = document.getElementById('logs-list');
@@ -95,20 +169,45 @@ async function loadLogs() {
             
             const colorClass = resultColors[log.result] || resultColors['error'];
             
+            const isCorrupted = corruptedLogsList.includes(log.log_id);
+            const trClass = isCorrupted ? 'bg-red-50 dark:bg-red-900/20' : '';
+            
             const tr = document.createElement('tr');
+            if (trClass) tr.className = trClass;
+            
             tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     ${new Date(log.timestamp).toLocaleString()}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                    <span class="text-xs text-gray-400">${log.log_id.split('_').pop()}</span>
+                <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                    <div class="text-xs text-gray-500 mb-1">${log.log_id}</div>
+                    <div class="text-xs font-mono text-indigo-600 dark:text-indigo-400 truncate max-w-xs" title="Hash: ${log.log_hash}">
+                        <span class="text-gray-400">H:</span> ${log.log_hash ? log.log_hash.substring(0, 16) + '...' : 'N/A'}
+                    </div>
+                    <div class="text-xs font-mono text-gray-500 dark:text-gray-500 truncate max-w-xs" title="Prev Hash: ${log.previous_hash}">
+                        <span class="text-gray-400">P:</span> ${log.previous_hash ? log.previous_hash.substring(0, 16) + '...' : 'N/A'}
+                    </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                     <div class="font-medium text-gray-900 dark:text-white">${log.user ? log.user.username : 'Unknown'}</div>
+                    ${log.user_attributes && Object.keys(log.user_attributes).length > 0 ? `
+                    <details class="mt-2 outline-none">
+                        <summary class="text-xs text-indigo-500 hover:text-indigo-700 cursor-pointer outline-none">User Attributes (Decrypted)</summary>
+                        <div class="mt-1 bg-gray-50 dark:bg-gray-700/50 p-2 rounded text-xs overflow-x-auto border border-gray-200 dark:border-gray-600">
+                            <pre class="text-gray-700 dark:text-gray-300 m-0">${JSON.stringify(log.user_attributes, null, 2)}</pre>
+                        </div>
+                    </details>` : ''}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                     <div><span class="font-medium text-indigo-600 dark:text-indigo-400">${log.action}</span> on <span class="font-medium">${log.resource_type}</span></div>
                     ${log.resource_id ? `<div class="text-xs text-gray-400 mt-1">${log.resource_id}</div>` : ''}
+                    ${log.environment_attributes && Object.keys(log.environment_attributes).length > 0 ? `
+                    <details class="mt-2 outline-none">
+                        <summary class="text-xs text-indigo-500 hover:text-indigo-700 cursor-pointer outline-none">Environment (Decrypted)</summary>
+                        <div class="mt-1 bg-gray-50 dark:bg-gray-700/50 p-2 rounded text-xs overflow-x-auto border border-gray-200 dark:border-gray-600">
+                            <pre class="text-gray-700 dark:text-gray-300 m-0">${JSON.stringify(log.environment_attributes, null, 2)}</pre>
+                        </div>
+                    </details>` : ''}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-medium rounded-full ${colorClass}">

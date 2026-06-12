@@ -125,6 +125,7 @@ def should_enable_tunnel(env_vars: dict[str, str]) -> tuple[bool, str]:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('-h', '--help', action='store_true', help='Show this help message and exit')
     parser.add_argument("--prod", action="store_true", help="Use production compose file")
     parser.add_argument("--dev", action="store_true", help="Use development compose file (default)")
     parser.add_argument("--tunnel", action="store_true", help="Enable Cloudflare tunnel profile")

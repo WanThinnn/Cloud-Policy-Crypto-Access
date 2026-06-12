@@ -1,4 +1,6 @@
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from crypto_access.models import AccessLog, KeyRevocation
 from crypto_access.serializers.audit import AccessLogSerializer, KeyRevocationSerializer
@@ -15,6 +17,15 @@ class AccessLogViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['log_id', 'user__username', 'user__email', 'resource_id', 'error_message']
     ordering_fields = ['timestamp', 'user__username', 'result']
+    
+    @action(detail=False, methods=['post'])
+    def verify_chain(self, request):
+        """Verify the integrity of the audit log chain"""
+        is_valid, corrupted_logs = AccessLog.verify_chain()
+        return Response({
+            'is_valid': is_valid,
+            'corrupted_logs': corrupted_logs
+        })
     
     def get_queryset(self):
         queryset = super().get_queryset()

@@ -16,7 +16,8 @@ class AccessLogSerializer(serializers.ModelSerializer):
             'id', 'log_id', 'user', 'resource_type', 'resource_id',
             'action', 'result', 'policies_evaluated', 'policies_matched',
             'user_attributes', 'environment_attributes', 'request_path',
-            'request_method', 'error_message', 'timestamp'
+            'request_method', 'error_message', 'timestamp',
+            'log_hash', 'previous_hash'
         ]
         read_only_fields = fields
 
