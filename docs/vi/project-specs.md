@@ -504,6 +504,11 @@ Cấu hình Bảo mật:
 - Cấu hình Redis: Redis tập trung thông qua django-redis để lưu RAM cho các mã byte của CP-ABE Key
 - Post-Quantum TLS: Kích hoạt mặc định (Hybrid X25519MLKEM768 qua OQS Nginx)
 - Số lần đăng nhập sai tối đa: 5  
+- Content Security Policy (CSP): Kích hoạt (strict mode) trên Nginx chặn XSS.
+- Rate Limiting: 10 requests/phút (Download/Preview), 5 requests/phút (Upload) chống DoS.
+- Impossible Travel: Chặn đăng nhập 2 vị trí xa nhau trong thời gian < 30 phút.
+- Quản lý thiết bị (Session Management): Cho phép Log out All Other Devices.
+- Audit Log Integrity: O(1) verify sử dụng Redis Hash Cache kết hợp Blockchain.
 
 ---
 

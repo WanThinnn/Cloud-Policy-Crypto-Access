@@ -23,6 +23,9 @@ See more demo images in `img/`.
 - **Interactive File Management SPA**: A dynamic single-page file manager featuring hierarchical folder navigation, drag-and-drop uploads, clipboard operations (Copy/Cut/Paste), file versioning, soft-delete with Trash & Restore, inline renaming, and a visual CP-ABE Policy Builder.
 - **Zero Frontend Key Exposure**: Private keys are strictly generated, utilized, and destroyed within the Backend's memory space.
 - **Redis Caching**: Highly optimized Redis caching for CP-ABE Private Keys and Casbin policies, ensuring near-instantaneous file previews.
+- **Advanced Security Hardening**: Implements **Content Security Policy (CSP)** to strictly prevent XSS, **Rate Limiting** to protect CPU-intensive CP-ABE operations against DoS/DDoS, and **Impossible Travel Detection** to block suspicious geographic login anomalies.
+- **Device & Session Management**: Tracks all active devices using Stateful JWTs, allowing users to securely "Log Out All Other Devices" with a single click.
+- **O(1) Audit Log Integrity**: Uses Redis Hash Caching combined with a continuous cryptographic hash chain (Blockchain-style) to instantly verify log tampering in `O(1)` time, with a deep verification fallback.
 - **Post-Quantum TLS Ready**: Built on the OpenQuantumSafe (OQS) Nginx fork, the system automatically enforces **Hybrid ML-KEM-768 (Kyber)** key exchange over TLS 1.3 to protect all data in transit from quantum computer attacks (Harvest Now, Decrypt Later).
 - **Dockerized Architecture**: Fully containerized environment with Nginx, Gunicorn, Django, HashiCorp Vault, and Redis for seamless production deployment.
 
@@ -170,7 +173,8 @@ python start.py createsuperuser
 
 ## Security Notice
 - **Zero Persistent Keys**: CP-ABE private keys are never stored on disk or in the database. They are generated dynamically (on-the-fly) and temporarily cached in Redis.
-- **XSS Protection**: JWT Tokens are securely stored in HttpOnly cookies, rendering them immune to XSS attacks.
+- **XSS & Attack Protection**: JWT Tokens are securely stored in HttpOnly cookies and combined with a strict **Content Security Policy (CSP)**.
+- **DoS/DDoS Protection**: Critical endpoints (upload/download/preview) are heavily rate-limited by Django REST Framework Throttling using Redis to prevent CPU exhaustion from malicious CP-ABE generation requests.
 - Ensure the `keys` directory is properly secured in production. The `cpabe_msk.key` (Master Key) must never be exposed. Development keys in `src/keys/` are automatically git-ignored.
 - **Disaster Recovery / Migration**: The CP-ABE Public Key and Master Key are **automatically generated** by the backend upon startup if they do not exist in the `./keys` folder. However, if you migrate your server or move to a completely new machine, you **MUST** manually copy the `cpabe_pub.key` and `cpabe_msk.key` from your old machine to the new `./keys` directory. If you lose the old Master Key, all previously encrypted files in your storage will become permanently inaccessible.
 - **Metadata Privacy**: Real physical file paths are obfuscated using random UUIDs on the Cloud Storage side, ensuring that cloud providers or infrastructure attackers cannot infer directory structures or file identities.

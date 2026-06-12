@@ -48,6 +48,9 @@ Prefix: `/api/auth/`
 | GET | `/profile/` | Lấy thông tin user hiện tại (thông tin cá nhân, user type). | Có |
 | GET | `/permissions/` | Lấy danh sách quyền hệ thống của user hiện tại (is_admin, is_super_admin). | Có |
 | POST | `/change-password/` | Đổi mật khẩu. Yêu cầu `old_password` và `new_password`. | Có |
+| GET | `/sessions/` | Lấy danh sách thiết bị/phiên đang đăng nhập của user. Hỗ trợ Session Management. | Có |
+| POST | `/sessions/{id}/revoke/` | Đăng xuất (thu hồi) một thiết bị cụ thể. | Có |
+| POST | `/sessions/revoke_all/` | Đăng xuất tất cả các thiết bị khác, giữ lại thiết bị hiện tại. | Có |
 
 ### 2.2. Nhóm API Quản Trị Hệ Thống & Phân Quyền (Admin API)
 Prefix: `/api/admin/`
@@ -133,6 +136,7 @@ async function uploadFile(fileInput, policyString) {
 ## 4. Xử Lý Lỗi Cơ Bản (Error Handling)
 
 - **401 Unauthorized**: User chưa đăng nhập hoặc Token đã hết hạn (kể cả Refresh Token). Frontend nên redirect về trang `/auth/login/`.
-- **403 Forbidden**: User đã xác thực nhưng bị hệ thống ABAC chặn không cho phép thực hiện hành động do thiếu thuộc tính (Policy Deny) hoặc không đủ quyền Admin. Hoặc do CSRF Token bị sai/thiếu.
+- **403 Forbidden**: User đã xác thực nhưng bị hệ thống ABAC chặn không cho phép thực hiện hành động do thiếu thuộc tính (Policy Deny) hoặc không đủ quyền Admin. Hoặc do vi phạm chính sách Impossible Travel (đăng nhập từ 2 vị trí địa lý cách xa nhau trong khoảng thời gian ngắn). Hoặc do CSRF Token bị sai/thiếu.
 - **404 Not Found**: Tài nguyên không tồn tại.
+- **429 Too Many Requests**: Request bị chặn bởi hệ thống Rate Limiting (VD: giới hạn số lần upload/download mỗi phút) nhằm bảo vệ CPU khỏi tấn công DoS/DDoS.
 - **500 Internal Server Error**: Lỗi máy chủ (ví dụ: CP-ABE không thể giải mã do sai policy, Redis server sập, ...). Mọi lỗi 500 đều được catch và ghi log cẩn thận ở backend.

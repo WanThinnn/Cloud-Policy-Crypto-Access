@@ -45,15 +45,18 @@ Prefix: `/api/auth/`
 | POST   | `/register/`        | Register a new account (requires Super Admin activation or auto-created depending on config). | No            |
 | POST   | `/logout/`          | Removes Access Token and Refresh Token from Cookies.                                          | Yes           |
 | POST   | `/token/refresh/`   | Issues a new Access Token based on the Refresh Token.                                         | Yes (Cookie)  |
-| GET    | `/profile/`         | Retrieves current user info (personal info, user type).                                       | Yes           |
-| GET    | `/permissions/`     | Retrieves system permissions of the current user (is_admin, is_super_admin).                  | Yes           |
+| GET    | `/profile/`         | Get current user's profile information.                                                       | Yes           |
+| GET    | `/permissions/`     | Get list of system permissions for the current user.                                          | Yes           |
 | POST   | `/change-password/` | Change password. Requires `old_password` and `new_password`.                                  | Yes           |
+| GET    | `/sessions/`        | Get list of active devices/sessions for the current user (Session Management).                | Yes           |
+| POST   | `/sessions/{id}/revoke/` | Revoke a specific device/session.                                                         | Yes           |
+| POST   | `/sessions/revoke_all/` | Revoke all other devices except the current one.                                           | Yes           |
 
 ### 2.2. System Administration & Authorization API (Admin API)
 Prefix: `/api/admin/`
 
 | Method   | Endpoint                            | Description                                                                                        | Auth Required |
-| -------- | ----------------------------------- | -------------------------------------------------------------------------------------------------- | ------------- |
+| -------- | ------------------- | -------------------------------------------------------------------------------------------------- | ------------- |
 | GET/POST | `/user-types/`                      | Manage the list of user types.                                                                     | Admin         |
 | GET/POST | `/attributes/`                      | Define attribute schemas (Attribute Definitions). Used for ABAC and CP-ABE.                        | Admin         |
 | GET/POST | `/policies/`                        | Manage ABAC Access Policies. Allows defining rules in Casbin format.                               | Admin         |
@@ -133,6 +136,7 @@ async function uploadFile(fileInput, policyString) {
 ## 4. Basic Error Handling
 
 - **401 Unauthorized**: User is not logged in or the Token has expired (including the Refresh Token). Frontend should redirect to the `/auth/login/` page.
-- **403 Forbidden**: User is authenticated but blocked by the ABAC system from performing the action due to missing attributes (Policy Deny) or insufficient Admin privileges. Or due to an incorrect/missing CSRF Token.
+- **403 Forbidden**: User is authenticated but blocked by the ABAC system from performing the action due to missing attributes (Policy Deny) or insufficient Admin privileges. Or due to an incorrect/missing CSRF Token. Or triggered Impossible Travel detection.
 - **404 Not Found**: Resource does not exist.
+- **429 Too Many Requests**: Request blocked by Rate Limiting system to protect server CPU from DoS/DDoS attacks.
 - **500 Internal Server Error**: Server error (e.g., CP-ABE cannot decrypt due to an incorrect policy, Redis server crash, etc.). All 500 errors are caught and logged carefully on the backend.

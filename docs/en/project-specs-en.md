@@ -470,12 +470,17 @@ Audit Configuration:
 - Log Retention: 12 months  
 - Auto Report: weekly  
 
-Security Configuration:  
-- IP Whitelist: 192.168.0.0/16, 10.0.0.0/8  
-- Session Duration: 8 hours (managed via HttpOnly Cookie with JWT Access/Refresh Token against XSS)
-- Redis Configuration: Centralized Redis via django-redis to cache byte codes of CP-ABE Keys in RAM
+Security Configuration:
+- IP whitelist: `192.168.0.0/16`, `10.0.0.0/8`
+- Session time: 8 hours (managed via HttpOnly Cookie containing JWT Access/Refresh Token to prevent XSS)
+- Redis Configuration: Centralized Redis via django-redis to cache bytecodes of CP-ABE Keys on RAM
 - Post-Quantum TLS: Enabled by default (Hybrid X25519MLKEM768 via OQS Nginx)
-- Max Failed Logins: 5  
+- Max failed login attempts: 5
+- Content Security Policy (CSP): Enabled (strict mode) via Nginx to prevent XSS.
+- Rate Limiting: 10 requests/minute (Download/Preview), 5 requests/minute (Upload) to prevent DoS.
+- Impossible Travel: Detect and block logins from two distant geographical locations within < 30 minutes.
+- Device & Session Management: Active sessions tracking with "Log out All Other Devices" feature.
+- Audit Log Integrity: O(1) verify using Redis Hash Cache combined with Blockchain mechanisms.  
 
 ---
 

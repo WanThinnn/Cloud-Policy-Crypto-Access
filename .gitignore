@@ -10,7 +10,8 @@ media/
 staticfiles/
 static/admin/
 static/rest_framework/
-logs/*.log
+logs/*
+!logs/.gitkeep
 
 # Tailwind CSS / django-tailwind
 node_modules/
