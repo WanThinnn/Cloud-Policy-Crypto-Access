@@ -25,6 +25,7 @@ See more demo images in `img/`.
 - **Redis Caching**: Highly optimized Redis caching for CP-ABE Private Keys and Casbin policies, ensuring near-instantaneous file previews.
 - **Advanced Security Hardening**: Implements **Content Security Policy (CSP)** to strictly prevent XSS, **Rate Limiting** to protect CPU-intensive CP-ABE operations against DoS/DDoS, and **Impossible Travel Detection** to block suspicious geographic login anomalies.
 - **Device & Session Management**: Tracks all active devices using Stateful JWTs, allowing users to securely "Log Out All Other Devices" with a single click.
+- **Granular SIEM JSON Logging**: Separated logs into 7 distinct JSON files (`auth`, `storage`, `policy`, `user`, `attributes`, `audit`, `system`), enriching events with contextual `user_id` and `user_name` for immediate ingestion by SIEM systems (e.g., Wazuh, Splunk, ELK).
 - **O(1) Audit Log Integrity**: Uses Redis Hash Caching combined with a continuous cryptographic hash chain (Blockchain-style) to instantly verify log tampering in `O(1)` time, with a deep verification fallback.
 - **Post-Quantum TLS Ready**: Built on the OpenQuantumSafe (OQS) Nginx fork, the system automatically enforces **Hybrid ML-KEM-768 (Kyber)** key exchange over TLS 1.3 to protect all data in transit from quantum computer attacks (Harvest Now, Decrypt Later).
 - **Dockerized Architecture**: Fully containerized environment with Nginx, Gunicorn, Django, HashiCorp Vault, and Redis for seamless production deployment.

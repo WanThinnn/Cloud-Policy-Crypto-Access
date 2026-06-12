@@ -423,7 +423,9 @@ Thuộc tính người dùng tại thời điểm truy cập: _______
 Thuộc tính môi trường: _______  
 Chi tiết lỗi (nếu có): _______  
 
-**QĐ12:** Mọi yêu cầu truy cập (bao gồm cả thành công và thất bại) đều phải được ghi lại trong hệ thống nhật ký. Nhật ký phải lưu đầy đủ thông tin về người dùng, tài nguyên, hành động, quyết định của PDP và các thuộc tính tại thời điểm truy cập. Dữ liệu nhật ký được lưu trữ tối thiểu 12 tháng để phục vụ audit và compliance. Chỉ Super Admin mới có quyền xem và xuất nhật ký.
+**QĐ12:** Mọi yêu cầu truy cập (bao gồm cả thành công và thất bại) đều phải được ghi lại trong hệ thống nhật ký. Nhật ký phải lưu đầy đủ thông tin về người dùng, tài nguyên, hành động, quyết định của PDP và các thuộc tính tại thời điểm truy cập. Dữ liệu nhật ký được lưu trữ tối thiểu 12 tháng để phục vụ audit và compliance. Chỉ Super Admin mới có quyền xem và xuất nhật ký qua giao diện người dùng.
+
+Bên cạnh đó, để phục vụ việc tích hợp với các hệ thống Security Information and Event Management (SIEM), hệ thống tự động trích xuất các nhật ký kiểm toán này thành 7 luồng file JSON cấu trúc độc lập trong thư mục `logs/` (`crypto-access-auth.json`, `crypto-access-storage.json`, `crypto-access-policy.json`, `crypto-access-user.json`, `crypto-access-attributes.json`, `crypto-access-audit.json`, `crypto-access-system.json`). Các bản log này được làm giàu dữ liệu (enrichment) với thông tin ngữ cảnh như `user.id` và `user.name`, giúp các nền tảng SIEM bên ngoài (như Splunk, Wazuh, ELK Stack) có thể dễ dàng ingest và phân tích tức thời.
 
 **Ví dụ:**  
 BM12: Nhật Ký Truy Cập  

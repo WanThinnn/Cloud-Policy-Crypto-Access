@@ -32,6 +32,10 @@ In addition to protecting the file contents, the system secures sensitive data w
 - **Auto-Extract Metadata**: Upon upload, the system automatically collects IP, User-Agent, uploader identity, file size, and MIME type, encrypting the entire JSON metadata block.
 - **Post-Quantum TLS 1.3 (ML-KEM)**: All API connections from the Client are routed through the Nginx Reverse Proxy utilizing Post-Quantum Key Exchange (Hybrid X25519MLKEM768), entirely neutralizing the risk of "Harvest Now, Decrypt Later" quantum attacks.
 
+### 1.4. Granular SIEM Audit Logging
+To meet enterprise compliance requirements, the system continuously tracks all user activities, policy evaluations, and system events. Instead of a monolithic log file, the system routes logs into 7 distinct JSON files (`crypto-access-auth.json`, `crypto-access-storage.json`, `crypto-access-policy.json`, `crypto-access-user.json`, `crypto-access-attributes.json`, `crypto-access-audit.json`, `crypto-access-system.json`). 
+Each JSON log entry is enriched with security context such as `user.id` and `user.name`, making them fully formatted and ready for immediate ingestion and automated analysis by external SIEM (Security Information and Event Management) platforms (e.g., Splunk, Wazuh, ELK Stack).
+
 ## 2. REST API Specifications
 
 Base URL: `http(s)://<domain>`

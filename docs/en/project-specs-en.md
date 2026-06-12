@@ -395,7 +395,9 @@ User Attributes at Access Time: _______
 Environment Attributes: _______  
 Error Details (if any): _______  
 
-**R12:** Every access request (both successful and failed) must be recorded in the system logs. Logs must capture complete details regarding the user, resource, action, PDP decision, and attributes at the time of access. Log data is retained for a minimum of 12 months for audit and compliance purposes. Only Super Admins have the authority to view and export logs.
+**R12:** Every access request (both successful and failed) must be recorded in the system logs. Logs must capture complete details regarding the user, resource, action, PDP decision, and attributes at the time of access. Log data is retained for a minimum of 12 months for audit and compliance purposes. Only Super Admins have the authority to view and export logs via the user interface.
+
+Additionally, to facilitate integration with Security Information and Event Management (SIEM) solutions, the system continuously outputs these audit trails into 7 granular, structured JSON files within the `logs/` directory (`crypto-access-auth.json`, `crypto-access-storage.json`, `crypto-access-policy.json`, `crypto-access-user.json`, `crypto-access-attributes.json`, `crypto-access-audit.json`, `crypto-access-system.json`). These logs are enriched with context (e.g., `user.id`, `user.name`) for seamless ingestion and analysis by external SIEM platforms (e.g., Splunk, Wazuh, ELK Stack).
 
 **Example:**  
 F12: Access Logs  
