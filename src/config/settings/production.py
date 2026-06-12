@@ -118,14 +118,18 @@ LOGGING['handlers']['file_system']['filename'] = '/app/logs/crypto-access-system
 LOGGING['handlers']['file_auth']['filename'] = '/app/logs/crypto-access-auth.json'
 LOGGING['handlers']['file_storage']['filename'] = '/app/logs/crypto-access-storage.json'
 LOGGING['handlers']['file_audit']['filename'] = '/app/logs/crypto-access-audit.json'
-
+LOGGING['handlers']['file_policy']['filename'] = '/app/logs/crypto-access-policy.json'
+LOGGING['handlers']['file_attributes']['filename'] = '/app/logs/crypto-access-attributes.json'
+LOGGING['handlers']['file_user']['filename'] = '/app/logs/crypto-access-user.json'
 LOGGING['root']['level'] = 'WARNING'
 LOGGING['loggers']['django']['level'] = 'WARNING'
 LOGGING['loggers']['crypto_access.system']['level'] = 'INFO'
 LOGGING['loggers']['crypto_access.auth']['level'] = 'INFO'
 LOGGING['loggers']['crypto_access.storage']['level'] = 'INFO'
 LOGGING['loggers']['crypto_access.audit']['level'] = 'INFO'
-
+LOGGING['loggers']['crypto_access.policy']['level'] = 'INFO'
+LOGGING['loggers']['crypto_access.attributes']['level'] = 'INFO'
+LOGGING['loggers']['crypto_access.user']['level'] = 'INFO'
 
 # Admin email for error notifications
 ADMINS = [

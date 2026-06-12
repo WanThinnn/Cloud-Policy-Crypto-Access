@@ -11,6 +11,9 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+import logging
+
+logger = logging.getLogger('crypto_access.attributes')
 
 from ..models import UserType, AttributeDefinition, UserAttribute
 from ..serializers import (
@@ -81,7 +84,21 @@ class UserTypeViewSet(viewsets.ModelViewSet):
                 {'error': 'Cannot delete system user types'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        return super().destroy(request, *args, **kwargs)
+        name = instance.name
+        code = instance.code
+        response = super().destroy(request, *args, **kwargs)
+        logger.warning(f"UserType deleted: {code} ({name})", extra={"user.name": request.user.username, "user.id": request.user.id})
+        return response
+        
+    def perform_create(self, serializer):
+        user_type = serializer.save()
+        logger.info(f"UserType created: {user_type.code} ({user_type.name})", extra={"user.name": self.request.user.username, "user.id": self.request.user.id})
+
+    def perform_update(self, serializer):
+        old_data = {'code': serializer.instance.code, 'name': serializer.instance.name}
+        user_type = serializer.save()
+        new_data = {'code': user_type.code, 'name': user_type.name}
+        logger.info(f"UserType updated: {user_type.code}. Old: {old_data} -> New: {new_data}", extra={"user.name": self.request.user.username, "user.id": self.request.user.id})
 
 
 # =============================================================================
@@ -119,11 +136,23 @@ class AttributeDefinitionViewSet(viewsets.ModelViewSet):
         
         return queryset
     
+    def perform_create(self, serializer):
+        attr = serializer.save()
+        logger.info(f"AttributeDefinition created: {attr.name} (type: {attr.data_type})", extra={"user.name": self.request.user.username, "user.id": self.request.user.id})
+
     def perform_update(self, serializer):
         """Increment version on update"""
+        old_data = {'name': serializer.instance.name, 'data_type': serializer.instance.data_type, 'is_required': serializer.instance.is_required}
         instance = serializer.save()
         instance.version += 1
         instance.save()
+        new_data = {'name': instance.name, 'data_type': instance.data_type, 'is_required': instance.is_required}
+        logger.info(f"AttributeDefinition updated: {instance.name}. Old: {old_data} -> New: {new_data}", extra={"user.name": self.request.user.username, "user.id": self.request.user.id})
+
+    def perform_destroy(self, instance):
+        name = instance.name
+        instance.delete()
+        logger.warning(f"AttributeDefinition deleted: {name}", extra={"user.name": self.request.user.username, "user.id": self.request.user.id})
 
 
 
@@ -200,7 +229,10 @@ def assign_user_attribute(request, user_id):
             user_attr.effective_date = data['effective_date']
         if 'expiry_date' in data:
             user_attr.expiry_date = data['expiry_date']
+            user_attr.expiry_date = data['expiry_date']
         user_attr.save()
+        
+        logger.info(f"Assigned attribute '{data['attribute_name']}'='{data['value']}' to user {user.username}", extra={"user.name": request.user.username, "user.id": request.user.id})
         
         return Response({
             'message': f"Attribute '{data['attribute_name']}' assigned successfully",
@@ -246,6 +278,8 @@ def bulk_assign_user_attributes(request, user_id):
                 'attribute_name': attr_data['attribute_name'],
                 'error': str(e)
             })
+            
+    logger.info(f"Bulk assigned attributes to user {user.username}: {results}", extra={"user.name": request.user.username, "user.id": request.user.id})
     
     return Response({
         'message': f"Assigned {len(results)} attributes, {len(errors)} errors",

@@ -85,6 +85,8 @@ def register(request):
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
         
+        logger.info(f"User registered successfully: {user.username} ({user.email})", extra={'user.name': user.username, 'user.id': user.id})
+        
         response = Response({
             'message': 'User registered successfully',
             'user': {
@@ -137,6 +139,7 @@ def login(request):
         attempts = cache.get(cache_key, 0)
         
         if attempts >= 5:
+            logger.warning(f"Login blocked due to too many failed attempts for username: {username}", extra={'user.name': username})
             return Response({
                 'error': 'Account locked temporarily due to too many failed attempts. Please try again in 15 minutes.'
             }, status=status.HTTP_429_TOO_MANY_REQUESTS)
@@ -145,12 +148,15 @@ def login(request):
         
         if user is None:
             cache.set(cache_key, attempts + 1, 900)  # Lock for 15 minutes
+            logger.warning(f"Failed login attempt for username: {username} from IP: {get_client_ip(request)}", extra={'user.name': username})
             return Response({
                 'error': 'Invalid credentials'
             }, status=status.HTTP_401_UNAUTHORIZED)
             
-        # Reset attempts on successful login
+        # Reset failed attempts on success
         cache.delete(cache_key)
+        
+        logger.info(f"User login successful: {username} from IP: {get_client_ip(request)}", extra={'user.name': username, 'user.id': user.id})
         
         if not user.is_active:
             return Response({
@@ -289,6 +295,8 @@ def logout(request):
         # Delete cookies
         response.delete_cookie('access_token')
         response.delete_cookie('refresh_token')
+        
+        logger.info(f"User logged out: {request.user.username}", extra={'user.name': request.user.username, 'user.id': request.user.id})
         
         return response
         

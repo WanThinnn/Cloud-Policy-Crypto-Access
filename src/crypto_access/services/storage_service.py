@@ -82,7 +82,8 @@ class SupabaseStorageService:
         file_path: str,
         file_data: bytes,
         content_type: Optional[str] = None,
-        upsert: bool = False
+        upsert: bool = False,
+        user: Optional[Any] = None
     ) -> Dict[str, Any]:
         """
         Upload file to bucket
@@ -109,13 +110,20 @@ class SupabaseStorageService:
                 file_data,
                 file_options=options
             )
-            logger.info(f"File uploaded: {bucket_name}/{file_path}")
+            
+            extra = {}
+            user_msg = ""
+            if user and hasattr(user, 'username'):
+                extra = {"user.name": user.username, "user.id": getattr(user, 'id', '')}
+                user_msg = f" by user {user.username}"
+                
+            logger.info(f"File uploaded: {bucket_name}/{file_path}{user_msg}", extra=extra)
             return result
         except Exception as e:
             logger.error(f"Failed to upload file to {bucket_name}/{file_path}: {e}")
             raise
     
-    def download_file(self, bucket_name: str, file_path: str) -> bytes:
+    def download_file(self, bucket_name: str, file_path: str, user: Optional[Any] = None) -> bytes:
         """
         Download file from bucket
         
@@ -128,7 +136,14 @@ class SupabaseStorageService:
         """
         try:
             result = self.storage.from_(bucket_name).download(file_path)
-            logger.info(f"File downloaded: {bucket_name}/{file_path}")
+            
+            extra = {}
+            user_msg = ""
+            if user and hasattr(user, 'username'):
+                extra = {"user.name": user.username, "user.id": getattr(user, 'id', '')}
+                user_msg = f" by user {user.username}"
+                
+            logger.info(f"File downloaded: {bucket_name}/{file_path}{user_msg}", extra=extra)
             return result
         except Exception as e:
             logger.error(f"Failed to download file from {bucket_name}/{file_path}: {e}")
@@ -179,7 +194,7 @@ class SupabaseStorageService:
             logger.error(f"Failed to create signed URL for {bucket_name}/{file_path}: {e}")
             raise
     
-    def delete_file(self, bucket_name: str, file_paths: List[str]) -> Dict[str, Any]:
+    def delete_file(self, bucket_name: str, file_paths: List[str], user: Optional[Any] = None) -> Dict[str, Any]:
         """
         Delete file(s) from bucket
         
@@ -192,7 +207,14 @@ class SupabaseStorageService:
         """
         try:
             result = self.storage.from_(bucket_name).remove(file_paths)
-            logger.info(f"Files deleted from {bucket_name}: {file_paths}")
+            
+            extra = {}
+            user_msg = ""
+            if user and hasattr(user, 'username'):
+                extra = {"user.name": user.username, "user.id": getattr(user, 'id', '')}
+                user_msg = f" by user {user.username}"
+                
+            logger.info(f"Files deleted from {bucket_name}: {file_paths}{user_msg}", extra=extra)
             return result
         except Exception as e:
             logger.error(f"Failed to delete files from {bucket_name}: {e}")

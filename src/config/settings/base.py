@@ -253,6 +253,27 @@ LOGGING = {
             'backupCount': 10,
             'formatter': 'ecs_formatter',
         },
+        'file_policy': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'crypto-access-policy.json',
+            'maxBytes': 1024 * 1024 * 15,
+            'backupCount': 10,
+            'formatter': 'ecs_formatter',
+        },
+        'file_attributes': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'crypto-access-attributes.json',
+            'maxBytes': 1024 * 1024 * 15,
+            'backupCount': 10,
+            'formatter': 'ecs_formatter',
+        },
+        'file_user': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'crypto-access-user.json',
+            'maxBytes': 1024 * 1024 * 15,
+            'backupCount': 10,
+            'formatter': 'ecs_formatter',
+        },
     },
     'root': {
         'handlers': ['console', 'file_system'],
@@ -276,6 +297,21 @@ LOGGING = {
         },
         'crypto_access.audit': {
             'handlers': ['console', 'file_audit'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'crypto_access.policy': {
+            'handlers': ['console', 'file_policy'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'crypto_access.attributes': {
+            'handlers': ['console', 'file_attributes'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'crypto_access.user': {
+            'handlers': ['console', 'file_user'],
             'level': 'INFO',
             'propagate': False,
         },

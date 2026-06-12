@@ -14,6 +14,9 @@ from django.db import transaction, models
 from django.utils import timezone
 import secrets
 import string
+import logging
+
+logger = logging.getLogger('crypto_access.user')
 
 from ..models import UserProfile, UserType
 from ..serializers import UserManagementSerializer, UserCreateSerializer
@@ -126,6 +129,8 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         if not data.get('password'):
             response_data['generated_password'] = password
             response_data['password_note'] = 'Mật khẩu được tạo tự động. Vui lòng lưu lại và gửi cho người dùng.'
+            
+        logger.info(f"User created: {user.username} ({user.email})", extra={"user.name": request.user.username, "user.id": request.user.id})
         
         return Response(response_data, status=status.HTTP_201_CREATED)
     
@@ -136,6 +141,16 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         
         data = request.data
+        
+        old_data = {
+            'email': instance.email,
+            'first_name': instance.first_name,
+            'last_name': instance.last_name,
+            'is_active': instance.is_active,
+            'full_name': instance.profile.full_name if hasattr(instance, 'profile') else None,
+            'account_status': instance.profile.account_status if hasattr(instance, 'profile') else None,
+            'user_type': getattr(instance.profile.user_type_ref, 'code', None) if hasattr(instance, 'profile') and instance.profile.user_type_ref else None,
+        }
         
         # Update User fields
         if 'email' in data:
@@ -169,6 +184,17 @@ class UserManagementViewSet(viewsets.ModelViewSet):
                 profile.user_type = data['user_type']  # Legacy
             
             profile.save()
+            
+        new_data = {
+            'email': instance.email,
+            'first_name': instance.first_name,
+            'last_name': instance.last_name,
+            'is_active': instance.is_active,
+            'full_name': instance.profile.full_name if hasattr(instance, 'profile') else None,
+            'account_status': instance.profile.account_status if hasattr(instance, 'profile') else None,
+            'user_type': getattr(instance.profile.user_type_ref, 'code', None) if hasattr(instance, 'profile') and instance.profile.user_type_ref else None,
+        }
+        logger.info(f"User updated: {instance.username}. Old: {old_data} -> New: {new_data}", extra={"user.name": request.user.username, "user.id": request.user.id})
         
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
@@ -215,6 +241,8 @@ class UserManagementViewSet(viewsets.ModelViewSet):
             
             # Finally delete the user
             user.delete()
+            
+            logger.warning(f"User deleted: {username}", extra={"user.name": request.user.username, "user.id": request.user.id})
             
             return Response({
                 'success': True,
@@ -268,6 +296,8 @@ class UserManagementViewSet(viewsets.ModelViewSet):
                 profile.account_status = 'active'
                 message = f'Đã kích hoạt tài khoản {user.username}'
             profile.save()
+            
+            logger.info(f"User '{user.username}' status toggled to {profile.account_status}", extra={"user.name": request.user.username, "user.id": request.user.id})
             
             return Response({
                 'success': True,

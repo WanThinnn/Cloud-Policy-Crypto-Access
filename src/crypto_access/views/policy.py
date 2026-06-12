@@ -6,6 +6,9 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.shortcuts import render
+import logging
+
+logger = logging.getLogger('crypto_access.policy')
 
 from crypto_access.models import AccessPolicy
 from crypto_access.serializers import AccessPolicySerializer, AccessPolicyListSerializer
@@ -28,18 +31,56 @@ class AccessPolicyViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         """Set created_by and reload Casbin policies"""
-        serializer.save(created_by=self.request.user)
+        policy = serializer.save(created_by=self.request.user)
         self._reload_casbin_policies()
+        
+        extra = {"user.name": self.request.user.username, "user.id": self.request.user.id}
+        logger.info(
+            f"Policy created: '{policy.name}' (Resource: {policy.resource}, Action: {policy.action}, Effect: {policy.effect})",
+            extra=extra
+        )
     
     def perform_update(self, serializer):
         """Reload Casbin policies after update"""
-        serializer.save()
+        old_data = {
+            'name': serializer.instance.name,
+            'subject_condition': serializer.instance.subject_condition,
+            'resource': serializer.instance.resource,
+            'action': serializer.instance.action,
+            'effect': serializer.instance.effect,
+            'is_active': serializer.instance.is_active
+        }
+        
+        policy = serializer.save()
         self._reload_casbin_policies()
+        
+        new_data = {
+            'name': policy.name,
+            'subject_condition': policy.subject_condition,
+            'resource': policy.resource,
+            'action': policy.action,
+            'effect': policy.effect,
+            'is_active': policy.is_active
+        }
+        
+        extra = {"user.name": self.request.user.username, "user.id": self.request.user.id}
+        logger.info(
+            f"Policy updated: ID {policy.id}. Old: {old_data} -> New: {new_data}",
+            extra=extra
+        )
     
     def perform_destroy(self, instance):
         """Reload Casbin policies after delete"""
+        policy_name = instance.name
+        policy_id = instance.id
         instance.delete()
         self._reload_casbin_policies()
+        
+        extra = {"user.name": self.request.user.username, "user.id": self.request.user.id}
+        logger.warning(
+            f"Policy deleted: '{policy_name}' (ID: {policy_id})",
+            extra=extra
+        )
     
     def _reload_casbin_policies(self):
         """Reload policies in Casbin enforcer"""
@@ -59,9 +100,16 @@ class AccessPolicyViewSet(viewsets.ModelViewSet):
     def toggle_active(self, request, pk=None):
         """Toggle policy active status"""
         policy = self.get_object()
+        old_status = policy.is_active
         policy.is_active = not policy.is_active
         policy.save()
         self._reload_casbin_policies()
+        
+        extra = {"user.name": request.user.username, "user.id": request.user.id}
+        logger.info(
+            f"Policy '{policy.name}' active status toggled: {old_status} -> {policy.is_active}",
+            extra=extra
+        )
         return Response({
             'id': policy.id,
             'name': policy.name,

@@ -174,16 +174,18 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             try:
                 # Decrypt passing the raw bytes directly (No TempFile)
                 decrypted_data = cpabe_service.decrypt_buffer(cached_key_data, file_data)
-                logger.info(f"CP-ABE Decryption successful for file: {file_path}")
+                extra = {"user.name": user.username, "user.id": user.id} if user else {}
+                logger.info(f"CP-ABE Decryption successful for file: {file_path}", extra=extra)
                 # We DO NOT cache decrypted_data for security reasons.
                 # Decrypted data should strictly reside in RAM during the request life cycle.
                 return decrypted_data
             except Exception as e:
                 error_msg = str(e)
-                logger.error(f"Decryption failed: {error_msg}")
+                extra = {"user.name": user.username, "user.id": user.id} if user else {}
+                logger.error(f"Decryption failed: {error_msg}", extra=extra)
                 # If the error is about unsupported format (-7 or 101), the file might actually be plaintext
                 if "(-7)" in error_msg or "(-8)" in error_msg or "101" in error_msg or "format" in error_msg.lower():
-                    logger.warning("Assuming file is plaintext due to format error. Returning original data.")
+                    logger.warning("Assuming file is plaintext due to format error. Returning original data.", extra=extra)
                     return file_data
                 # Otherwise (e.g. -4 Crypto failed), it is a real decryption failure
                 raise Exception("You don't have permission to see this file!")
@@ -330,11 +332,27 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 resource=serializer.validated_data.get('new_policy_resource', 'document'),
                 action=serializer.validated_data.get('new_policy_action', 'read'),
                 effect=serializer.validated_data.get('new_policy_effect', 'allow'),
-                priority=serializer.validated_data.get('new_policy_priority', 100),
-                created_by=request.user if request.user.is_authenticated else None
+                priority=serializer.validated_data.get('new_policy_priority', 100)
             )
             cpabe_policy_str = policy_obj.cpabe_policy
-            logger.info(f"Created new policy '{policy_obj.name}' during upload")
+        elif not policy_id and policy_name:
+            # Create a new FileAccessPolicy
+            policy_obj, created = FileAccessPolicy.objects.get_or_create(
+                name=policy_name,
+                defaults={
+                    'description': f"Auto-generated policy for {request.user.username}",
+                    'effect': 'allow',
+                    'resource': 'document',
+                    'action': 'read',
+                    'is_active': True,
+                    'created_by': request.user if request.user.is_authenticated else None
+                }
+            )
+            cpabe_policy_str = policy_obj.cpabe_policy
+            if created:
+                logger.info(f"Created new policy '{policy_obj.name}' during upload", extra={"user.name": request.user.username, "user.id": request.user.id})
+                # Assign this user to the policy explicitly
+                policy_obj.granted_users.add(request.user)
         elif policy_id:
             try:
                 policy_obj = AccessPolicy.objects.get(id=policy_id)
@@ -398,6 +416,13 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
                 
+            # SECURITY CHECK: Only the file owner (or superuser) can upload a new version
+            if existing_file.uploaded_by != request.user and not request.user.is_superuser:
+                return Response(
+                    {'error': 'Permission denied. Only the owner of this file can upload a new version.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+                
             latest_version = existing_file.get_latest_version()
             version_number = (latest_version.version_number + 1) if latest_version else 2
             if not field_encryption:
@@ -430,7 +455,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             
             # Encrypt if policy has cpabe_policy
             if cpabe_policy_str:
-                logger.info(f"Encrypting file with CP-ABE policy: {cpabe_policy_str}")
+                # Attempt to encrypt with CP-ABE before uploading
+                logger.info(f"Encrypting file with CP-ABE policy: {cpabe_policy_str}", extra={"user.name": request.user.username, "user.id": request.user.id})
                 file_data = cpabe_service.encrypt_buffer(file_data, cpabe_policy_str)
 
             upload_result = storage.upload_file(
@@ -438,7 +464,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 file_path=physical_path,
                 file_data=file_data,
                 content_type=file.content_type,
-                upsert=True
+                upsert=True,
+                user=request.user
             )
             
             # Get URL (Note: For public files, we use the physical path)
@@ -533,7 +560,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             
             file_data = storage.download_file(
                 bucket_name=uploaded_file.bucket.name,
-                file_path=physical_path
+                file_path=physical_path,
+                user=request.user
             )
             
             # Check if user is owner
@@ -860,7 +888,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     physical_path = file_version.physical_path
                     cpabe_policy_str = file_version.cpabe_policy
                     
-            file_data = storage.download_file(bucket_name, physical_path)
+            file_data = storage.download_file(bucket_name, physical_path, user=request.user)
             
             # Decrypt if necessary
             file_data = self._decrypt_file_if_needed(
@@ -943,7 +971,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     physical_path = file_version.physical_path
                     cpabe_policy_str = file_version.cpabe_policy
                     
-            file_data = storage.download_file(bucket_name, physical_path)
+            file_data = storage.download_file(bucket_name, physical_path, user=request.user)
             
             # Decrypt if necessary
             file_data = self._decrypt_file_if_needed(
@@ -1171,7 +1199,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                         
                         while True:
                             try:
-                                storage.copy_file(bucket_name, physical_path_to_use, new_physical_path)
+                                storage.copy_file(bucket_name, physical_path_to_use, new_physical_path, user=request.user)
                                 break
                             except Exception as e:
                                 if 'Duplicate' in str(e) or 'already exists' in str(e):
@@ -1226,7 +1254,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                         
                         while True:
                             try:
-                                storage.move_file(bucket_name, physical_path_to_use, new_physical_path)
+                                storage.move_file(bucket_name, physical_path_to_use, new_physical_path, user=request.user)
                                 break
                             except Exception as e:
                                 if 'Duplicate' in str(e) or 'already exists' in str(e):
@@ -1293,7 +1321,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 bucket_name=bucket_name,
                 file_path=folder_path,
                 file_data=b'',  # Empty placeholder
-                content_type='text/plain'
+                content_type='text/plain',
+                user=request.user
             )
             
             # Create UploadedFile record for logical empty folder tracking
@@ -1477,7 +1506,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                         storage = get_storage_service()
                         old_supa_folder = f"{old_folder_path}/.folder"
                         new_supa_folder = f"{new_folder_path}/.folder"
-                        storage.move_file(bucket_name, old_supa_folder, new_supa_folder)
+                        storage.move_file(bucket_name, old_supa_folder, new_supa_folder, user=request.user)
                     except Exception as e:
                         error_msg = str(e).lower()
                         if 'duplicate' in error_msg or 'already exists' in error_msg or '409' in error_msg:
@@ -1676,7 +1705,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     cpabe_policy_str = latest_version.cpabe_policy if latest_version else None
                     
                     # Get plaintext bytes
-                    file_data = storage.download_file(bucket_name, physical_path)
+                    file_data = storage.download_file(bucket_name, physical_path, user=request.user)
                     if was_already_encrypted:
                         file_data = self._decrypt_file_if_needed(
                             file_data, bucket_name, file_path, request.user, is_owner=True, cpabe_policy_str=cpabe_policy_str
@@ -1700,12 +1729,12 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                             policy_to_encrypt = " or ".join(f"({p})" for p in all_cpabe)
                             
                             # Decrypt existing file data first
-                            enc_data = storage.download_file(bucket_name, physical_path)
+                            enc_data = storage.download_file(physical_path, bucket_name=bucket_name, user=request.user)
                             file_data = self._decrypt_file_if_needed(
                                 enc_data, bucket_name, file_path, request.user, is_owner=True, cpabe_policy_str=cpabe_policy_str
                             )
                         else:
-                            file_data = storage.download_file(bucket_name, physical_path)
+                            file_data = storage.download_file(physical_path, bucket_name=bucket_name, user=request.user)
                             policy_to_encrypt = policy.cpabe_policy
                         
                 # Create the assignment
@@ -1730,7 +1759,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                                 file_path=physical_path,
                                 file_data=enc_data,
                                 content_type=file_record.mime_type or 'application/octet-stream',
-                                upsert=True
+                                upsert=True,
+                                user=request.user
                             )
                             # Update FileVersion cpabe_policy
                             if latest_version:
@@ -1747,7 +1777,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                             file_path=physical_path,
                             file_data=file_data,
                             content_type=file_record.mime_type or 'application/octet-stream',
-                            upsert=True
+                            upsert=True,
+                            user=request.user
                         )
                         if latest_version:
                             latest_version.cpabe_policy = ''
