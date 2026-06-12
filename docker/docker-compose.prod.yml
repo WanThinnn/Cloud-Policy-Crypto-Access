@@ -4,7 +4,6 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: wanthinnn/crypto-access:latest
     container_name: crypto-web
     env_file:
       - .env
