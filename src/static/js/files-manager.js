@@ -211,7 +211,7 @@
                 // Context menu items
                 case 'preview': case 'download': case 'assign_policy':
                 case 'view_policies': case 'versions': case 'delete': case 'rename':
-                case 'copy': case 'cut':
+                case 'copy': case 'cut': case 'create-folder-context':
                     contextAction(action); break;
                 
                 case 'upload-new-version':
