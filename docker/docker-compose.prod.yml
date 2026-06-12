@@ -26,6 +26,7 @@ services:
       - ${DB_DIR:-sqlite_volume}:/app/data
       - ${KEYS_DIR:-keys_volume}:/app/config/keys
       - ./docs:/docs
+      - ./logs:/app/logs
       - static_volume:/app/staticfiles
       - ./scripts/gunicorn.conf.py:/app/gunicorn.conf.py:ro
       - ./scripts/init_data.py:/app/init_data.py:ro

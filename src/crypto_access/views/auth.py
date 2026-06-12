@@ -19,7 +19,7 @@ import logging
 import uuid
 from rest_framework_simplejwt.tokens import AccessToken
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('crypto_access.auth')
 
 
 class AuthRateThrottle(AnonRateThrottle):

@@ -11,7 +11,7 @@ from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from crypto_access.services.setting_service import SettingService
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('crypto_access.audit')
 
 
 def get_client_ip(request):

@@ -114,10 +114,17 @@ SESSION_CACHE_ALIAS = 'default'
 
 
 # Update logging for production
-LOGGING['handlers']['file']['filename'] = '/app/logs/crypto_access.log'
+LOGGING['handlers']['file_system']['filename'] = '/app/logs/crypto-access-system.json'
+LOGGING['handlers']['file_auth']['filename'] = '/app/logs/crypto-access-auth.json'
+LOGGING['handlers']['file_storage']['filename'] = '/app/logs/crypto-access-storage.json'
+LOGGING['handlers']['file_audit']['filename'] = '/app/logs/crypto-access-audit.json'
+
 LOGGING['root']['level'] = 'WARNING'
 LOGGING['loggers']['django']['level'] = 'WARNING'
-LOGGING['loggers']['crypto_access']['level'] = 'INFO'
+LOGGING['loggers']['crypto_access.system']['level'] = 'INFO'
+LOGGING['loggers']['crypto_access.auth']['level'] = 'INFO'
+LOGGING['loggers']['crypto_access.storage']['level'] = 'INFO'
+LOGGING['loggers']['crypto_access.audit']['level'] = 'INFO'
 
 
 # Admin email for error notifications

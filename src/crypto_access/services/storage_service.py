@@ -8,7 +8,7 @@ from django.conf import settings
 from supabase import create_client, Client
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('crypto_access.storage')
 
 
 class SupabaseStorageService:

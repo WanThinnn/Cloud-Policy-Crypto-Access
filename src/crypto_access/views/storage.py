@@ -54,7 +54,7 @@ def get_db_file_by_path(bucket_name, file_path):
     else:
         return UploadedFile.objects.filter(bucket__name=bucket_name, file_path=file_path).first()
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('crypto_access.storage')
 
 
 class StorageBucketViewSet(viewsets.ModelViewSet):

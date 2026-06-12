@@ -14,6 +14,7 @@ services:
       - ./src:/app
       - /app/lib # Thêm dòng này để Docker sử dụng file .so bên trong image thay vì đọc từ Windows sang
       - ./docs:/docs
+      - ./logs:/app/logs
       - ./scripts/gunicorn.conf.py:/app/gunicorn.conf.py:ro
       - static_volume:/app/staticfiles
       - ${DB_DIR:-sqlite_volume}:/app/data

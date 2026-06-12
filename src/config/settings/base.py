@@ -198,6 +198,8 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
 # Logging configuration
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'production')
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -210,32 +212,75 @@ LOGGING = {
             'format': '{levelname} {message}',
             'style': '{',
         },
+        'ecs_formatter': {
+            '()': 'ecs_logging.StdlibFormatter',
+            'extra': {
+                'service.name': 'crypto-access',
+                'environment': ENVIRONMENT,
+            }
+        },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-        'file': {
+        'file_system': {
             'class': 'logging.handlers.RotatingFileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
+            'filename': BASE_DIR / 'logs' / 'crypto-access-system.json',
             'maxBytes': 1024 * 1024 * 15,  # 15MB
             'backupCount': 10,
-            'formatter': 'verbose',
+            'formatter': 'ecs_formatter',
+        },
+        'file_auth': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'crypto-access-auth.json',
+            'maxBytes': 1024 * 1024 * 15,
+            'backupCount': 10,
+            'formatter': 'ecs_formatter',
+        },
+        'file_storage': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'crypto-access-storage.json',
+            'maxBytes': 1024 * 1024 * 15,
+            'backupCount': 10,
+            'formatter': 'ecs_formatter',
+        },
+        'file_audit': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'crypto-access-audit.json',
+            'maxBytes': 1024 * 1024 * 15,
+            'backupCount': 10,
+            'formatter': 'ecs_formatter',
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': ['console', 'file_system'],
         'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console', 'file_system'],
             'level': 'INFO',
             'propagate': False,
         },
-        'crypto_access': {
-            'handlers': ['console', 'file'],
+        'crypto_access.auth': {
+            'handlers': ['console', 'file_auth'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'crypto_access.storage': {
+            'handlers': ['console', 'file_storage'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'crypto_access.audit': {
+            'handlers': ['console', 'file_audit'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'crypto_access.system': {
+            'handlers': ['console', 'file_system'],
             'level': 'INFO',
             'propagate': False,
         },
