@@ -16,6 +16,12 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      - name: Read Version from file
+        id: get_version
+        run: |
+          VERSION_NUM=$(cat VERSION | tr -d '[:space:]')
+          echo "version=$VERSION_NUM" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -32,6 +38,7 @@ jobs:
           file: ./docker/Dockerfile
           push: true
           tags: |
+            wanthinnn/cloud-policy-crypto-access:${{ steps.get_version.outputs.version }}
             wanthinnn/cloud-policy-crypto-access:latest
             wanthinnn/cloud-policy-crypto-access:${{ github.sha }}
           cache-from: type=gha
