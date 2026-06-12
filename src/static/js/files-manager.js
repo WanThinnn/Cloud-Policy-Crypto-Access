@@ -1135,6 +1135,8 @@
 
     async function openUploadModal() {
         document.getElementById('upload-modal').classList.remove('hidden');
+        const errContainer = document.getElementById('upload-error-container');
+        if (errContainer) errContainer.classList.add('hidden');
         
         const titleEl = document.querySelector('#upload-modal h3');
         if (titleEl) {
@@ -1223,6 +1225,8 @@
 
     function closeUploadModal() {
         document.getElementById('upload-modal').classList.add('hidden');
+        const errContainer = document.getElementById('upload-error-container');
+        if (errContainer) errContainer.classList.add('hidden');
         document.getElementById('upload-form').reset();
         document.getElementById('upload-modal').classList.add('hidden');
         window.isVersionUpload = false;
@@ -1345,6 +1349,9 @@
         console.log('Uploading file:', file.name, 'to path:', targetPath);
 
         try {
+            const errContainer = document.getElementById('upload-error-container');
+            if (errContainer) errContainer.classList.add('hidden');
+
             // Show progress bar
             const progressContainer = document.getElementById('upload-progress-container');
             const progressBar = document.getElementById('upload-progress-bar');
@@ -1352,6 +1359,10 @@
             const submitBtn = document.getElementById('submit-upload');
 
             progressContainer.classList.remove('hidden');
+            progressBar.classList.remove('bg-red-600');
+            progressBar.classList.add('bg-indigo-600');
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
             submitBtn.disabled = true;
             submitBtn.textContent = 'Uploading...';
 
@@ -1372,19 +1383,28 @@
             });
 
             clearInterval(progressInterval);
-            progressBar.style.width = '100%';
-            progressText.textContent = '100%';
 
             console.log('Upload response status:', response.status);
 
+            if (!response.ok) {
+                progressBar.classList.remove('bg-indigo-600');
+                progressBar.classList.add('bg-red-600');
+            }
+
             if (response.status === 403) {
                 const err = await response.json().catch(() => ({ error: 'Access denied' }));
-                showAlert('🚫 ' + (err.error || 'You do not have permission to upload file'), 'error');
+                document.getElementById('upload-error-container').classList.remove('hidden');
+                document.getElementById('upload-error-text').textContent = err.error || 'You do not have permission to upload file';
                 console.error('Upload forbidden:', err);
                 return;
             }
 
             if (response.ok) {
+                progressBar.style.width = '100%';
+                progressText.textContent = '100%';
+                progressBar.classList.remove('bg-red-600');
+                progressBar.classList.add('bg-indigo-600');
+                document.getElementById('upload-error-container').classList.add('hidden');
                 const result = await response.json();
                 console.log('Upload successful:', result);
                 
@@ -1398,7 +1418,8 @@
             } else {
                 const err = await response.json().catch(() => ({ error: 'Upload failed' }));
                 console.error('Upload error:', err);
-                showAlert('❌ ' + (err.error || err.detail || 'Upload failed'), 'error');
+                document.getElementById('upload-error-container').classList.remove('hidden');
+                document.getElementById('upload-error-text').textContent = err.error || err.detail || 'Upload failed';
             }
 
         } catch (error) {
@@ -1521,8 +1542,7 @@
         }
         
         if (action === 'create-folder-context') {
-            document.getElementById('new-folder-modal').classList.remove('hidden');
-            document.getElementById('new-folder-input').focus();
+            createFolder();
             return;
         }
 
