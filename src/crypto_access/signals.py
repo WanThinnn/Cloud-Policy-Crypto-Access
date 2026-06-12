@@ -3,6 +3,8 @@ Signals for crypto_access app.
 Handles automatic key revocation when user attributes change (QĐ13)
 """
 
+import json
+import hashlib
 import logging
 from django.db.models.signals import post_save, pre_save, pre_delete, post_delete
 from django.dispatch import receiver
@@ -11,6 +13,12 @@ from .models.settings import SystemSetting
 from .services.setting_service import SettingService
 
 logger = logging.getLogger(__name__)
+
+def get_cache_key_id(user_id, attributes):
+    """Generate the exact Redis cache key used by the CP-ABE service to represent the Key ID"""
+    attrs_str = json.dumps(attributes, sort_keys=True)
+    attrs_hash = hashlib.sha256(attrs_str.encode('utf-8')).hexdigest()
+    return f"cpabe_key_{user_id}_{attrs_hash}"
 
 
 @receiver(post_save, sender=SystemSetting)
@@ -37,9 +45,8 @@ def user_deleted_handler(sender, instance, **kwargs):
     # Get user's current attributes
     old_attrs = UserAttribute.get_user_attributes(instance)
     
-    # TODO: Get actual key_id from CP-ABE key management system
-    # For now, generate a placeholder
-    key_id = f"privkey_{instance.id}_placeholder"
+    # Generate exact cache key ID that was used in Redis
+    key_id = get_cache_key_id(instance.id, old_attrs)
     
     if old_attrs:
         # Create revocation record WITHOUT linking to user (since user will be deleted)
@@ -118,7 +125,7 @@ def handle_attribute_change(sender, instance, created, **kwargs):
         new_attrs = UserAttribute.get_user_attributes(instance.user)
         old_attrs = {k: v for k, v in new_attrs.items() if k != instance.attribute.name}
         
-        key_id = f"privkey_{instance.user.id}_placeholder"
+        key_id = get_cache_key_id(instance.user.id, old_attrs)
         
         KeyRevocation.revoke_user_key(
             user=instance.user,
@@ -152,7 +159,7 @@ def handle_attribute_change(sender, instance, created, **kwargs):
         
         new_attrs = UserAttribute.get_user_attributes(instance.user)
         
-        key_id = f"privkey_{instance.user.id}_placeholder"
+        key_id = get_cache_key_id(instance.user.id, old_attrs)
         
         # Create revocation record
         KeyRevocation.revoke_user_key(
@@ -199,8 +206,8 @@ def handle_attribute_deletion(sender, instance, **kwargs):
     old_attrs = UserAttribute.get_user_attributes(instance.user)
     new_attrs = {k: v for k, v in old_attrs.items() if k != instance.attribute.name}
     
-    # TODO: Get actual key_id from CP-ABE key management system
-    key_id = f"privkey_{instance.user.id}_placeholder"
+    # Get exact cache key ID
+    key_id = get_cache_key_id(instance.user.id, old_attrs)
     
     KeyRevocation.revoke_user_key(
         user=instance.user,
@@ -267,7 +274,7 @@ def handle_profile_changes(sender, instance, created, **kwargs):
         new_attrs = instance.get_abac_attributes()
         old_attrs = new_attrs.copy()
         old_attrs['user_type'] = old_code
-        key_id = f"privkey_{instance.user.id}_placeholder"
+        key_id = get_cache_key_id(instance.user.id, old_attrs)
         
         KeyRevocation.revoke_user_key(
             user=instance.user,
@@ -289,7 +296,7 @@ def handle_profile_changes(sender, instance, created, **kwargs):
         
         # When suspended, we still log current attributes for audit
         current_attrs = instance.get_abac_attributes()
-        key_id = f"privkey_{instance.user.id}_placeholder"
+        key_id = get_cache_key_id(instance.user.id, current_attrs)
         
         KeyRevocation.revoke_user_key(
             user=instance.user,
