@@ -109,11 +109,27 @@ def handle_attribute_change(sender, instance, created, **kwargs):
         return
     
     if created:
-        # New attribute added - may need to issue new key
         logger.info(
             f"[ATTR-ADD] New attribute for user {instance.user.username}: "
             f"{instance.attribute.name}={instance.value}"
         )
+        
+        # Get all current attributes for the user (already includes the new one)
+        new_attrs = UserAttribute.get_user_attributes(instance.user)
+        old_attrs = {k: v for k, v in new_attrs.items() if k != instance.attribute.name}
+        
+        key_id = f"privkey_{instance.user.id}_placeholder"
+        
+        KeyRevocation.revoke_user_key(
+            user=instance.user,
+            key_id=key_id,
+            reason='attribute_change',
+            old_attributes=old_attrs,
+            new_attributes=new_attrs,
+            reason_detail=f"Added attribute '{instance.attribute.name}'='{instance.value}'",
+            revoked_by=instance.updated_by
+        )
+        logger.warning(f"[KEY-REVOKE] Key revoked for user {instance.user.username} due to new attribute")
         return
     
     # Check if value actually changed
@@ -136,8 +152,6 @@ def handle_attribute_change(sender, instance, created, **kwargs):
         
         new_attrs = UserAttribute.get_user_attributes(instance.user)
         
-        # TODO: Get actual key_id from CP-ABE key management system
-        # For now, generate a placeholder based on user ID
         key_id = f"privkey_{instance.user.id}_placeholder"
         
         # Create revocation record
