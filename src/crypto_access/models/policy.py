@@ -165,7 +165,7 @@ class AccessPolicy(BaseModel):
         return _build_rabe(tree.body)
 
     def save(self, *args, **kwargs):
-        if not self.cpabe_policy and self.subject_condition:
+        if self.subject_condition:
             self.cpabe_policy = self._generate_cpabe_policy()
         super().save(*args, **kwargs)
     

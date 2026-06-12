@@ -64,3 +64,6 @@ django-json-widget==2.1.1
 
 # Vault
 hvac
+
+# ClamAV
+clamd==1.0.2

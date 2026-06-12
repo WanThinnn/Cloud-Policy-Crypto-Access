@@ -16,9 +16,12 @@ services:
       - VAULT_ADDR=${VAULT_ADDR:-http://vault:8200}
       - VAULT_TOKEN=${VAULT_TOKEN:-root}
       - VAULT_SECRET_PATH=${VAULT_SECRET_PATH:-secret/data/crypto_access}
+      - CLAMAV_HOST=clamav
+      - CLAMAV_PORT=3310
     depends_on:
       - crypto-redis
       - vault
+      - clamav
     volumes:
       - ${DB_DIR:-sqlite_volume}:/app/data
       - ${KEYS_DIR:-keys_volume}:/app/config/keys
@@ -47,6 +50,15 @@ services:
     container_name: crypto-redis
     expose:
       - "6379"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  clamav:
+    image: clamav/clamav:latest
+    container_name: clamav_scanner
+    expose:
+      - "3310"
     networks:
       - app-network
     restart: unless-stopped

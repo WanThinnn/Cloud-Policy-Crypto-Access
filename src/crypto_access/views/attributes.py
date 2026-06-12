@@ -125,27 +125,7 @@ class AttributeDefinitionViewSet(viewsets.ModelViewSet):
         instance.version += 1
         instance.save()
 
-    def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
-        data = response.data.get('results', response.data) if isinstance(response.data, dict) else response.data
-        
-        from ..models import UserType
-        user_types = UserType.objects.filter(is_active=True).values_list('code', flat=True)
-        user_type_attr = {
-            'id': 'system_user_type',
-            'name': 'user_type',
-            'display_name': 'User type',
-            'data_type': 'enum',
-            'allowed_values': list(user_types),
-            'is_required': True,
-            'is_active': True,
-            'description': 'System core attribute. Cannot be modified directly.',
-            'is_system': True
-        }
-        
-        if isinstance(data, list):
-            data.insert(0, user_type_attr)
-        return response
+
 
 
 # =============================================================================

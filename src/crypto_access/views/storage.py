@@ -416,6 +416,16 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         try:
             file_data = file.read()
             
+            # Scan for malware before any processing
+            from ..services.clamav_service import clamav_service
+            is_safe, message = clamav_service.scan_file_buffer(file_data)
+            if not is_safe:
+                logger.warning(f"Malware scan failed for file {file.name}: {message}")
+                return Response(
+                    {'error': f"Upload failed ({message}). Please check your file!"},
+                    status=status.HTTP_406_NOT_ACCEPTABLE
+                )
+            
             # Encrypt if policy has cpabe_policy
             if cpabe_policy_str:
                 logger.info(f"Encrypting file with CP-ABE policy: {cpabe_policy_str}")
