@@ -298,4 +298,9 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    if sys.platform == "win32":
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except AttributeError:
+            pass
     raise SystemExit(main(sys.argv[1:]))

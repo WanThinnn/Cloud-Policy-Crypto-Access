@@ -1,5 +1,5 @@
 # Build Tailwind assets separately to keep runtime image slim
-FROM node:20-alpine AS tailwind-builder
+FROM node:20-slim AS tailwind-builder
 WORKDIR /app
 
 # Copy the entire source code so Tailwind can scan templates

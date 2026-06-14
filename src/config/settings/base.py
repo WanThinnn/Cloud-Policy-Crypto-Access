@@ -41,7 +41,13 @@ INSTALLED_APPS = [
 
 # Tailwind CSS Configuration
 TAILWIND_APP_NAME = 'theme'
-NPM_BIN_PATH = r'C:\Program Files\nodejs\npm.cmd'
+# Configure NPM Path dynamically for Windows, macOS, and Linux
+import platform
+import shutil
+if platform.system() == "Windows":
+    NPM_BIN_PATH = r"C:\Program Files\nodejs\npm.cmd"
+else:
+    NPM_BIN_PATH = shutil.which("npm") or "npm"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
