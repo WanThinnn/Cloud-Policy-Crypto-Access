@@ -27,6 +27,9 @@ jobs:
           VERSION_NUM=$(cat VERSION | tr -d '[:space:]')
           echo "version=$VERSION_NUM" >> $GITHUB_OUTPUT
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -42,6 +45,7 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             wanthinnn/cloud-policy-crypto-access:${{ steps.get_version.outputs.version }}
             wanthinnn/cloud-policy-crypto-access:latest
