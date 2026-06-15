@@ -557,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const a = document.createElement('a');
                         a.href = url;
                         const username = localStorage.getItem('username') || 'unknown_user';
-                        a.download = `clou-policy-recovery-phrase-${username}.txt`;
+                        a.download = `cloud-policy-recovery-phrase-${username}.txt`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
