@@ -298,6 +298,44 @@
     </div>
 </div>
 
+<!-- PQC Keys Modal -->
+<div id="pqc-keys-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white dark:bg-gray-800 dark:text-white rounded-lg w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-blue-50 dark:bg-blue-900/20">
+            <div>
+                <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-300">🔐 PQC Passkeys Management</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400">User: <strong id="pqc-keys-username"></strong></p>
+            </div>
+            <button type="button" id="close-pqc-keys-btn" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-4">
+            <div>
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <thead class="bg-gray-50 dark:bg-gray-900">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Key ID</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Device</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Created</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-pqc-keys-list" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        <tr><td colspan="5" class="px-4 py-3 text-center text-gray-500 text-sm">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
     const API_BASE = '/api/admin';
@@ -505,6 +543,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                     </button>
                     <button onclick="resetPassword(${user.id}, '${user.username}')" class="text-yellow-600 hover:text-yellow-900 mr-3" title="Reset password">
                         🔑
+                    </button>
+                    <button onclick="viewPqcKeys(${user.id}, '${user.username}')" class="text-blue-600 dark:text-blue-400 hover:text-blue-900 mr-3" title="Manage PQC Keys">
+                        🔐
                     </button>
                     <button onclick="toggleStatus(${user.id})" class="text-gray-600 dark:text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-white mr-3" title="Toggle">
                         ⚡
@@ -943,6 +984,112 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('attributes-modal').classList.add('hidden');
     });
     
+    // ========== PQC KEYS MANAGEMENT ==========
+    
+    window.viewPqcKeys = async function(userId, username) {
+        document.getElementById('pqc-keys-username').textContent = username;
+        document.getElementById('pqc-keys-modal').classList.remove('hidden');
+        loadPqcKeys(userId);
+    };
+    
+    document.getElementById('close-pqc-keys-btn').addEventListener('click', () => {
+        document.getElementById('pqc-keys-modal').classList.add('hidden');
+    });
+    
+    async function loadPqcKeys(userId) {
+        const tbody = document.getElementById('user-pqc-keys-list');
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-3 text-center text-gray-500 text-sm">Loading...</td></tr>';
+        
+        try {
+            const response = await fetch(`/api/pki/keys/?user=${userId}`, {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const keys = Array.isArray(data) ? data : (data.results || []);
+                
+                if (keys.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-3 text-center text-gray-500 text-sm">No PQC keys found for this user</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = keys.map(key => {
+                    const statusClass = key.status === 'active' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                        : (key.status === 'revoked' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300');
+                        
+                    return `
+                    <tr>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white font-mono" title="${key.id}">
+                            ${String(key.id).substring(0, 8)}...
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 max-w-[50px] truncate" title="${key.device_name || 'Unknown Device'}">
+                            ${key.device_name || 'Unknown Device'}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            ${formatDate(key.created_at)}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">
+                                ${key.status.toUpperCase()}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
+                            ${key.status === 'active' ? `<button onclick="revokePqcKey(${key.id}, ${userId})" class="text-yellow-600 hover:text-yellow-900 mr-3">Revoke</button>` : ''}
+                            <button onclick="deletePqcKey(${key.id}, ${userId})" class="text-red-600 hover:text-red-900">Delete</button>
+                        </td>
+                    </tr>
+                    `;
+                }).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-3 text-center text-red-500 text-sm">Failed to load keys</td></tr>';
+            }
+        } catch (error) {
+            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-3 text-center text-red-500 text-sm">Network error</td></tr>';
+        }
+    }
+    
+    window.revokePqcKey = async function(keyId, userId) {
+        if (!confirm('Are you sure you want to revoke this key?')) return;
+        
+        try {
+            const response = await fetch(`/api/pki/keys/${keyId}/revoke/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            
+            if (response.ok) {
+                showAlert('Key revoked successfully');
+                loadPqcKeys(userId);
+            } else {
+                showAlert('Failed to revoke key', 'error');
+            }
+        } catch (error) {
+            showAlert('Network error', 'error');
+        }
+    };
+    
+    window.deletePqcKey = async function(keyId, userId) {
+        if (!confirm('Are you sure you want to permanently delete this key? The user will need to generate a new Passkey.')) return;
+        
+        try {
+            const response = await fetch(`/api/pki/keys/${keyId}/`, {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            
+            if (response.ok) {
+                showAlert('Key permanently deleted');
+                loadPqcKeys(userId);
+            } else {
+                showAlert('Failed to delete key', 'error');
+            }
+        } catch (error) {
+            showAlert('Network error', 'error');
+        }
+    };
+
     // Init with permission check
     if (await checkPermissionAndInit()) {
         loadUserTypes();

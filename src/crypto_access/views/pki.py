@@ -20,7 +20,11 @@ class UserPublicKeyViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Users can only see their own keys, unless they are an admin
         if self.request.user.is_superuser:
-            return UserPublicKey.objects.all()
+            qs = UserPublicKey.objects.all()
+            user_id = self.request.query_params.get('user')
+            if user_id:
+                qs = qs.filter(user_id=user_id)
+            return qs
         return UserPublicKey.objects.filter(user=self.request.user)
     
     @action(detail=False, methods=['get'])

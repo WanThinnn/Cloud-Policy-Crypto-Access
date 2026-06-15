@@ -187,6 +187,7 @@
     </div>
     {% endblock %}
 
+    
     <!-- PQC UI Modals -->
     <div id="pqc-setup-modal" tabindex="-1" class="hidden fixed inset-0 z-50 w-full h-full bg-gray-900/80 flex justify-center items-start pt-16" style="backdrop-filter: blur(8px);">
         <div class="relative p-4 w-full max-w-md">
@@ -497,6 +498,10 @@
       if (window.location.pathname === '/' && !isLoggedIn) {
           document.getElementById('main-footer')?.classList.add('hidden');
       }
+      
+      {% if user.is_authenticated %}
+      localStorage.setItem('username', '{{ user.username|escapejs }}');
+      {% endif %}
       
       // Setup Logout
       const logoutBtn = document.getElementById('logout-btn');
