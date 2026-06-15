@@ -391,8 +391,7 @@ class PqcManager {
         
         // 4. Prompt user to setup a NEW Passkey
         // Passing isRegistration = true forces a new Passkey PRF credential creation
-        const { credential, prfOutput } = await this._getPrfKey(true);
-        const newPrfKey = await this._getPrfToCryptoKey(prfOutput);
+        const newPrfKey = await this._getPrfKey(true);
         
         // 5. Encrypt the raw SK with the new PRF key
         const newPrimaryEnc = await this._encryptKey(newPrfKey, rawSkArray);
@@ -412,10 +411,6 @@ class PqcManager {
         if (!patchResponse.ok) {
             throw new Error("Failed to update E2EE key on server.");
         }
-        
-        // Save the new credential ID globally (or per username)
-        const username = localStorage.getItem('username') || 'unknown_user';
-        localStorage.setItem(`pqc_credential_id_${username}`, credential.id);
         
         // 7. Load into WASM Memory for current session
         this.pk = Uint8Array.from(atob(keyData.pqc_public_key), c => c.charCodeAt(0));
