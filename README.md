@@ -13,7 +13,7 @@ See more demo images in `img/`.
 
 ### Key Features
 
-- **Hybrid CP-ABE Encryption (v3.1.0)**: Advanced attribute-based encryption utilizing high-speed in-memory buffers (RAM) for encryption/decryption, completely bypassing disk I/O bottlenecks. See more at: https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git 
+- **Hybrid CP-ABE Encryption (v4.0.0)**: Advanced attribute-based encryption utilizing high-speed in-memory buffers (RAM) for encryption/decryption, completely bypassing disk I/O bottlenecks. See more at: https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git 
 - **HashiCorp Vault Integration (Envelope Encryption)**: Enterprise-grade key management. Vault secures the CP-ABE Master Keys and dynamically wraps per-file Data Encryption Keys (DEK), ensuring keys are never leaked to the disk.
 - **Supabase Integration**: Leverages Supabase Storage for hosting encrypted files and Supabase PostgreSQL for high-performance metadata management.
 - **Multi-Layer Security**: Combines **HashiCorp Vault**, **CP-ABE AC17**, and **AES-GCM-256** (Mathematical Cryptography) with **Casbin ABAC** (Application-level Access Control) for defense-in-depth.
@@ -42,7 +42,7 @@ See more demo images in `img/`.
 
 ### Security & Cryptography
 - **Key Management**: HashiCorp Vault
-- **Hybrid CP-ABE**: Custom C++ `libhybrid-cp-abe` (v3.1.0) bridged via Python `ctypes`
+- **Hybrid CP-ABE & PQC**: Custom C++ `libhybrid-pq-cp-abe` (v4.0.0) bridged via Python `ctypes`
 - **Access Control**: PyCasbin (Attribute-Based Access Control)
 - **Authentication**: JWT (JSON Web Tokens)
 
@@ -66,7 +66,7 @@ flowchart LR
         Auth("🔑 JWT Auth"):::gateway
         Casbin("🛂 Casbin ABAC"):::gateway
         Ctrl("📦 File Controller"):::gateway
-        CPABE("🔐 CP-ABE C++ Lib"):::core
+        CPABE("🔐 CP-ABE & PQC C++ Lib"):::core
         
         Auth --> Casbin
         Casbin --> Ctrl
@@ -96,7 +96,7 @@ flowchart LR
 ### Workflow Overview
 
 1. **Authentication & Authorization**: The client makes a request via HTTPS containing an `HttpOnly Cookie` (for JWT) and an `X-CSRFToken` header. The **Auth Middleware** verifies the identity, and the **Casbin ABAC Engine** evaluates the user's attributes against the stored policies (cached in Redis) to determine access rights.
-2. **Encryption/Decryption (In-Memory)**: Upon an authorized file upload/download, the **Storage Controller** retrieves the CP-ABE Master Keys from **HashiCorp Vault**. It generates an ephemeral CP-ABE private key based on the user's current attributes. This key is temporarily cached in **Redis**. The file itself is encrypted with a random AES-256-GCM DEK, and this DEK is then wrapped (encrypted) by CP-ABE. The data buffer is passed to the **CP-ABE C++ Library** to be processed directly in RAM, ensuring plaintext data is never written to disk.
+2. **Encryption/Decryption & PQC Signing (In-Memory)**: Upon an authorized file upload/download, the **Storage Controller** retrieves the CP-ABE Master Keys and ML-DSA keys from **HashiCorp Vault**. It generates an ephemeral CP-ABE private key based on the user's current attributes. This key is temporarily cached in **Redis**. The file itself is encrypted with a random AES-256-GCM DEK, and this DEK is then wrapped (encrypted) by CP-ABE. Finally, the payload is signed using **Post-Quantum ML-DSA**. The data buffer is passed to the **CP-ABE C++ Library** to be processed directly in RAM, ensuring plaintext data is never written to disk.
 3. **Data Persistence**: File metadata, access policies, and user attributes are securely managed in **Supabase PostgreSQL**. The fully encrypted ciphertexts are uploaded to **Supabase Storage**.
 
 ## Quick Start (Step-by-Step for New Environments)
@@ -127,7 +127,9 @@ Open `.env` in your text editor and fill in the missing critical values:
 - `DATABASE_URL`: Get this from your Supabase Dashboard -> Settings -> Database -> Connection string (URI). Make sure it ends with `?sslmode=require` if using Supabase.
 - `SUPABASE_URL`: Your Supabase project URL (e.g., `https://xxxx.supabase.co`).
 - `SUPABASE_SERVICE_KEY`: Your Supabase Service Role Key (Dashboard -> Settings -> API). **Do not use the public anon key!**
-- `KEYS_DIR`: Keep as `./keys` to securely mount your encryption master keys outside the source code.
+- `KEYS_DIR`: Keep as `./config/keys` to securely mount your encryption master keys outside the source code.
+- `FIELD_ENCRYPTION_KEY`: If using HashiCorp Vault, **leave this blank** and the system will auto-generate a secure 256-bit AES key and push it to Vault during `initdata`. If NOT using Vault, you must provide a URL-safe Base64 32-byte key.
+- `ENABLE_PQC_FEATURES`: Set to `True` (default) to enable ML-DSA dual-layer signatures during file uploads. Set to `False` to fallback to standard CP-ABE encryption.
 - `SSL_CERT_FILE` & `SSL_KEY_FILE`: (Optional) By default, the system uses self-signed CyberFortress certs. To use your own certificates in production, place your `.crt` and `.key` files in the `./certs` folder and specify their filenames here.
 
 ### 4. Setup Supabase Storage
