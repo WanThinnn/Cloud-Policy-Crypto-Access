@@ -141,7 +141,7 @@
             <div id="password-section">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
                 <div class="flex gap-2">
-                    <input type="password" name="password" id="password-input"
+                    <input type="password" name="password" id="password-input" autocomplete="new-password"
                         class="flex-1 bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="Leave blank to auto-generate" minlength="8">
                     <button type="button" id="generate-password-btn" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 px-3 py-2 rounded-md text-sm">
@@ -210,7 +210,7 @@
             <input type="hidden" id="reset-user-id">
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">New password</label>
-                <input type="password" name="password" id="reset-password-input"
+                <input type="password" name="password" id="reset-password-input" autocomplete="new-password"
                     class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2"
                     placeholder="Leave blank to generate randomly" minlength="8">
             </div>

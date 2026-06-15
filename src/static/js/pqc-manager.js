@@ -125,25 +125,48 @@ class PqcManager {
 
             } else {
                 const credIdB64 = localStorage.getItem('pqc_credential_id');
-                if (!credIdB64) throw new Error("No E2EE credential found on this device.");
                 
-                const credId = Uint8Array.from(atob(credIdB64), c => c.charCodeAt(0));
-                
-                credential = await navigator.credentials.get({
+                const getOptions = {
                     publicKey: {
                         challenge,
                         rpId: window.location.hostname,
-                        allowCredentials: [{ type: "public-key", id: credId }],
-                        userVerification: "required",
-                        extensions: { prf: { eval: { first: paddedSalt } } }
+                        userVerification: 'required',
+                        extensions: {
+                            prf: {
+                                eval: {
+                                    first: paddedSalt
+                                }
+                            }
+                        }
                     }
-                });
+                };
+                
+                if (credIdB64) {
+                    const credId = Uint8Array.from(atob(credIdB64), c => c.charCodeAt(0));
+                    getOptions.publicKey.allowCredentials = [{
+                        id: credId,
+                        type: 'public-key'
+                    }];
+                }
+                
+                credential = await navigator.credentials.get(getOptions);
+                
+                if (!credential) {
+                    throw new Error("Passkey authentication was cancelled or failed.");
+                }
                 
                 const prfResults = credential.getClientExtensionResults().prf;
-                if (!prfResults || !prfResults.results) {
-                    throw new Error("Failed to retrieve PRF from Passkey.");
+                if (!prfResults || !prfResults.results || !prfResults.results.first) {
+                    console.warn("WebAuthn PRF not supported on this device/browser.");
+                    throw new Error("Your Passkey device does not support the PRF extension required for E2EE.");
                 }
+                
                 prfOutput = new Uint8Array(prfResults.results.first);
+                
+                // Save credential ID if it wasn't saved (e.g. after logout)
+                if (!credIdB64) {
+                    localStorage.setItem('pqc_credential_id', btoa(String.fromCharCode(...new Uint8Array(credential.rawId))));
+                }
             }
 
             // Convert raw PRF output to a CryptoKey for AES-GCM-256
@@ -428,9 +451,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSetup = document.getElementById('btn-pqc-setup');
     const setupModal = document.getElementById('pqc-setup-modal');
     const setupStatus = document.getElementById('pqc-setup-status');
+    const btnSetupClose = document.getElementById('btn-pqc-setup-close');
     
     const mnemonicModal = document.getElementById('pqc-mnemonic-modal');
-    const mnemonicContainer = document.getElementById('mnemonic-container');
+    const btnDownloadMnemonic = document.getElementById('btn-download-mnemonic');
     const btnMnemonicSaved = document.getElementById('btn-mnemonic-saved');
     
     const unlockModal = document.getElementById('pqc-unlock-modal');
@@ -450,10 +474,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 setupModal.classList.add('hidden');
                 
-                // Show mnemonic
-                mnemonicContainer.innerHTML = mnemonic.map((word, i) => 
-                    `<div class="bg-white dark:bg-gray-800 p-1 rounded border border-gray-200 dark:border-gray-700 text-center"><span class="text-xs text-gray-400 mr-1">${i+1}.</span>${word}</div>`
-                ).join('');
+                // Setup download button
+                if (btnDownloadMnemonic) {
+                    btnDownloadMnemonic.onclick = () => {
+                        const text = "Cloud Policy Crypto Access - E2EE Recovery Phrase\n" +
+                                     "WARNING: DO NOT SHARE THIS FILE WITH ANYONE.\n\n" +
+                                     mnemonic.join(' ');
+                        const blob = new Blob([text], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'CloudPolicy-E2EE-Recovery-Phrase.txt';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    };
+                }
                 mnemonicModal.classList.remove('hidden');
                 
             } catch (e) {
@@ -471,6 +508,16 @@ document.addEventListener('DOMContentLoaded', () => {
             mnemonicModal.classList.add('hidden');
             // Reload or continue
             window.location.reload();
+        });
+    }
+    
+    if (btnSetupClose) {
+        btnSetupClose.addEventListener('click', () => {
+            setupModal.classList.add('hidden');
+            if (window.pqcSetupPromiseReject) {
+                window.pqcSetupPromiseReject(new Error("User cancelled Passkey setup"));
+                window.pqcSetupPromiseReject = null;
+            }
         });
     }
     
@@ -522,7 +569,7 @@ async function requirePqcUnlock() {
     if (!hasSetup) {
         document.getElementById('pqc-setup-modal').classList.remove('hidden');
         return new Promise((resolve, reject) => {
-            // Never resolves automatically, user must finish setup which reloads page
+            window.pqcSetupPromiseReject = reject;
         });
     }
     
