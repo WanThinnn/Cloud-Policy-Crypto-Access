@@ -40,7 +40,7 @@ def user_created_handler(sender, instance, created, **kwargs):
 @receiver(pre_delete, sender=User)
 def user_deleted_handler(sender, instance, **kwargs):
     """Handle user deletion events - revoke all keys"""
-    from .models import KeyRevocation, UserAttribute
+    from .models import UserAttribute
     
     # Get user's current attributes
     old_attrs = UserAttribute.get_user_attributes(instance)
@@ -49,17 +49,6 @@ def user_deleted_handler(sender, instance, **kwargs):
     key_id = get_cache_key_id(instance.id, old_attrs)
     
     if old_attrs:
-        # Create revocation record WITHOUT linking to user (since user will be deleted)
-        # Store username in reason_detail for audit purposes
-        KeyRevocation.objects.create(
-            user=None,  # Don't link to user since it's being deleted
-            key_id=key_id,
-            reason='account_termination',
-            old_attributes=old_attrs,
-            new_attributes={},
-            reason_detail=f'User account {instance.username} (ID: {instance.id}) deleted',
-            status='completed'
-        )
         logger.info(f"[KEY-REVOKE] User {instance.username} deleted - key revoked")
 
 

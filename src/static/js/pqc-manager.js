@@ -367,6 +367,71 @@ class PqcManager {
     }
     
     /**
+     * Recover the Passkey access using the 24-word Mnemonic Phrase.
+     * Decrypts the recovery payload, prompts to create a new Passkey, and updates the server.
+     */
+    async recoverKey(mnemonicString) {
+        await this.initPromise;
+        
+        // 1. Get Argon2 Key from Mnemonic
+        const mnemonicArray = mnemonicString.trim().split(/\s+/);
+        if (mnemonicArray.length !== 24) {
+            throw new Error("Invalid Recovery Phrase. Must be exactly 24 words.");
+        }
+        const recoverKey = await this._getArgon2Key(mnemonicArray);
+        
+        // 2. Fetch the active key metadata
+        const response = await fetch('/api/pki/keys/active_key/');
+        if (!response.ok) throw new Error("No active E2EE key found on the server.");
+        const keyData = await response.json();
+        
+        // 3. Decrypt the recovery blob to get the raw PQC SK
+        const rawSkBuffer = await this._decryptKey(recoverKey, keyData.encrypted_pqc_sk_recovery);
+        const rawSkArray = new Uint8Array(rawSkBuffer);
+        
+        // 4. Prompt user to setup a NEW Passkey
+        // Passing isRegistration = true forces a new Passkey PRF credential creation
+        const { credential, prfOutput } = await this._getPrfKey(true);
+        const newPrfKey = await this._getPrfToCryptoKey(prfOutput);
+        
+        // 5. Encrypt the raw SK with the new PRF key
+        const newPrimaryEnc = await this._encryptKey(newPrfKey, rawSkArray);
+        
+        // 6. Update the Primary encrypted blob on the server
+        const patchResponse = await fetch(`/api/pki/keys/${keyData.id}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                encrypted_pqc_sk_primary: newPrimaryEnc
+            })
+        });
+        
+        if (!patchResponse.ok) {
+            throw new Error("Failed to update E2EE key on server.");
+        }
+        
+        // Save the new credential ID globally (or per username)
+        const username = localStorage.getItem('username') || 'unknown_user';
+        localStorage.setItem(`pqc_credential_id_${username}`, credential.id);
+        
+        // 7. Load into WASM Memory for current session
+        this.pk = Uint8Array.from(atob(keyData.pqc_public_key), c => c.charCodeAt(0));
+        this.skPtr = this.module._malloc(this.SK_LEN);
+        this.module.HEAPU8.set(rawSkArray, this.skPtr);
+        
+        // Zero-fill temp array
+        crypto.getRandomValues(rawSkArray);
+        
+        this.isUnlocked = true;
+        this._resetLockTimeout();
+        console.log("PQC Manager: Key recovered, Passkey replaced, and unlocked.");
+        return true;
+    }
+    
+    /**
      * Check if user has an active key setup on the server
      */
     async hasKeySetup() {
@@ -461,6 +526,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnUnlock = document.getElementById('btn-pqc-unlock');
     const btnUnlockCancel = document.getElementById('btn-pqc-cancel');
     const unlockStatus = document.getElementById('pqc-unlock-status');
+    const btnRecover = document.getElementById('btn-pqc-recover');
+    
+    const recoverModal = document.getElementById('pqc-recover-modal');
+    const btnRecoverClose = document.getElementById('btn-pqc-recover-close');
+    const btnDoRecover = document.getElementById('btn-pqc-do-recover');
+    const recoverStatus = document.getElementById('pqc-recover-status');
+    const recoverPhrase = document.getElementById('pqc-recover-phrase');
     
     if (btnSetup) {
         btnSetup.addEventListener('click', async () => {
@@ -506,8 +578,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnMnemonicSaved) {
         btnMnemonicSaved.addEventListener('click', () => {
             mnemonicModal.classList.add('hidden');
-            // Reload or continue
-            window.location.reload();
+            if (window.pqcSetupPromiseResolve) {
+                window.pqcSetupPromiseResolve();
+                window.pqcSetupPromiseResolve = null;
+                window.pqcSetupPromiseReject = null;
+            } else {
+                // Reload or continue if no promise is waiting
+                window.location.reload();
+            }
         });
     }
     
@@ -550,10 +628,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (e) {
                 console.error(e);
-                unlockStatus.textContent = "Authentication failed: " + e.message;
-                unlockStatus.classList.remove('hidden');
+                if (e.message.includes('timed out or was not allowed') || e.message.includes('cancelled')) {
+                    // Suppress WebAuthn cancellation errors to avoid scaring the user
+                    unlockStatus.classList.add('hidden');
+                } else {
+                    unlockStatus.textContent = "Authentication failed: " + e.message;
+                    unlockStatus.classList.remove('hidden');
+                }
                 btnUnlock.disabled = false;
                 btnUnlock.textContent = "Try Again";
+            }
+        });
+    }
+    
+    // Bind Recovery Modal toggle
+    if (btnRecover) {
+        btnRecover.addEventListener('click', () => {
+            unlockModal.classList.add('hidden');
+            if (recoverModal) recoverModal.classList.remove('hidden');
+        });
+    }
+    
+    if (btnRecoverClose) {
+        btnRecoverClose.addEventListener('click', () => {
+            recoverModal.classList.add('hidden');
+            if (window.pqcUnlockPromiseReject) {
+                window.pqcUnlockPromiseReject(new Error("User cancelled recovery"));
+                window.pqcUnlockPromiseReject = null;
+            }
+        });
+    }
+    
+    if (btnDoRecover) {
+        btnDoRecover.addEventListener('click', async () => {
+            try {
+                const phrase = recoverPhrase.value;
+                if (!phrase || phrase.trim().split(/\s+/).length !== 24) {
+                    throw new Error("Please enter exactly 24 words.");
+                }
+                
+                btnDoRecover.disabled = true;
+                btnDoRecover.textContent = "Rebuilding Key...";
+                recoverStatus.classList.add('hidden');
+                
+                await pqcManager.recoverKey(phrase);
+                
+                recoverModal.classList.add('hidden');
+                btnDoRecover.disabled = false;
+                btnDoRecover.textContent = "Recover & Create New Passkey";
+                
+                // Once recovered, they are unlocked
+                if (window.pqcUnlockPromiseResolve) {
+                    window.pqcUnlockPromiseResolve();
+                    window.pqcUnlockPromiseResolve = null;
+                }
+            } catch (e) {
+                console.error(e);
+                recoverStatus.textContent = "Recovery failed: " + e.message;
+                recoverStatus.classList.remove('hidden');
+                btnDoRecover.disabled = false;
+                btnDoRecover.textContent = "Recover & Create New Passkey";
             }
         });
     }
@@ -569,6 +703,7 @@ async function requirePqcUnlock() {
     if (!hasSetup) {
         document.getElementById('pqc-setup-modal').classList.remove('hidden');
         return new Promise((resolve, reject) => {
+            window.pqcSetupPromiseResolve = resolve;
             window.pqcSetupPromiseReject = reject;
         });
     }
