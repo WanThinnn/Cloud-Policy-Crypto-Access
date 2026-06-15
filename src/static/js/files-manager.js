@@ -1355,7 +1355,7 @@
         // Setup PQC Signature
         let userSignature = null;
         try {
-            if (typeof requirePqcUnlock === 'function') {
+            if (typeof requirePqcUnlock === 'function' && window.ENABLE_PQC_FEATURES) {
                 await requirePqcUnlock();
                 const fileBuffer = await file.arrayBuffer();
                 userSignature = await pqcManager.signFile(fileBuffer);

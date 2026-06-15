@@ -19,9 +19,9 @@ class CPABEService:
     def __init__(self):
         system = platform.system()
         if system == 'Windows':
-            lib_name = 'libhybrid-cp-abe.dll'
+            lib_name = 'libhybrid-pq-cp-abe.dll'
         else:
-            lib_name = 'libhybrid-cp-abe.so'
+            lib_name = 'libhybrid-pq-cp-abe.so'
             
         self.dll_path = os.path.join(settings.BASE_DIR, 'lib', lib_name)
         self.keys_dir = os.path.join(settings.BASE_DIR, 'config', 'keys')
@@ -83,6 +83,33 @@ class CPABEService:
         if hasattr(self._lib, 'freeBuffer'):
             self._lib.freeBuffer.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
             self._lib.freeBuffer.restype = None
+            
+        # PQC functions
+        self._setup_pqc_func = getattr(self._lib, 'hybrid_cpabe_setup_with_pqc', None)
+        if self._setup_pqc_func:
+            self._setup_pqc_func.argtypes = [ctypes.c_char_p]
+            self._setup_pqc_func.restype = ctypes.c_int
+
+        self._encrypt_buffer_sign_func = getattr(self._lib, 'hybrid_cpabe_encryptBuffer_and_sign', None)
+        if self._encrypt_buffer_sign_func:
+            self._encrypt_buffer_sign_func.argtypes = [
+                ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, # publicKey, pkLen
+                ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, # masterKey, mskLen
+                ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, # plaintext, ptLen
+                ctypes.c_char_p,                                 # policy
+                ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte)), ctypes.POINTER(ctypes.c_size_t) # ciphertext, ctLen
+            ]
+            self._encrypt_buffer_sign_func.restype = ctypes.c_int
+
+        self._decrypt_buffer_verify_func = getattr(self._lib, 'hybrid_cpabe_decryptBuffer_and_verify', None)
+        if self._decrypt_buffer_verify_func:
+            self._decrypt_buffer_verify_func.argtypes = [
+                ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, # privateKey, skLen
+                ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, # publicKey, pkLen
+                ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, # ciphertext, ctLen
+                ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte)), ctypes.POINTER(ctypes.c_size_t) # plaintext, ptLen
+            ]
+            self._decrypt_buffer_verify_func.restype = ctypes.c_int
             
         # const char* getVersion(void)
         if hasattr(self._lib, 'getVersion'):
@@ -149,7 +176,11 @@ class CPABEService:
         
         # We must generate to disk first because C library expects path
         tmp_dir = tempfile.mkdtemp()
-        res = self._lib.setup(tmp_dir.encode('utf-8'))
+        from django.conf import settings
+        if getattr(settings, 'ENABLE_PQC_FEATURES', False) and getattr(self, '_setup_pqc_func', None):
+            res = self._setup_pqc_func(tmp_dir.encode('utf-8'))
+        else:
+            res = self._lib.setup(tmp_dir.encode('utf-8'))
         if res != 0:
             err_msg = self._lib.getErrorMessage(res).decode('utf-8')
             raise CPABEError(f"Setup failed ({res}): {err_msg}")
@@ -369,5 +400,74 @@ class CPABEService:
             
         return plaintext
 
+    def encrypt_buffer_and_sign(self, plaintext: bytes, policy: str) -> bytes:
+        self._ensure_keys_exist()
+        if not getattr(self, '_encrypt_buffer_sign_func', None):
+            raise CPABEError("PQC encryptBuffer_and_sign function not found in DLL")
+
+        import base64
+        pk_json = base64.b64decode(self.pk_data)
+        msk_json = base64.b64decode(self.msk_data)
+        
+        pk_ptr = ctypes.cast(ctypes.create_string_buffer(pk_json), ctypes.POINTER(ctypes.c_ubyte))
+        msk_ptr = ctypes.cast(ctypes.create_string_buffer(msk_json), ctypes.POINTER(ctypes.c_ubyte))
+        pt_ptr = ctypes.cast(ctypes.create_string_buffer(plaintext), ctypes.POINTER(ctypes.c_ubyte))
+        
+        ct_ptr = ctypes.POINTER(ctypes.c_ubyte)()
+        ct_len = ctypes.c_size_t(0)
+        
+        result = self._encrypt_buffer_sign_func(
+            pk_ptr, len(pk_json),
+            msk_ptr, len(msk_json),
+            pt_ptr, len(plaintext),
+            policy.encode('utf-8'),
+            ctypes.byref(ct_ptr), ctypes.byref(ct_len)
+        )
+
+        if result != 0:
+            err_msg = self._lib.getErrorMessage(result).decode('utf-8')
+            raise CPABEError(f"Buffer PQC encryption failed ({result}): {err_msg}")
+
+        ciphertext = bytes(ct_ptr[:ct_len.value])
+        if hasattr(self._lib, 'freeBuffer'):
+            self._lib.freeBuffer(ct_ptr)
+            
+        return ciphertext
+
+    def decrypt_buffer_and_verify(self, sk_data: bytes, ciphertext: bytes) -> bytes:
+        self._ensure_keys_exist()
+        if not getattr(self, '_decrypt_buffer_verify_func', None):
+            raise CPABEError("PQC decryptBuffer_and_verify function not found in DLL")
+
+        import base64
+        sk_json = base64.b64decode(sk_data)
+        pk_json = base64.b64decode(self.pk_data)
+
+        sk_ptr = ctypes.cast(ctypes.create_string_buffer(sk_json), ctypes.POINTER(ctypes.c_ubyte))
+        pk_ptr = ctypes.cast(ctypes.create_string_buffer(pk_json), ctypes.POINTER(ctypes.c_ubyte))
+        ct_ptr = ctypes.cast(ctypes.create_string_buffer(ciphertext), ctypes.POINTER(ctypes.c_ubyte))
+        
+        pt_ptr = ctypes.POINTER(ctypes.c_ubyte)()
+        pt_len = ctypes.c_size_t(0)
+        
+        result = self._decrypt_buffer_verify_func(
+            sk_ptr, len(sk_json),
+            pk_ptr, len(pk_json),
+            ct_ptr, len(ciphertext),
+            ctypes.byref(pt_ptr), ctypes.byref(pt_len)
+        )
+
+        if result != 0:
+            err_msg = self._lib.getErrorMessage(result).decode('utf-8')
+            raise CPABEError(f"Buffer PQC decryption failed ({result}): {err_msg}")
+
+        plaintext = bytes(pt_ptr[:pt_len.value])
+        if hasattr(self._lib, 'freeBuffer'):
+            self._lib.freeBuffer(pt_ptr)
+            
+        return plaintext
+
 # Singleton instance
 cpabe_service = CPABEService()
+
+

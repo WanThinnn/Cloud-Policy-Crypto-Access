@@ -693,6 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
  * Helper function to wait for user to unlock via Modal
  */
 async function requirePqcUnlock() {
+    if (window.ENABLE_PQC_FEATURES === false) return true;
     if (pqcManager.isUnlocked) return true;
     
     const hasSetup = await pqcManager.hasKeySetup();

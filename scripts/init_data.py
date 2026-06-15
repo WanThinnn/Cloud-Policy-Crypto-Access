@@ -16,12 +16,20 @@ def init():
     from django.conf import settings
     from crypto_access.services.vault_service import vault_service
     key_b64 = getattr(settings, 'FIELD_ENCRYPTION_KEY', None)
-    if key_b64:
-        existing = vault_service.get_secret('FIELD_ENCRYPTION_KEY')
-        if not existing:
-            print("Pushing FIELD_ENCRYPTION_KEY to Vault KV Engine...")
-            vault_service.put_secret('FIELD_ENCRYPTION_KEY', key_b64)
-            print("Successfully stored FIELD_ENCRYPTION_KEY in Vault.")
+    existing = vault_service.get_secret('FIELD_ENCRYPTION_KEY')
+    
+    if existing:
+        print("FIELD_ENCRYPTION_KEY already exists in Vault.")
+    elif key_b64:
+        print("Pushing FIELD_ENCRYPTION_KEY from settings to Vault KV Engine...")
+        vault_service.put_secret('FIELD_ENCRYPTION_KEY', key_b64)
+        print("Successfully stored FIELD_ENCRYPTION_KEY in Vault.")
+    else:
+        print("Generating a new random FIELD_ENCRYPTION_KEY and storing in Vault...")
+        import os, base64
+        new_key = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8')
+        vault_service.put_secret('FIELD_ENCRYPTION_KEY', new_key)
+        print("Successfully generated and stored FIELD_ENCRYPTION_KEY in Vault.")
 
     # Create Superuser if not exists
     admin_username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')

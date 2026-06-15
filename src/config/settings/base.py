@@ -81,6 +81,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'crypto_access.context_processors.pqc_settings',
             ],
         },
     },
@@ -191,6 +192,9 @@ SIMPLE_JWT = {
 # SQL DB Field Encryption Key
 FIELD_ENCRYPTION = os.environ.get('FIELD_ENCRYPTION', 'False').lower() in ('true', '1', 't')
 FIELD_ENCRYPTION_KEY = os.environ.get('FIELD_ENCRYPTION_KEY')
+
+# Global toggle for Post-Quantum Cryptography (ML-DSA) features
+ENABLE_PQC_FEATURES = os.environ.get('ENABLE_PQC_FEATURES', 'True').lower() in ('true', '1', 't')
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

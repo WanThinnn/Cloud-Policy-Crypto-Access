@@ -32,6 +32,7 @@
         }
       })();
     </script>
+    <script>window.ENABLE_PQC_FEATURES = {{ ENABLE_PQC_FEATURES|yesno:"true,false" }};</script>
     {% tailwind_css %} 
     {% block extra_css %}{% endblock %}
 </head>

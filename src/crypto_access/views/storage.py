@@ -173,7 +173,11 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     
             try:
                 # Decrypt passing the raw bytes directly (No TempFile)
-                decrypted_data = cpabe_service.decrypt_buffer(cached_key_data, file_data)
+                from django.conf import settings
+                if getattr(settings, 'ENABLE_PQC_FEATURES', False):
+                    decrypted_data = cpabe_service.decrypt_buffer_and_verify(cached_key_data, file_data)
+                else:
+                    decrypted_data = cpabe_service.decrypt_buffer(cached_key_data, file_data)
                 extra = {"user.name": user.username, "user.id": user.id} if user else {}
                 logger.info(f"CP-ABE Decryption successful for file: {file_path}", extra=extra)
                 # We DO NOT cache decrypted_data for security reasons.
@@ -460,7 +464,11 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             if cpabe_policy_str:
                 # Attempt to encrypt with CP-ABE before uploading
                 logger.info(f"Encrypting file with CP-ABE policy: {cpabe_policy_str}", extra={"user.name": request.user.username, "user.id": request.user.id})
-                file_data = cpabe_service.encrypt_buffer(file_data, cpabe_policy_str)
+                from django.conf import settings
+                if getattr(settings, 'ENABLE_PQC_FEATURES', False):
+                    file_data = cpabe_service.encrypt_buffer_and_sign(file_data, cpabe_policy_str)
+                else:
+                    file_data = cpabe_service.encrypt_buffer(file_data, cpabe_policy_str)
 
             upload_result = storage.upload_file(
                 bucket_name=bucket_name,
