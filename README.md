@@ -2,6 +2,19 @@
 
 A comprehensive enterprise-grade file storage system implementing **Hybrid Ciphertext-Policy Attribute-Based Encryption (CP-ABE)** integrated with **Supabase**, providing highly secure file management, multi-layer Attribute-Based Access Control (ABAC), and high-performance caching.
 
+## Post-Quantum Hybrid Security (Experimental Branch)
+
+This `main` branch utilizes our stable mathematical cryptography stack (**Hybrid CP-ABE AC17 + AES-256-GCM**). However, to future-proof the system against the "Harvest Now, Decrypt Later" threat model posed by Quantum Computers, we have developed a parallel branch integrating Post-Quantum Cryptography (PQC).
+
+Please switch to the **[`feature/cloud-policy-quantum-access`](https://github.com/WanThinnn/Cloud-Policy-Crypto-Access/tree/feature/cloud-policy-quantum-access)** branch to explore these experimental features:
+
+### 1. Hybrid PQC CP-ABE
+The `feature/cloud-policy-quantum-access` branch replaces the standard CP-ABE wrapper with a heavily modified PQC version that incorporates NIST-standardized algorithms, ensuring the cryptographic mechanisms are quantum-resistant.
+
+### 2. Post-Quantum Dual-Layer Signature (ML-DSA)
+To ensure long-term integrity, the experimental branch implements a **Dual-Layer Signature** mechanism. It signs the encrypted payloads with both classical signatures (for immediate compatibility) and **Post-Quantum ML-DSA (formerly Dilithium)** signatures. This ensures that even if classical signature schemes are broken by Shor's algorithm, the data remains mathematically authentic and tamper-proof.
+
+
 ## Project Overview
 
 This repository contains a robust Django-based implementation of a secure file sharing system. The system shifts away from traditional role-based security by enabling fine-grained access control mathematically bound to user attributes, providing zero-trust security for sensitive data.
