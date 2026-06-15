@@ -498,6 +498,7 @@ src/config/keys
 
 
 !src/lib/libhybrid-cp-abe.so
+!src/lib/libhybrid-pq-cp-abe.so
 
 LMS_Templates
 
