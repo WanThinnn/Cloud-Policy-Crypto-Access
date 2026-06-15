@@ -26,7 +26,7 @@ def init():
         print("Successfully stored FIELD_ENCRYPTION_KEY in Vault.")
     else:
         print("Generating a new random FIELD_ENCRYPTION_KEY and storing in Vault...")
-        import os, base64
+        import base64
         new_key = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8')
         vault_service.put_secret('FIELD_ENCRYPTION_KEY', new_key)
         print("Successfully generated and stored FIELD_ENCRYPTION_KEY in Vault.")

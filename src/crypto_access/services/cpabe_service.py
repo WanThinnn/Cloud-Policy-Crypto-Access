@@ -339,17 +339,17 @@ class CPABEService:
         if not self._encrypt_buffer_func:
             raise CPABEError("Buffer encryption function not found in library")
 
-        # Use memory public key data
-        pk_data = self.pk_data
+        import base64
+        pk_json = base64.b64decode(self.pk_data)
 
-        pk_ptr = ctypes.cast(ctypes.create_string_buffer(pk_data), ctypes.POINTER(ctypes.c_ubyte))
+        pk_ptr = ctypes.cast(ctypes.create_string_buffer(pk_json), ctypes.POINTER(ctypes.c_ubyte))
         pt_ptr = ctypes.cast(ctypes.create_string_buffer(plaintext), ctypes.POINTER(ctypes.c_ubyte))
         
         ct_ptr = ctypes.POINTER(ctypes.c_ubyte)()
         ct_len = ctypes.c_size_t(0)
 
         result = self._encrypt_buffer_func(
-            pk_ptr, len(pk_data),
+            pk_ptr, len(pk_json),
             pt_ptr, len(plaintext),
             policy.encode('utf-8'),
             ctypes.byref(ct_ptr), ctypes.byref(ct_len)
@@ -373,16 +373,17 @@ class CPABEService:
         if not self._decrypt_buffer_func:
             raise CPABEError("Buffer decryption function not found in library")
 
-        sk_data = private_key_data
+        import base64
+        sk_json = base64.b64decode(private_key_data)
 
-        sk_ptr = ctypes.cast(ctypes.create_string_buffer(sk_data), ctypes.POINTER(ctypes.c_ubyte))
+        sk_ptr = ctypes.cast(ctypes.create_string_buffer(sk_json), ctypes.POINTER(ctypes.c_ubyte))
         ct_ptr = ctypes.cast(ctypes.create_string_buffer(ciphertext), ctypes.POINTER(ctypes.c_ubyte))
         
         pt_ptr = ctypes.POINTER(ctypes.c_ubyte)()
         pt_len = ctypes.c_size_t(0)
 
         result = self._decrypt_buffer_func(
-            sk_ptr, len(sk_data),
+            sk_ptr, len(sk_json),
             ct_ptr, len(ciphertext),
             ctypes.byref(pt_ptr), ctypes.byref(pt_len)
         )

@@ -1769,7 +1769,11 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                         # Encrypt plaintext
                         logger.info(f"Encrypting file {physical_path} with policy: {policy_to_encrypt}")
                         try:
-                            enc_data = cpabe_service.encrypt_buffer(file_data, policy_to_encrypt)
+                            from django.conf import settings
+                            if getattr(settings, 'ENABLE_PQC_FEATURES', False):
+                                enc_data = cpabe_service.encrypt_buffer_and_sign(file_data, policy_to_encrypt)
+                            else:
+                                enc_data = cpabe_service.encrypt_buffer(file_data, policy_to_encrypt)
                             
                             storage.upload_file(
                                 bucket_name=bucket_name,
