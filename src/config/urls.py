@@ -29,6 +29,8 @@ urlpatterns = [
     path('api/auth/', include('crypto_access.urls.auth')),  # Auth API endpoints (/api/auth/login/)
     path('api/storage/', include('crypto_access.urls.storage')),  # Storage API
     path('api/admin/', include('crypto_access.urls.admin')),  # Admin API for ABAC management
+    path('api/pki/', include('crypto_access.urls.pki')),  # PKI Key Management API
+
 
 ]
 

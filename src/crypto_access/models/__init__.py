@@ -23,6 +23,9 @@ from .settings import SystemSetting
 # Session Management
 from .session import ActiveSession
 
+# PKI Management
+from .pki import UserPublicKey
+
 __all__ = [
     # Base
     'BaseModel',
@@ -31,6 +34,7 @@ __all__ = [
     # Storage
     'StorageBucket',
     'UploadedFile',
+    'FileVersion',
     'FileAccessPolicy',
     
     # ABAC Attributes
@@ -41,11 +45,14 @@ __all__ = [
     # ABAC Policies
     'AccessPolicy',
     
-    # Audit (BM12, BM13)
+    # Audit
     'AccessLog',
     'KeyRevocation',
     'SystemSetting',
     
     # Session
     'ActiveSession',
+
+    # PKI
+    'UserPublicKey',
 ]

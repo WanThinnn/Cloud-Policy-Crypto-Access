@@ -187,6 +187,55 @@
     </div>
     {% endblock %}
 
+    <!-- PQC UI Modals -->
+    <div id="pqc-setup-modal" tabindex="-1" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full bg-gray-900/50 backdrop-blur-sm">
+        <div class="relative p-4 w-full max-w-md max-h-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div class="relative bg-white rounded-lg shadow dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-700">
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                        E2EE Security Setup
+                    </h3>
+                </div>
+                <div class="p-4 md:p-5 space-y-4">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Your account needs a Post-Quantum Cryptography key to enable End-to-End Encryption for files. This will use your device's Passkey (Fingerprint/FaceID).</p>
+                    <button id="btn-pqc-setup" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
+                        Create Passkey & Setup E2EE
+                    </button>
+                    <p id="pqc-setup-status" class="text-xs text-center text-gray-500 hidden"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pqc-mnemonic-modal" tabindex="-1" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full bg-gray-900/50 backdrop-blur-sm">
+        <div class="relative p-4 w-full max-w-lg max-h-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div class="relative bg-white rounded-lg shadow dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div class="p-4 md:p-5 border-b rounded-t dark:border-gray-700">
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Save Your Recovery Phrase</h3>
+                    <p class="text-xs text-red-500 mt-1">If you lose your Passkey or device, these 24 words are the ONLY way to decrypt your files.</p>
+                </div>
+                <div class="p-4 md:p-5">
+                    <div id="mnemonic-container" class="grid grid-cols-4 gap-2 mb-4 bg-gray-100 dark:bg-gray-900 p-4 rounded-lg text-sm font-mono text-gray-800 dark:text-gray-200">
+                    </div>
+                    <button id="btn-mnemonic-saved" class="w-full text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5">I have saved these words securely</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pqc-unlock-modal" tabindex="-1" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full bg-gray-900/50 backdrop-blur-sm">
+        <div class="relative p-4 w-full max-w-sm max-h-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div class="relative bg-white rounded-lg shadow dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-center p-6">
+                <svg class="mx-auto mb-4 w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
+                <h3 class="mb-2 text-lg font-normal text-gray-500 dark:text-gray-400">Unlock E2EE Encryption</h3>
+                <p class="text-xs text-gray-400 mb-4">You need to unlock your PQC Key to continue. It will stay unlocked for 30 minutes of activity.</p>
+                <button id="btn-pqc-unlock" class="text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-2.5 w-full mb-2">Use Passkey</button>
+                <p id="pqc-unlock-status" class="text-xs text-center text-red-500 hidden"></p>
+                <button id="btn-pqc-cancel" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white text-sm w-full mt-2">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer id="main-footer" class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto transition-colors duration-200">
         <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center">
@@ -432,6 +481,10 @@
           });
       }
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha3/0.8.0/sha3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/argon2-browser/1.18.0/argon2-bundled.min.js"></script>
+    <script src="{% static 'js/lib/liboqs.js' %}"></script>
+    <script src="{% static 'js/pqc-manager.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

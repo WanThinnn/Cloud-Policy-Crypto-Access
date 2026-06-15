@@ -69,6 +69,9 @@ from .session_views import (
     sessions_page,
 )
 
+# Import PKI views
+from .pki import UserPublicKeyViewSet
+
 __all__ = [
     # Base views
     'index',

@@ -283,6 +283,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         description = serializer.validated_data.get('description', '')
         tags = serializer.validated_data.get('tags', [])
         is_public = serializer.validated_data.get('is_public', False)
+        user_signature = serializer.validated_data.get('user_signature', None)
+        
         
         # Metadata extraction
         custom_metadata = request.data.get('metadata', '{}')
@@ -510,13 +512,19 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 )
             
             # Create FileVersion
+            signer_key = None
+            if user_signature and request.user.is_authenticated:
+                signer_key = request.user.pqc_keys.filter(status='active').order_by('-created_at').first()
+
             FileVersion.objects.create(
                 file=uploaded_file,
                 version_number=version_number,
                 physical_path=physical_path,
                 file_size=file.size,
                 cpabe_policy=cpabe_policy_str,
-                uploaded_by=request.user if request.user.is_authenticated else None
+                uploaded_by=request.user if request.user.is_authenticated else None,
+                user_signature=user_signature,
+                signer_public_key=signer_key
             )
             
             if policy_obj:

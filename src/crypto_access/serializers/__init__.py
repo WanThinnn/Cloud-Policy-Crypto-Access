@@ -52,6 +52,9 @@ from .audit import (
     KeyRevocationSerializer,
 )
 
+# PKI serializers
+from .pki import UserPublicKeySerializer
+
 __all__ = [
     # Base
     'UserSerializer',

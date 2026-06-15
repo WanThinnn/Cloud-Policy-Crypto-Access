@@ -135,6 +135,21 @@ class FileVersion(models.Model):
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
+    # Dual-Layer Signatures (Frontend E2EE)
+    user_signature = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Base64 encoded ML-DSA-87 signature from the frontend"
+    )
+    signer_public_key = models.ForeignKey(
+        'crypto_access.UserPublicKey', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='signed_files',
+        help_text="Reference to the exact public key used to sign this version"
+    )
+    
     class Meta:
         db_table = 'file_versions'
         ordering = ['-version_number']

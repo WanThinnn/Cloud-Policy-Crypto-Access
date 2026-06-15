@@ -26,6 +26,8 @@ class UploadedFileSerializer(serializers.ModelSerializer):
     bucket_name = serializers.CharField(source='bucket.name', read_only=True)
     file_size_display = serializers.CharField(source='get_file_size_display', read_only=True)
     uploaded_by_username = serializers.CharField(source='uploaded_by.username', read_only=True)
+    user_signature = serializers.SerializerMethodField()
+    signer_public_key = serializers.SerializerMethodField()
     
     class Meta:
         model = UploadedFile
@@ -35,9 +37,19 @@ class UploadedFileSerializer(serializers.ModelSerializer):
             'public_url', 'signed_url', 'signed_url_expires_at',
             'uploaded_by', 'uploaded_by_username', 'description',
             'tags', 'metadata', 'uploaded_at', 'updated_at',
-            'is_deleted', 'deleted_at'
+            'is_deleted', 'deleted_at', 'user_signature', 'signer_public_key'
         ]
         read_only_fields = ['uploaded_at', 'updated_at']
+
+    def get_user_signature(self, obj):
+        latest = obj.get_latest_version()
+        return latest.user_signature if latest else None
+        
+    def get_signer_public_key(self, obj):
+        latest = obj.get_latest_version()
+        if latest and latest.signer_public_key:
+            return latest.signer_public_key.pqc_public_key
+        return None
 
 
 class FileUploadSerializer(serializers.Serializer):
@@ -49,6 +61,7 @@ class FileUploadSerializer(serializers.Serializer):
     tags = serializers.ListField(child=serializers.CharField(), required=False)
     is_public = serializers.BooleanField(default=False)
     policy_id = serializers.IntegerField(required=False, help_text="Policy ID for CP-ABE encryption")
+    user_signature = serializers.CharField(required=False, allow_blank=True, help_text="Base64 encoded ML-DSA-87 signature")
     
     # For creating new policy (optional)
     create_new_policy = serializers.BooleanField(default=False)
