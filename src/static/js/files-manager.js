@@ -1361,7 +1361,7 @@
                 userSignature = await pqcManager.signFile(fileBuffer);
             }
         } catch (err) {
-            showAlert('❌ E2EE Signature Failed: ' + err.message, 'error');
+            showAlert('E2EE Signature Failed: ' + err.message, 'error');
             return;
         }
 

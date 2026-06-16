@@ -81,11 +81,14 @@ class PqcManager {
      * We use a hardcoded salt because the PRF extension returns HMAC(salt, PRF_Secret).
      */
     async _getPrfKey(isRegistration = false) {
+        const username = localStorage.getItem('username') || 'unknown_user';
+        if (!username) {
+            throw new Error("User not logged in — cannot derive PRF key without username.");
+        }
         const challenge = crypto.getRandomValues(new Uint8Array(32));
         
         // The PRF extension requires exactly 32 bytes for the salt.
         // We hash a dynamic user-specific string with SHA3-256 to guarantee a deterministic 32-byte output.
-        const username = localStorage.getItem('username') || 'unknown_user';
         const saltString = `Cloud-Policy-PRF-Salt-${username}`;
         const paddedSalt = new Uint8Array(sha3_256.arrayBuffer(saltString));
         
@@ -350,6 +353,10 @@ class PqcManager {
         const prfKey = await this._getPrfKey(false);
         
         // 3. Decrypt SK
+        const username = localStorage.getItem('username');
+        console.log('[DEBUG] username from localStorage:', username);
+        console.log('[DEBUG] encrypted_pqc_sk_primary:', keyData.encrypted_pqc_sk_primary?.slice(0, 30));
+    
         const rawSkBuffer = await this._decryptKey(prfKey, keyData.encrypted_pqc_sk_primary);
         const rawSkArray = new Uint8Array(rawSkBuffer);
         
