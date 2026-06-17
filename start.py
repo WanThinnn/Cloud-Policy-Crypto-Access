@@ -190,9 +190,16 @@ def main(argv: list[str]) -> int:
             # print(f"{status_line}\n")
             run(c + ["up", "-d"])
             print(color_info(f"\n[+] Waiting for Vault to start and running Auto-Unseal..."))
-            try:
-                run(c + vault_cmd)
-            except subprocess.CalledProcessError:
+            import time
+            success = False
+            for _ in range(10):
+                try:
+                    run(c + vault_cmd)
+                    success = True
+                    break
+                except subprocess.CalledProcessError:
+                    time.sleep(2)
+            if not success:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
             print(color_info(f"\n[OK] Services started.\n"))
             print(color_info(f"{env_access_urls(use_ssl)}"))
@@ -204,9 +211,16 @@ def main(argv: list[str]) -> int:
             # print(f"{status_line}\n")
             run(c + ["restart"])
             print(color_info(f"\n[+] Waiting for Vault to start and running Auto-Unseal..."))
-            try:
-                run(c + vault_cmd)
-            except subprocess.CalledProcessError:
+            import time
+            success = False
+            for _ in range(10):
+                try:
+                    run(c + vault_cmd)
+                    success = True
+                    break
+                except subprocess.CalledProcessError:
+                    time.sleep(2)
+            if not success:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
             print("[OK] Services restarted.")
         elif cmd == "logs":

@@ -1754,6 +1754,16 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                             file_data = storage.download_file(bucket_name, physical_path, user=request.user)
                             policy_to_encrypt = policy.cpabe_policy
                         
+                old_physical_path = None
+                if needs_encryption_update:
+                    import time
+                    import os
+                    old_physical_path = physical_path
+                    base, ext = os.path.splitext(physical_path)
+                    base_no_v = base.split('_v')[0]
+                    new_physical_path = f"{base_no_v}_v{int(time.time())}{ext}"
+                    physical_path = new_physical_path
+
                 # Create the assignment
                 file_access_policy = FileAccessPolicy.objects.create(
                     uploaded_file=file_record,
@@ -1783,10 +1793,18 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                                 upsert=True,
                                 user=request.user
                             )
-                            # Update FileVersion cpabe_policy
+                            # Update FileVersion cpabe_policy and physical_path
                             if latest_version:
                                 latest_version.cpabe_policy = policy_to_encrypt
-                                latest_version.save(update_fields=['cpabe_policy'])
+                                if physical_path != old_physical_path:
+                                    latest_version.physical_path = physical_path
+                                    latest_version.save(update_fields=['cpabe_policy', 'physical_path'])
+                                    try:
+                                        storage.delete_file(bucket_name, old_physical_path)
+                                    except Exception as e:
+                                        logger.warning(f"Could not delete old file {old_physical_path}: {e}")
+                                else:
+                                    latest_version.save(update_fields=['cpabe_policy'])
                         except Exception as e:
                             logger.error(f"Failed to encrypt file data during policy assignment: {e}")
                             raise
@@ -1803,7 +1821,15 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                         )
                         if latest_version:
                             latest_version.cpabe_policy = ''
-                            latest_version.save(update_fields=['cpabe_policy'])
+                            if physical_path != old_physical_path:
+                                latest_version.physical_path = physical_path
+                                latest_version.save(update_fields=['cpabe_policy', 'physical_path'])
+                                try:
+                                    storage.delete_file(bucket_name, old_physical_path)
+                                except Exception as e:
+                                    logger.warning(f"Could not delete old file {old_physical_path}: {e}")
+                            else:
+                                latest_version.save(update_fields=['cpabe_policy'])
             except Exception as e:
                 logger.error(f"Failed to update encryption for file {file_path}: {e}")
                 return Response({'error': f"Failed to update encryption: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
