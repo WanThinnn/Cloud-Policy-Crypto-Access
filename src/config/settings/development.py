@@ -12,7 +12,11 @@ DEBUG = True
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-this-in-production')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
+env_hosts = os.environ.get('DJANGO_ALLOWED_HOSTS')
+if env_hosts:
+    ALLOWED_HOSTS = env_hosts.split(',')
+else:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', '*']
 
 
 # Database - Use Supabase PostgreSQL if DATABASE_URL is set, otherwise SQLite
