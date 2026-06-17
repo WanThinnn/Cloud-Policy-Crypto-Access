@@ -110,6 +110,45 @@
             </button>
           </form>
 
+          <!-- OTP Verification Form (Hidden by default) -->
+          <form id="otp-form" class="hidden space-y-5">
+            <div class="text-center mb-6">
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white">Device Verification</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                We noticed a login from an unrecognized device or IP. Please enter the 6-digit code sent to your email.
+              </p>
+            </div>
+            <div class="space-y-2">
+              <label for="otp-code" class="block text-sm font-semibold text-gray-800 dark:text-gray-200 text-center">
+                OTP Code
+              </label>
+              <input
+                type="text"
+                id="otp-code"
+                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-center text-3xl tracking-[0.5em] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                placeholder="------"
+                maxlength="6"
+                required
+                autocomplete="one-time-code"
+              />
+            </div>
+            <button
+              type="submit"
+              class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3.5 px-4 rounded-lg shadow-lg hover:shadow-xl focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800/50 transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              <span id="otp-button-text">Verify & Log in</span>
+              <svg id="otp-spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </button>
+            <div class="text-center mt-4">
+              <button type="button" id="back-to-login" class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
+                &larr; Back to login
+              </button>
+            </div>
+          </form>
+
           <!-- Divider -->
           <div class="relative my-6">
             <div class="absolute inset-0 flex items-center">
@@ -142,6 +181,14 @@
     const spinner = document.getElementById('spinner');
     const togglePassword = document.getElementById('toggle-password');
     const passwordInput = document.getElementById('password');
+    
+    // OTP UI elements
+    const otpForm = document.getElementById('otp-form');
+    const otpCodeInput = document.getElementById('otp-code');
+    const otpButtonText = document.getElementById('otp-button-text');
+    const otpSpinner = document.getElementById('otp-spinner');
+    const backToLoginBtn = document.getElementById('back-to-login');
+    let tempToken = null;
 
     // Toggle password visibility
     togglePassword.addEventListener('click', () => {
@@ -190,17 +237,24 @@
             const data = await response.json();
 
             if (response.ok) {
-                // Store tokens
-                // Tokens are now stored in HttpOnly cookies by the server
-                // Refresh token is stored in HttpOnly cookie
-                localStorage.setItem('username', data.user.username);
-                localStorage.setItem('user_id', data.user.id);
-                
-                showAlert('Login successful! Redirecting...', 'success');
-                
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1500);
+                if (data.requires_otp) {
+                    // Switch to OTP form
+                    tempToken = data.temp_token;
+                    form.classList.add('hidden');
+                    otpForm.classList.remove('hidden');
+                    showAlert('Please enter the OTP sent to your email', 'success');
+                    otpCodeInput.focus();
+                } else {
+                    // Normal login success
+                    localStorage.setItem('username', data.user.username);
+                    localStorage.setItem('user_id', data.user.id);
+                    
+                    showAlert('Login successful! Redirecting...', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                }
             } else {
                 showAlert(data.error || data.detail || 'Login failed. Please check your credentials.');
             }
@@ -211,6 +265,64 @@
             submitButton.disabled = false;
             buttonText.textContent = 'Log in';
             spinner.classList.add('hidden');
+        }
+    });
+
+    // Handle back to login
+    backToLoginBtn.addEventListener('click', () => {
+        otpForm.classList.add('hidden');
+        form.classList.remove('hidden');
+        otpCodeInput.value = '';
+        tempToken = null;
+    });
+
+    // Handle OTP form submission
+    otpForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitButton = otpForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        otpButtonText.textContent = 'Verifying...';
+        otpSpinner.classList.remove('hidden');
+        
+        const formData = {
+            temp_token: tempToken,
+            otp: otpCodeInput.value
+        };
+
+        try {
+            const response = await fetch('/api/auth/verify-otp/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Verify success
+                localStorage.setItem('username', data.user.username);
+                localStorage.setItem('user_id', data.user.id);
+                
+                showAlert('Verification successful! Redirecting...', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+            } else {
+                showAlert(data.error || data.detail || 'Verification failed. Please check the OTP.');
+                otpCodeInput.value = '';
+                otpCodeInput.focus();
+            }
+        } catch (error) {
+            console.error('Verify error:', error);
+            showAlert('An error occurred. Please try again.');
+        } finally {
+            submitButton.disabled = false;
+            otpButtonText.textContent = 'Verify & Log in';
+            otpSpinner.classList.add('hidden');
         }
     });
 

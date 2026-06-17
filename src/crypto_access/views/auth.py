@@ -247,11 +247,11 @@ def login(request):
                         except Exception as e:
                             logger.error(f"Failed to send OTP email: {e}")
                         
-                        AccessLog.objects.create(
+                        AccessLog.log_access(
                             user=user,
                             resource_type='account',
                             action='login',
-                            result='warning',
+                            result='error',  # using 'error' or 'deny' since 'warning' is not in RESULT_CHOICES
                             error_message=f'Impossible Travel detected. OTP requested for IP: {ip_address}'
                         )
                         return Response({
@@ -330,7 +330,7 @@ def verify_otp(request):
         cache.delete(f"otp_{temp_token}")
         
         # Log successful verify
-        AccessLog.objects.create(
+        AccessLog.log_access(
             user=user,
             resource_type='account',
             action='verify_otp',
