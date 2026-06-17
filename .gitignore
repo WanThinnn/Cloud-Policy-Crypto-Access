@@ -505,7 +505,7 @@ LMS_Templates
 # Ignore all sensitive files inside config/
 config/keys/*
 config/certs/*
-
+config/cloudflare/*
 # Keep the directory structure, READMEs, and dev certificates
 !config/keys/README.md
 !config/certs/README.md

@@ -128,7 +128,6 @@ def main(argv: list[str]) -> int:
     parser.add_argument('-h', '--help', action='store_true', help='Show this help message and exit')
     parser.add_argument("--prod", action="store_true", help="Use production compose file")
     parser.add_argument("--dev", action="store_true", help="Use development compose file (default)")
-    parser.add_argument("--tunnel", action="store_true", help="Enable Cloudflare tunnel profile")
     parser.add_argument("command", nargs="?", help="Command to run")
     parser.add_argument("rest", nargs=argparse.REMAINDER, help="Extra args for manage.py commands")
     args = parser.parse_args(argv)
@@ -149,14 +148,7 @@ def main(argv: list[str]) -> int:
     use_ssl = cert_path.exists() and key_path.exists()
     compose_files = [compose_file] if use_ssl else [compose_file, NO_SSL_OVERRIDE]
     use_tunnel = False
-    tunnel_note = ""
-    if args.tunnel:
-        use_tunnel, tunnel_note = should_enable_tunnel(env_vars)
-    elif env_vars.get("CLOUDFLARE_TUNNEL_ID") or env_vars.get("TUNNEL_DOMAIN"):
-        tunnel_note = "Cloudflare tunnel disabled (pass --tunnel to enable)."
 
-    if tunnel_note:
-        print(color_warning(tunnel_note))
 
     c = compose_cmd(compose_files, use_ssl, use_tunnel)
     environment = "prod" if args.prod else "dev"
