@@ -44,7 +44,7 @@ def init():
 
     # Create Superuser if not exists
     admin_username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')
-    admin_email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@cyberfortress.local')
+    admin_email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.local')
     admin_password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'admin123')
 
     if not User.objects.filter(username=admin_username).exists():

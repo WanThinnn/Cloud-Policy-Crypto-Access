@@ -250,7 +250,7 @@ def main(argv: list[str]) -> int:
             run(add_manage_args(c + ["exec", "web", "python", "manage.py", "init_settings"], extra))
         elif cmd == "createsuperuser":
             # print(f"{status_line}\n")
-            run(c + ["exec", "web", "python", "manage.py", "createsuperuser"])
+            run(c + ["exec", "web", "python", "manage.py", "create_super_admin"])
         elif cmd == "shell":
             # print(f"{status_line}\n")
             run(c + ["exec", "web", "python", "manage.py", "shell"])
@@ -289,7 +289,7 @@ def main(argv: list[str]) -> int:
             print("  migrate         Run database migrations (passes extra args)")
             print("  initsettings    Initialize dynamic system settings")
             print("  initdata        Initialize sample data")
-            print("  createsuperuser Create Django superuser")
+            print("  createsuperuser Create super_admin user (interactive)")
             print("  shell           Open Django shell")
             print("  collectstatic   Collect static files")
             print("  clean           Remove containers and volumes, prune system")
