@@ -452,6 +452,8 @@ class PqcManager {
         const msgLen = msgArray.length;
         
         const msgPtr = this.module._malloc(msgLen);
+        if (msgPtr === 0) throw new Error("WASM Memory Allocation Failed! File may be too large.");
+        
         this.module.HEAPU8.set(msgArray, msgPtr);
         
         const sigPtr = this.module._malloc(this.SIG_LEN);
@@ -466,11 +468,17 @@ class PqcManager {
             throw new Error("WASM Signature generation failed");
         }
         
-        // Read actual signature length
-        const actualSigLen = new Uint32Array(this.module.HEAPU8.buffer, sigLenPtr, 1)[0];
+        // Read actual signature length safely (avoiding alignment issues with Uint32Array)
+        const actualSigLen = this.module.HEAP32[sigLenPtr >> 2];
         const sigBytes = new Uint8Array(this.module.HEAPU8.buffer, sigPtr, actualSigLen);
         
-        const sigBase64 = btoa(String.fromCharCode(...sigBytes));
+        // Safe Base64 encoding: Spread operator (...) on a 4627-byte array WILL crash WebKit/Safari 
+        // with "Maximum call stack size exceeded". Loop is much safer.
+        let binary = '';
+        for (let i = 0; i < sigBytes.length; i++) {
+            binary += String.fromCharCode(sigBytes[i]);
+        }
+        const sigBase64 = btoa(binary);
         
         this.module._free(msgPtr);
         this.module._free(sigPtr);
@@ -492,6 +500,8 @@ class PqcManager {
         const pkArray = Uint8Array.from(atob(pkBase64), c => c.charCodeAt(0));
         
         const msgPtr = this.module._malloc(msgLen);
+        if (msgPtr === 0) throw new Error("WASM Memory Allocation Failed! File may be too large.");
+        
         this.module.HEAPU8.set(msgArray, msgPtr);
         
         const sigPtr = this.module._malloc(sigArray.length);

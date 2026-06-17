@@ -27,6 +27,8 @@ class CPABEService:
         self.keys_dir = os.path.join(settings.BASE_DIR, 'config', 'keys')
         self.msk_path = os.path.join(self.keys_dir, 'cpabe_msk.key')
         self.pk_path = os.path.join(self.keys_dir, 'cpabe_pk.key')
+        self.pqc_sk_path = os.path.join(self.keys_dir, 'pqc_sk.key')
+        self.pqc_pk_path = os.path.join(self.keys_dir, 'pqc_pk.key')
         
         # Load DLL
         try:
@@ -123,16 +125,27 @@ class CPABEService:
     def _ensure_keys_exist(self):
         """Load CP-ABE keys from Vault (primary) or local backup (fallback), or generate new ones.
         After loading/generating, always saves a local backup for disaster recovery."""
+        from django.conf import settings
+        is_pqc_enabled = getattr(settings, 'ENABLE_PQC_FEATURES', False) and bool(getattr(self, '_setup_pqc_func', None))
+        
         backup_dir = os.environ.get('KEYS_DIR', self.keys_dir)
         backup_msk = os.path.join(backup_dir, 'cpabe_msk.key')
         backup_pk = os.path.join(backup_dir, 'cpabe_pk.key')
+        backup_pqc_sk = os.path.join(backup_dir, 'pqc_sk.key')
+        backup_pqc_pk = os.path.join(backup_dir, 'pqc_pk.key')
         
         # 1. Fetch from Vault
         cpabe_msk_b64 = vault_service.get_secret('CPABE_MSK')
         cpabe_pk_b64 = vault_service.get_secret('CPABE_PK')
+        pqc_sk_b64 = vault_service.get_secret('PQC_SK')
+        pqc_pk_b64 = vault_service.get_secret('PQC_PK')
         
         has_vault_keys = cpabe_msk_b64 and cpabe_pk_b64
         has_backup_keys = os.path.exists(backup_msk) and os.path.exists(backup_pk)
+        
+        if is_pqc_enabled:
+            has_vault_keys = has_vault_keys and pqc_sk_b64 and pqc_pk_b64
+            has_backup_keys = has_backup_keys and os.path.exists(backup_pqc_sk) and os.path.exists(backup_pqc_pk)
 
         # Split-brain check: Mismatch between Vault and Local Backup
         if has_vault_keys and has_backup_keys:
@@ -148,6 +161,9 @@ class CPABEService:
             logger.info("CP-ABE keys fetched from Vault (matches local backup).")
             self.msk_data = vault_msk
             self.pk_data = base64.b64decode(cpabe_pk_b64)
+            if is_pqc_enabled:
+                self.pqc_sk_data = base64.b64decode(pqc_sk_b64)
+                self.pqc_pk_data = base64.b64decode(pqc_pk_b64)
             return
 
         # Vault has keys, but no backup exists
@@ -155,7 +171,10 @@ class CPABEService:
             logger.info("CP-ABE keys fetched from Vault. Saving new local backup...")
             self.msk_data = base64.b64decode(cpabe_msk_b64)
             self.pk_data = base64.b64decode(cpabe_pk_b64)
-            self._save_backup(backup_dir, backup_msk, backup_pk)
+            if is_pqc_enabled:
+                self.pqc_sk_data = base64.b64decode(pqc_sk_b64)
+                self.pqc_pk_data = base64.b64decode(pqc_pk_b64)
+            self._save_backup(backup_dir, backup_msk, backup_pk, backup_pqc_sk, backup_pqc_pk, is_pqc_enabled)
             return
 
         # Backup has keys, but Vault is empty
@@ -165,22 +184,32 @@ class CPABEService:
                 self.msk_data = f.read()
             with open(backup_pk, 'rb') as f:
                 self.pk_data = f.read()
-            # Re-push to Vault to restore
             vault_service.put_secret('CPABE_MSK', base64.b64encode(self.msk_data).decode('utf-8'))
             vault_service.put_secret('CPABE_PK', base64.b64encode(self.pk_data).decode('utf-8'))
+            
+            if is_pqc_enabled:
+                with open(backup_pqc_sk, 'rb') as f:
+                    self.pqc_sk_data = f.read()
+                with open(backup_pqc_pk, 'rb') as f:
+                    self.pqc_pk_data = f.read()
+                vault_service.put_secret('PQC_SK', base64.b64encode(self.pqc_sk_data).decode('utf-8'))
+                vault_service.put_secret('PQC_PK', base64.b64encode(self.pqc_pk_data).decode('utf-8'))
+                
             logger.info("CP-ABE keys restored to Vault from local backup.")
             return
 
-        # 3. Generate new keys (first-time setup)
+        # 3. Generate new keys (first-time setup or overwrite requested due to missing keys)
         logger.info("Generating CP-ABE Master and Public keys...")
         
         # We must generate to disk first because C library expects path
         tmp_dir = tempfile.mkdtemp()
-        from django.conf import settings
-        if getattr(settings, 'ENABLE_PQC_FEATURES', False) and getattr(self, '_setup_pqc_func', None):
+        
+        if is_pqc_enabled:
+            logger.info("PQC features enabled. Generating ML-DSA keys along with CP-ABE keys...")
             res = self._setup_pqc_func(tmp_dir.encode('utf-8'))
         else:
             res = self._lib.setup(tmp_dir.encode('utf-8'))
+            
         if res != 0:
             err_msg = self._lib.getErrorMessage(res).decode('utf-8')
             raise CPABEError(f"Setup failed ({res}): {err_msg}")
@@ -196,16 +225,28 @@ class CPABEService:
         logger.info("Pushing CP-ABE keys to Vault...")
         vault_service.put_secret('CPABE_MSK', base64.b64encode(self.msk_data).decode('utf-8'))
         vault_service.put_secret('CPABE_PK', base64.b64encode(self.pk_data).decode('utf-8'))
-        
-        # Save local backup
-        self._save_backup(backup_dir, backup_msk, backup_pk)
-        
-        # Clean up temp files
         os.remove(msk_path)
         os.remove(pk_path)
+        
+        if is_pqc_enabled:
+            pqc_sk_tmp_path = os.path.join(tmp_dir, 'pqc_sk.key')
+            pqc_pk_tmp_path = os.path.join(tmp_dir, 'pqc_pk.key')
+            with open(pqc_sk_tmp_path, 'rb') as f:
+                self.pqc_sk_data = f.read()
+            with open(pqc_pk_tmp_path, 'rb') as f:
+                self.pqc_pk_data = f.read()
+            vault_service.put_secret('PQC_SK', base64.b64encode(self.pqc_sk_data).decode('utf-8'))
+            vault_service.put_secret('PQC_PK', base64.b64encode(self.pqc_pk_data).decode('utf-8'))
+            os.remove(pqc_sk_tmp_path)
+            os.remove(pqc_pk_tmp_path)
+        
+        # Save local backup
+        self._save_backup(backup_dir, backup_msk, backup_pk, backup_pqc_sk, backup_pqc_pk, is_pqc_enabled)
+        
+        # Clean up temp files
         os.rmdir(tmp_dir)
-    
-    def _save_backup(self, backup_dir, backup_msk, backup_pk):
+
+    def _save_backup(self, backup_dir, backup_msk, backup_pk, backup_pqc_sk, backup_pqc_pk, is_pqc_enabled):
         """Save CP-ABE keys to local backup directory for disaster recovery."""
         try:
             os.makedirs(backup_dir, exist_ok=True)
@@ -213,6 +254,13 @@ class CPABEService:
                 f.write(self.msk_data)
             with open(backup_pk, 'wb') as f:
                 f.write(self.pk_data)
+                
+            if is_pqc_enabled:
+                with open(backup_pqc_sk, 'wb') as f:
+                    f.write(self.pqc_sk_data)
+                with open(backup_pqc_pk, 'wb') as f:
+                    f.write(self.pqc_pk_data)
+                    
             logger.info(f"CP-ABE keys backed up to {backup_dir}")
         except Exception as e:
             logger.warning(f"Could not save CP-ABE key backup: {e}")
@@ -408,10 +456,10 @@ class CPABEService:
 
         import base64
         pk_json = base64.b64decode(self.pk_data)
-        msk_json = base64.b64decode(self.msk_data)
+        pqc_sk_json = base64.b64decode(self.pqc_sk_data)
         
         pk_ptr = ctypes.cast(ctypes.create_string_buffer(pk_json), ctypes.POINTER(ctypes.c_ubyte))
-        msk_ptr = ctypes.cast(ctypes.create_string_buffer(msk_json), ctypes.POINTER(ctypes.c_ubyte))
+        pqc_sk_ptr = ctypes.cast(ctypes.create_string_buffer(pqc_sk_json), ctypes.POINTER(ctypes.c_ubyte))
         pt_ptr = ctypes.cast(ctypes.create_string_buffer(plaintext), ctypes.POINTER(ctypes.c_ubyte))
         
         ct_ptr = ctypes.POINTER(ctypes.c_ubyte)()
@@ -419,7 +467,7 @@ class CPABEService:
         
         result = self._encrypt_buffer_sign_func(
             pk_ptr, len(pk_json),
-            msk_ptr, len(msk_json),
+            pqc_sk_ptr, len(pqc_sk_json),
             pt_ptr, len(plaintext),
             policy.encode('utf-8'),
             ctypes.byref(ct_ptr), ctypes.byref(ct_len)
@@ -442,10 +490,10 @@ class CPABEService:
 
         import base64
         sk_json = base64.b64decode(sk_data)
-        pk_json = base64.b64decode(self.pk_data)
+        pqc_pk_json = base64.b64decode(self.pqc_pk_data)
 
         sk_ptr = ctypes.cast(ctypes.create_string_buffer(sk_json), ctypes.POINTER(ctypes.c_ubyte))
-        pk_ptr = ctypes.cast(ctypes.create_string_buffer(pk_json), ctypes.POINTER(ctypes.c_ubyte))
+        pqc_pk_ptr = ctypes.cast(ctypes.create_string_buffer(pqc_pk_json), ctypes.POINTER(ctypes.c_ubyte))
         ct_ptr = ctypes.cast(ctypes.create_string_buffer(ciphertext), ctypes.POINTER(ctypes.c_ubyte))
         
         pt_ptr = ctypes.POINTER(ctypes.c_ubyte)()
@@ -453,7 +501,7 @@ class CPABEService:
         
         result = self._decrypt_buffer_verify_func(
             sk_ptr, len(sk_json),
-            pk_ptr, len(pk_json),
+            pqc_pk_ptr, len(pqc_pk_json),
             ct_ptr, len(ciphertext),
             ctypes.byref(pt_ptr), ctypes.byref(pt_len)
         )

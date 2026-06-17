@@ -18,10 +18,14 @@ server {
     listen [::]:443 ssl;
     server_name ${DOMAIN_NAME} localhost 127.0.0.1;
 
-    # SSL certificates (ECC P-384 for authentication)
-    # PQC Key Exchange (X25519MLKEM768) is enabled automatically by OQS
+    # PQC Certificate (ML-DSA) priority
+    ssl_certificate /opt/nginx/certs/${PQC_SSL_CERT_FILE};
+    ssl_certificate_key /opt/nginx/certs/${PQC_SSL_KEY_FILE};
+
+    # Classical Certificate (ECC P-384 fallback)
     ssl_certificate /opt/nginx/certs/${SSL_CERT_FILE};
     ssl_certificate_key /opt/nginx/certs/${SSL_KEY_FILE};
+    
     ssl_trusted_certificate /opt/nginx/certs/${SSL_CA_FILE};
 
     # TLS 1.3 only (required for PQC Key Exchange)

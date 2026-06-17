@@ -112,6 +112,8 @@ services:
       - DOMAIN_NAME=${DOMAIN_NAME:-cloudsafe.cyberfortress.local}
       - SSL_CERT_FILE=${SSL_CERT_FILE:-_.cyberfortress.local.crt}
       - SSL_KEY_FILE=${SSL_KEY_FILE:-_.cyberfortress.local.key}
+      - PQC_SSL_CERT_FILE=${PQC_SSL_CERT_FILE:-_.pq-cyberfortress.local.crt}
+      - PQC_SSL_KEY_FILE=${PQC_SSL_KEY_FILE:-_.pq-cyberfortress.local.key}
       - SSL_CA_FILE=${SSL_CA_FILE:-CyberFortress-RootCA.crt}
     ports:
       - "${NGINX_HTTP_PORT:-80}:80"
