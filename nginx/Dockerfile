@@ -14,11 +14,12 @@ RUN apk add --no-cache gettext
 # Expose ports
 EXPOSE 80 443
 
-# Default environment variables (PQC cert names)
-ENV DOMAIN_NAME=cloudsafe.cyberfortress.local
-ENV PQC_SSL_CERT_FILE=_.pq-cyberfortress.local.crt
-ENV PQC_SSL_KEY_FILE=_.pq-cyberfortress.local.key
-ENV PQC_SSL_CA_FILE=pq-CyberFortress-RootCA.crt
+# Environment variables (PQC cert names) are now passed via docker-compose.yml / .env
+# rather than hardcoded here.
+ENV DOMAIN_NAME=${DOMAIN_NAME}
+ENV PQC_SSL_CERT_FILE=${PQC_SSL_CERT_FILE}
+ENV PQC_SSL_KEY_FILE=${PQC_SSL_KEY_FILE}
+ENV PQC_SSL_CA_FILE=${PQC_SSL_CA_FILE}
 
 # Use envsubst to replace environment variables in config template at startup
 # Then start nginx with the OQS-specific binary path
