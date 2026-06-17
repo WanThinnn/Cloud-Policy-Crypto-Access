@@ -141,8 +141,8 @@ def main(argv: list[str]) -> int:
     env_vars = load_env_file(ENV_FILE)
     
     # Get SSL certificate filenames from .env or use defaults
-    ssl_cert_file = env_vars.get("SSL_CERT_FILE", DEFAULT_SSL_CERT)
-    ssl_key_file = env_vars.get("SSL_KEY_FILE", DEFAULT_SSL_KEY)
+    ssl_cert_file = env_vars.get("SSL_CERT_FILE", env_vars.get("PQC_SSL_CERT_FILE", DEFAULT_SSL_CERT))
+    ssl_key_file = env_vars.get("SSL_KEY_FILE", env_vars.get("PQC_SSL_KEY_FILE", DEFAULT_SSL_KEY))
     cert_path = CERTS_DIR / ssl_cert_file
     key_path = CERTS_DIR / ssl_key_file
     

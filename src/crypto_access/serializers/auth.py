@@ -143,3 +143,9 @@ class UserDetailSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'profile'):
             return UserProfileSerializer(obj.profile).data
         return None
+
+
+class VerifyOTPSerializer(serializers.Serializer):
+    """Serializer for verifying OTP during login"""
+    temp_token = serializers.CharField(required=True)
+    otp = serializers.CharField(required=True, min_length=6, max_length=6)

@@ -13,6 +13,7 @@ from .auth import (
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
     UserDetailSerializer,
+    VerifyOTPSerializer,
 )
 
 # Storage serializers
@@ -67,6 +68,7 @@ __all__ = [
     'PasswordResetRequestSerializer',
     'PasswordResetConfirmSerializer',
     'UserDetailSerializer',
+    'VerifyOTPSerializer',
     
     # Storage
     'StorageBucketSerializer',

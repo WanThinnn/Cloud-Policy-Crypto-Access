@@ -19,6 +19,7 @@ urlpatterns = [
     # Template pages: /auth/login/, /auth/register/
     # API endpoints: /api/auth/login/, /api/auth/register/
     path('login/', auth.login, name='login'),
+    path('verify-otp/', auth.verify_otp, name='verify_otp'),
     path('register/', auth.register, name='register'),
     path('logout/', auth.logout, name='logout'),
     

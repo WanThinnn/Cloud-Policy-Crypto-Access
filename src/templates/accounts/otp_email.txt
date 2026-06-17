@@ -1,0 +1,18 @@
+Hi {{ user.first_name|default:user.username }},
+
+We detected a login attempt from a new IP address or device for the account {{ user.username }}. For your security, please verify this attempt by entering the code below.
+
+Your Verification Code:
+{{ otp_code }}
+
+Login Details:
+- IP Address: {{ ip_address }}
+- Browser: {{ browser }}
+- Operating System: {{ os_name }}
+
+Important notes:
+- This code will expire in 5 minutes.
+- If you did not attempt to log in, please ignore this email and consider changing your password immediately.
+
+Best regards,
+Cloud Policy Crypto Access

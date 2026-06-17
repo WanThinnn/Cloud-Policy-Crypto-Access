@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Device Verification</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #4F46E5;
+        }
+        .header h1 {
+            color: #4F46E5;
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .otp-container {
+            text-align: center;
+            margin: 30px 0;
+            background-color: #f3f4f6;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px dashed #4F46E5;
+        }
+        .otp-code {
+            font-size: 36px;
+            font-weight: bold;
+            letter-spacing: 5px;
+            color: #4F46E5;
+            margin: 0;
+            font-family: monospace;
+        }
+        .device-info {
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-size: 14px;
+            border-left: 4px solid #3b82f6;
+        }
+        .warning-box {
+            background-color: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .warning-box strong {
+            color: #B45309;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Cloud Policy Crypto Access</h1>
+        </div>
+        
+        <div class="content">
+            <p class="greeting">Hi <strong>{{ user.first_name|default:user.username }}</strong>,</p>
+            
+            <p>We detected a login attempt from a new IP address or device for the account <strong>{{ user.username }}</strong>. For your security, please verify this attempt by entering the code below.</p>
+            
+            <div class="otp-container">
+                <p style="margin-top: 0; color: #6b7280; font-size: 14px;">Your Verification Code</p>
+                <p class="otp-code">{{ otp_code }}</p>
+            </div>
+            
+            <div class="device-info">
+                <h4 style="margin-top: 0; margin-bottom: 10px;">Login Details:</h4>
+                <ul style="margin: 0; padding-left: 20px; color: #475569;">
+                    <li><strong>IP Address:</strong> {{ ip_address }}</li>
+                    <li><strong>Browser:</strong> {{ browser }}</li>
+                    <li><strong>Operating System:</strong> {{ os_name }}</li>
+                </ul>
+            </div>
+            
+            <div class="warning-box">
+                <strong>Important notes:</strong>
+                <ul>
+                    <li>This code will <strong>expire in 5 minutes</strong>.</li>
+                    <li>If you <strong>did not attempt</strong> to log in, please ignore this email and consider changing your password immediately.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Best regards,<br><strong>Cloud Policy Crypto Access</strong></p>
+        </div>
+    </div>
+</body>
+</html>

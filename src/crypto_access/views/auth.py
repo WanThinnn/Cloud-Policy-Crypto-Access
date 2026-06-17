@@ -33,6 +33,7 @@ from ..serializers import (
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
     UserDetailSerializer,
+    VerifyOTPSerializer,
 )
 from ..models import UserProfile, ActiveSession, AccessLog
 
@@ -206,20 +207,58 @@ def login(request):
                 if ip_address != last_session.ip_address:
                     time_diff = timezone.now() - last_session.last_active
                     if time_diff.total_seconds() < (threshold_minutes * 60):
-                        if hasattr(user, 'profile'):
-                            user.profile.account_status = 'suspended'
-                            user.profile.save()
+                        # Generate OTP
+                        otp_code = f"{secrets.randbelow(1000000):06d}"
+                        temp_token = str(uuid.uuid4())
+                        
+                        cache.set(f"otp_{temp_token}", {
+                            "user_id": user.id,
+                            "otp": otp_code,
+                            "ip_address": ip_address,
+                            "user_agent_str": user_agent_str,
+                            "browser": browser,
+                            "os_name": os_name
+                        }, timeout=300)
+                        
+                        # Send Email
+                        from django.core.mail import EmailMultiAlternatives
+                        from django.template.loader import render_to_string
+                        
+                        context = {
+                            'user': user,
+                            'otp_code': otp_code,
+                            'ip_address': ip_address,
+                            'browser': browser,
+                            'os_name': os_name,
+                        }
+                        
+                        try:
+                            html_content = render_to_string('accounts/otp_email.html', context)
+                            text_content = render_to_string('accounts/otp_email.txt', context)
+                            
+                            msg = EmailMultiAlternatives(
+                                subject="New Device Login Verification - OTP Code",
+                                body=text_content,
+                                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@cloudsafe.local'),
+                                to=[user.email]
+                            )
+                            msg.attach_alternative(html_content, "text/html")
+                            msg.send(fail_silently=True)
+                        except Exception as e:
+                            logger.error(f"Failed to send OTP email: {e}")
                         
                         AccessLog.objects.create(
                             user=user,
                             resource_type='account',
                             action='login',
-                            result='deny',
-                            error_message='Impossible Travel detected. Account suspended.'
+                            result='warning',
+                            error_message=f'Impossible Travel detected. OTP requested for IP: {ip_address}'
                         )
                         return Response({
-                            'error': 'Suspicious login activity detected (Impossible Travel). Account has been locked for your security.'
-                        }, status=status.HTTP_403_FORBIDDEN)
+                            'message': 'Login attempt from new IP address. Please check your email for the OTP code.',
+                            'requires_otp': True,
+                            'temp_token': temp_token
+                        }, status=status.HTTP_202_ACCEPTED)
         
         # Extract JTI from token to use as session key
         try:
@@ -255,6 +294,89 @@ def login(request):
         
         return response
     
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([AuthRateThrottle])
+def verify_otp(request):
+    """
+    Verify OTP for Impossible Travel login
+    
+    POST /api/auth/verify-otp/
+    Body:
+    {
+        "temp_token": "uuid-here",
+        "otp": "123456"
+    }
+    """
+    serializer = VerifyOTPSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        from django.core.cache import cache
+        temp_token = serializer.validated_data['temp_token']
+        otp = serializer.validated_data['otp']
+        
+        cached_data = cache.get(f"otp_{temp_token}")
+        
+        if not cached_data or cached_data['otp'] != otp:
+            return Response({
+                'error': 'Invalid or expired OTP code.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Valid OTP -> Process Login
+        user = User.objects.get(id=cached_data['user_id'])
+        cache.delete(f"otp_{temp_token}")
+        
+        # Log successful verify
+        AccessLog.objects.create(
+            user=user,
+            resource_type='account',
+            action='verify_otp',
+            result='allow',
+            error_message=f"OTP verification successful for IP: {cached_data['ip_address']}"
+        )
+        
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        
+        # Session key
+        try:
+            access_obj = AccessToken(access_token)
+            session_key = access_obj.get('jti', str(uuid.uuid4()))
+        except Exception:
+            session_key = str(uuid.uuid4())
+            
+        ActiveSession.objects.create(
+            user=user,
+            session_key=session_key,
+            ip_address=cached_data['ip_address'],
+            browser=cached_data['browser'],
+            os_name=cached_data['os_name'],
+            device_name=cached_data['user_agent_str'][:200]
+        )
+        
+        response = Response({
+            'message': 'Login successful',
+            'user': UserDetailSerializer(user).data
+        })
+        
+        # Set HttpOnly cookies
+        is_secure = getattr(settings, 'SESSION_COOKIE_SECURE', False)
+        response.set_cookie(
+            'access_token', access_token,
+            max_age=3600, httponly=True, samesite='Lax', secure=is_secure
+        )
+        response.set_cookie(
+            'refresh_token', refresh_token,
+            max_age=7*24*3600, httponly=True, samesite='Lax', secure=is_secure
+        )
+        
+        return response
+        
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @csrf_exempt
