@@ -30,6 +30,17 @@ def init():
         new_key = base64.urlsafe_b64encode(os.urandom(32)).decode('utf-8')
         vault_service.put_secret('FIELD_ENCRYPTION_KEY', new_key)
         print("Successfully generated and stored FIELD_ENCRYPTION_KEY in Vault.")
+        
+        # Backup the generated key to config/keys directory
+        key_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config', 'keys', 'field_encryption.key')
+        try:
+            os.makedirs(os.path.dirname(key_path), exist_ok=True)
+            with open(key_path, 'w') as f:
+                f.write(new_key)
+            print(f"\n[!] IMPORTANT: A backup of the FIELD_ENCRYPTION_KEY has been saved to: {key_path}")
+            print("[!] Please store this key securely! If Vault loses data, you will need this key to decrypt your database fields.\n")
+        except Exception as e:
+            print(f"Warning: Failed to save backup key to {key_path}: {e}")
 
     # Create Superuser if not exists
     admin_username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')
