@@ -16,7 +16,7 @@ See more demo images in `img/`.
 
 ### Key Features
 
-- **Hybrid CP-ABE Encryption (v4.0.0)**: Advanced attribute-based encryption utilizing high-speed in-memory buffers (RAM) for encryption/decryption, completely bypassing disk I/O bottlenecks. See more at: https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git 
+- **Hybrid PQ-CP-ABE Encryption (v4.0.0)**: Advanced attribute-based encryption utilizing high-speed in-memory buffers (RAM) for encryption/decryption, completely bypassing disk I/O bottlenecks. See more at: https://github.com/WanThinnn/Hybrid-CP-ABE-Library/tree/hybrid-pq-cp-abe 
 - **HashiCorp Vault Integration (Envelope Encryption)**: Enterprise-grade key management. Vault secures the CP-ABE Master Keys and dynamically wraps per-file Data Encryption Keys (DEK), ensuring keys are never leaked to the disk.
 - **Supabase Integration**: Leverages Supabase Storage for hosting encrypted files and Supabase PostgreSQL for high-performance metadata management.
 - **Multi-Layer Security**: Combines **HashiCorp Vault**, **CP-ABE AC17**, and **AES-GCM-256** (Mathematical Cryptography) with **Casbin ABAC** (Application-level Access Control) for defense-in-depth.
