@@ -93,6 +93,7 @@ services:
     volumes:
       - static_volume:/app/staticfiles:ro
       - ./config/certs:/opt/nginx/certs:ro
+      - ./scripts/init_data.py:/app/init_data.py:ro
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME:-cloudsafe.cyberfortress.local}
       - SSL_CERT_FILE=${SSL_CERT_FILE:-_.cyberfortress.local.crt}
@@ -103,8 +104,6 @@ services:
     networks:
       - app-network
     restart: unless-stopped
-
-
 
 volumes:
   sqlite_volume:

@@ -18,7 +18,6 @@ REPO_ROOT = Path(__file__).resolve().parent
 NO_SSL_OVERRIDE = REPO_ROOT / "docker" / "docker-compose.nossl.yml"
 CERTS_DIR = REPO_ROOT / "config" / "certs"
 ENV_FILE = REPO_ROOT / ".env"
-CLOUDFLARE_CONFIG = REPO_ROOT / "cloudflared" / "config.yml"
 
 # Default SSL certificate filenames (can be overridden via .env)
 DEFAULT_SSL_CERT = "_.cyberfortress.local.crt"
@@ -97,32 +96,6 @@ def load_env_file(env_path: Path) -> dict[str, str]:
     return env_vars
 
 
-def should_enable_tunnel(env_vars: dict[str, str]) -> tuple[bool, str]:
-    tunnel_id = env_vars.get("CLOUDFLARE_TUNNEL_ID")
-    domain = env_vars.get("TUNNEL_DOMAIN")
-    config_path = Path(env_vars.get("CLOUDFLARE_CONFIG", CLOUDFLARE_CONFIG))
-    credentials_file = env_vars.get(
-        "CLOUDFLARE_CREDENTIALS_FILE",
-        str(config_path.parent / f"{tunnel_id}.json") if tunnel_id else "",
-    )
-
-    if not tunnel_id and not domain:
-        return False, ""
-
-    if not tunnel_id or not domain:
-        return False, "Cloudflare tunnel skipped (CLOUDFLARE_TUNNEL_ID/TUNNEL_DOMAIN missing in .env)."
-
-    missing = []
-    if not config_path.exists():
-        missing.append(str(config_path))
-    if credentials_file and not Path(credentials_file).exists():
-        missing.append(credentials_file)
-
-    if missing:
-        return False, f"Cloudflare tunnel skipped (missing files: {', '.join(missing)})."
-
-    return True, ""
-
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-h', '--help', action='store_true', help='Show this help message and exit')
@@ -182,9 +155,16 @@ def main(argv: list[str]) -> int:
             # print(f"{status_line}\n")
             run(c + ["up", "-d"])
             print(color_info(f"\n[+] Waiting for Vault to start and running Auto-Unseal..."))
-            try:
-                run(c + vault_cmd)
-            except subprocess.CalledProcessError:
+            import time
+            success = False
+            for _ in range(10):
+                try:
+                    run(c + vault_cmd)
+                    success = True
+                    break
+                except subprocess.CalledProcessError:
+                    time.sleep(2)
+            if not success:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
             print(color_info(f"\n[OK] Services started.\n"))
             print(color_info(f"{env_access_urls(use_ssl)}"))
@@ -196,9 +176,16 @@ def main(argv: list[str]) -> int:
             # print(f"{status_line}\n")
             run(c + ["restart"])
             print(color_info(f"\n[+] Waiting for Vault to start and running Auto-Unseal..."))
-            try:
-                run(c + vault_cmd)
-            except subprocess.CalledProcessError:
+            import time
+            success = False
+            for _ in range(10):
+                try:
+                    run(c + vault_cmd)
+                    success = True
+                    break
+                except subprocess.CalledProcessError:
+                    time.sleep(2)
+            if not success:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
             print("[OK] Services restarted.")
         elif cmd == "logs":
@@ -228,7 +215,7 @@ def main(argv: list[str]) -> int:
             run(add_manage_args(c + ["exec", "web", "python", "manage.py", "init_settings"], extra))
         elif cmd == "createsuperuser":
             # print(f"{status_line}\n")
-            run(c + ["exec", "web", "python", "manage.py", "createsuperuser"])
+            run(c + ["exec", "web", "python", "manage.py", "create_super_admin"])
         elif cmd == "shell":
             # print(f"{status_line}\n")
             run(c + ["exec", "web", "python", "manage.py", "shell"])
@@ -267,7 +254,7 @@ def main(argv: list[str]) -> int:
             print("  migrate         Run database migrations (passes extra args)")
             print("  initsettings    Initialize dynamic system settings")
             print("  initdata        Initialize sample data")
-            print("  createsuperuser Create Django superuser")
+            print("  createsuperuser Create super_admin user (interactive)")
             print("  shell           Open Django shell")
             print("  collectstatic   Collect static files")
             print("  clean           Remove containers and volumes, prune system")
