@@ -28,6 +28,7 @@ from webauthn.helpers.structs import (
     UserVerificationRequirement,
     RegistrationCredential,
     AuthenticationCredential,
+    PublicKeyCredentialDescriptor,
 )
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from django.utils import timezone
@@ -58,14 +59,14 @@ def passkey_register_options(request):
     
     # Exclude existing credentials
     exclude_credentials = [
-        {"id": cred.credential_id, "type": "public-key"}
+        PublicKeyCredentialDescriptor(id=cred.credential_id)
         for cred in user.webauthn_credentials.filter(is_active=True)
     ]
     
     # Generate options using py-webauthn
     try:
         options = generate_registration_options(
-            rp_id=RP_ID,
+            rp_id=request.get_host().split(':')[0],
             rp_name=RP_NAME,
             user_id=str(user.id).encode('utf-8'),
             user_name=f"{user.username} (Login)",
@@ -88,7 +89,7 @@ def passkey_register_options(request):
         response_dict = json.loads(options_to_json(options))
         return Response(response_dict)
     except Exception as e:
-        logger.error(f"Passkey register options error: {str(e)}")
+        logger.exception("Passkey register options error:")
         return Response({"error": "Failed to generate passkey options"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -109,8 +110,8 @@ def passkey_register_complete(request):
         verification = verify_registration_response(
             credential=request.data,
             expected_challenge=expected_challenge,
-            expected_rp_id=RP_ID,
-            expected_origin=ORIGIN,
+            expected_rp_id=request.get_host().split(':')[0],
+            expected_origin=request.headers.get('Origin', ORIGIN),
         )
         
         # Save the verified credential
@@ -161,7 +162,7 @@ def passkey_login_options(request):
                 return Response({"error": "Account is disabled"}, status=status.HTTP_403_FORBIDDEN)
                 
             allow_credentials = [
-                {"id": cred.credential_id, "type": "public-key"}
+                PublicKeyCredentialDescriptor(id=cred.credential_id)
                 for cred in user.webauthn_credentials.filter(is_active=True)
             ]
         except User.DoesNotExist:
@@ -170,7 +171,7 @@ def passkey_login_options(request):
 
     try:
         options = generate_authentication_options(
-            rp_id=RP_ID,
+            rp_id=request.get_host().split(':')[0],
             allow_credentials=allow_credentials,
             user_verification=UserVerificationRequirement.REQUIRED,
         )
@@ -231,8 +232,8 @@ def passkey_login_complete(request):
         verification = verify_authentication_response(
             credential=request.data,
             expected_challenge=expected_challenge,
-            expected_rp_id=RP_ID,
-            expected_origin=ORIGIN,
+            expected_rp_id=request.get_host().split(':')[0],
+            expected_origin=request.headers.get('Origin', ORIGIN),
             credential_public_key=db_cred.public_key,
             credential_current_sign_count=db_cred.sign_count,
             require_user_verification=True,
