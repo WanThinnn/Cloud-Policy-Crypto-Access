@@ -17,6 +17,7 @@ from .auth import (
     password_reset_request,
     password_reset_confirm,
     user_profile,
+    manage_keys_page,
 )
 
 # Import storage views
@@ -72,6 +73,16 @@ from .session_views import (
 # Import PKI views
 from .pki import UserPublicKeyViewSet
 
+# Import Passkey views
+from .passkey import (
+    passkey_register_options,
+    passkey_register_complete,
+    passkey_login_options,
+    passkey_login_complete,
+    passkey_list,
+    passkey_delete,
+)
+
 __all__ = [
     # Base views
     'index',
@@ -94,6 +105,7 @@ __all__ = [
     'password_reset_request',
     'password_reset_confirm',
     'user_profile',
+    'manage_keys_page',
     
     # Storage views
     'StorageBucketViewSet',
@@ -128,5 +140,13 @@ __all__ = [
     # Session views
     'SessionViewSet',
     'sessions_page',
+    
+    # Passkey views
+    'passkey_register_options',
+    'passkey_register_complete',
+    'passkey_login_options',
+    'passkey_login_complete',
+    'passkey_list',
+    'passkey_delete',
 ]
 

@@ -26,6 +26,9 @@ from .session import ActiveSession
 # PKI Management
 from .pki import UserPublicKey
 
+# WebAuthn / Passkey Login
+from .webauthn import WebAuthnCredential
+
 __all__ = [
     # Base
     'BaseModel',
@@ -55,4 +58,7 @@ __all__ = [
 
     # PKI
     'UserPublicKey',
+
+    # WebAuthn
+    'WebAuthnCredential',
 ]

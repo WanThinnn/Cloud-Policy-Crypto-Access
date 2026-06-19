@@ -132,10 +132,11 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 class UserDetailSerializer(serializers.ModelSerializer):
     """Serializer for user details"""
     profile = serializers.SerializerMethodField()
+    has_passkey = serializers.SerializerMethodField()
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'is_staff', 'is_superuser', 'profile']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'is_staff', 'is_superuser', 'profile', 'has_passkey']
         read_only_fields = ['id', 'date_joined']
     
     def get_profile(self, obj):
@@ -143,6 +144,12 @@ class UserDetailSerializer(serializers.ModelSerializer):
         if hasattr(obj, 'profile'):
             return UserProfileSerializer(obj.profile).data
         return None
+        
+    def get_has_passkey(self, obj):
+        # Return true if user has at least one active webauthn credential
+        if hasattr(obj, 'webauthn_credentials'):
+            return obj.webauthn_credentials.filter(is_active=True).exists()
+        return False
 
 
 class VerifyOTPSerializer(serializers.Serializer):

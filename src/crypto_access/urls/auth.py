@@ -4,7 +4,17 @@ Authentication URLs
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
-from ..views import auth, SessionViewSet, sessions_page
+from ..views import (
+    auth, 
+    SessionViewSet, 
+    sessions_page,
+    passkey_register_options,
+    passkey_register_complete,
+    passkey_login_options,
+    passkey_login_complete,
+    passkey_list,
+    passkey_delete,
+)
 
 # Separate URL patterns for template pages and API endpoints
 # Template pages are included via /auth/ prefix in config/urls.py
@@ -34,6 +44,14 @@ urlpatterns = [
     # User Profile & Permissions
     path('profile/', auth.user_profile, name='user_profile'),
     path('permissions/', auth.user_permissions, name='user_permissions'),
+    
+    # Passkey Authentication
+    path('passkey/register/options/', passkey_register_options, name='passkey_register_options'),
+    path('passkey/register/complete/', passkey_register_complete, name='passkey_register_complete'),
+    path('passkey/login/options/', passkey_login_options, name='passkey_login_options'),
+    path('passkey/login/complete/', passkey_login_complete, name='passkey_login_complete'),
+    path('passkey/', passkey_list, name='passkey_list'),
+    path('passkey/<int:pk>/', passkey_delete, name='passkey_delete'),
 ]
 
 from django.contrib.auth import views as auth_views
@@ -42,6 +60,8 @@ from django.contrib.auth import views as auth_views
 template_patterns = [
     path('login/', auth.login_page, name='login_page'),
     path('register/', auth.register_page, name='register_page'),
+    path('profile/', auth.user_profile, name='user_profile'),
+    path('keys/', auth.manage_keys_page, name='manage_keys_page'),
     
     # Password Reset
     path('password-reset/', 

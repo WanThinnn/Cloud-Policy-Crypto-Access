@@ -3,6 +3,8 @@ Seed test data: Users, Profiles, and ABAC Attributes
 Run via: python manage.py seed_test_data
 """
 
+import hashlib
+
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from crypto_access.models import UserProfile, UserType, UserAttribute, AttributeDefinition
@@ -10,6 +12,11 @@ from crypto_access.models import UserProfile, UserType, UserAttribute, Attribute
 
 class Command(BaseCommand):
     help = 'Seed test users with ABAC attributes for testing'
+    
+    @staticmethod
+    def _sha3_512_prehash(password):
+        """Pre-hash password with SHA3-512 (same as client-side sha3-hasher.js)"""
+        return hashlib.sha3_512(password.encode('utf-8')).hexdigest()
     
     def handle(self, *args, **options):
         self.stdout.write('Creating test users...\n')
@@ -122,10 +129,12 @@ class Command(BaseCommand):
             )
             
             if created:
-                user.set_password(user_data['password'])
+                # Pre-hash password with SHA3-512 (same as client-side flow)
+                prehashed = self._sha3_512_prehash(user_data['password'])
+                user.set_password(prehashed)
                 user.save()
                 created_count += 1
-                self.stdout.write(f"  ✓ Created user: {user_data['username']}")
+                self.stdout.write(f"  ✓ Created user: {user_data['username']} (dual-hash: SHA3-512 + Argon2id)")
             else:
                 self.stdout.write(f"  - Exists: {user_data['username']}")
             

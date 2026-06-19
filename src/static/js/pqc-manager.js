@@ -51,7 +51,7 @@ class PqcManager {
         this.lockTimeout = setTimeout(() => {
             this.lock();
             // Show a notification to the user that session expired
-            alert("E2EE Session auto-locked due to 30 minutes of inactivity. You will need to use your Passkey again.");
+            alert("PQC Signature Session auto-locked due to 30 minutes of inactivity. You will need to use your Passkey again.");
         }, this.LOCK_MINUTES * 60 * 1000);
     }
 
@@ -104,8 +104,8 @@ class PqcManager {
                         rp: { name: "Cloud Policy Crypto Access", id: window.location.hostname },
                         user: {
                             id: userId,
-                            name: localStorage.getItem('username') || "user",
-                            displayName: localStorage.getItem('username') || "User"
+                            name: `${localStorage.getItem('username') || 'user'} (Signature)`,
+                            displayName: `${localStorage.getItem('username') || 'User'} (Signature)`
                         },
                         pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
                         authenticatorSelection: { userVerification: "required" },
@@ -161,7 +161,7 @@ class PqcManager {
                 const prfResults = credential.getClientExtensionResults().prf;
                 if (!prfResults || !prfResults.results || !prfResults.results.first) {
                     console.warn("WebAuthn PRF not supported on this device/browser.");
-                    throw new Error("Your Passkey device does not support the PRF extension required for E2EE.");
+                    throw new Error("Your Passkey device does not support the PRF extension required for PQC Signatures.");
                 }
                 
                 prfOutput = new Uint8Array(prfResults.results.first);
@@ -389,7 +389,7 @@ class PqcManager {
         
         // 2. Fetch the active key metadata
         const response = await fetch('/api/pki/keys/active_key/');
-        if (!response.ok) throw new Error("No active E2EE key found on the server.");
+        if (!response.ok) throw new Error("No active PQC signature key found on the server.");
         const keyData = await response.json();
         
         // 3. Decrypt the recovery blob to get the raw PQC SK
@@ -416,7 +416,7 @@ class PqcManager {
         });
         
         if (!patchResponse.ok) {
-            throw new Error("Failed to update E2EE key on server.");
+            throw new Error("Failed to update PQC signature key on server.");
         }
         
         // 7. Load into WASM Memory for current session
@@ -561,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Setup download button
                 if (btnDownloadMnemonic) {
                     btnDownloadMnemonic.onclick = () => {
-                        const text = "Cloud Policy Crypto Access - E2EE Recovery Phrase\n" +
+                        const text = "Cloud Policy Crypto Access - PQC Signature Recovery Phrase\n" +
                                      "WARNING: DO NOT SHARE THIS FILE WITH ANYONE.\n\n" +
                                      mnemonic.join(' ');
                         const blob = new Blob([text], { type: 'text/plain' });

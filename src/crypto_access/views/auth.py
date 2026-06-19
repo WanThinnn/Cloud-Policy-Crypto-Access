@@ -1,6 +1,7 @@
 """
 Authentication Views - Registration, Login, Password Management
 """
+from django.contrib.auth.decorators import login_required
 from rest_framework import status, generics
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
@@ -55,6 +56,22 @@ def login_page(request):
 def register_page(request):
     """Render register page"""
     return render(request, 'accounts/register.html')
+
+@login_required(login_url='/auth/login/')
+def user_profile(request):
+    """Render user profile page"""
+    from django.shortcuts import render
+    return render(request, 'accounts/profile.html', {
+        'page_title': 'My Profile'
+    })
+
+@login_required(login_url='/auth/login/')
+def manage_keys_page(request):
+    """Render manage keys page"""
+    from django.shortcuts import render
+    return render(request, 'accounts/keys.html', {
+        'page_title': 'Manage Security Keys'
+    })
 
 
 @csrf_exempt

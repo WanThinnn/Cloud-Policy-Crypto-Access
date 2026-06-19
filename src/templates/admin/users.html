@@ -304,7 +304,7 @@
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-blue-50 dark:bg-blue-900/20">
             <div>
-                <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-300">🔐 PQC Passkeys Management</h3>
+                <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-300">🔐 PQC Signature Keys Management</h3>
                 <p class="text-sm text-gray-600 dark:text-gray-400">User: <strong id="pqc-keys-username"></strong></p>
             </div>
             <button type="button" id="close-pqc-keys-btn" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300">
@@ -1071,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     };
     
     window.deletePqcKey = async function(keyId, userId) {
-        if (!confirm('Are you sure you want to permanently delete this key? The user will need to generate a new Passkey.')) return;
+        if (!confirm('Are you sure you want to permanently delete this key? The user will need to generate a new PQC Signature Key.')) return;
         
         try {
             const response = await fetch(`/api/pki/keys/${keyId}/`, {

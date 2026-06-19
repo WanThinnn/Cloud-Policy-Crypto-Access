@@ -14,6 +14,7 @@ from django.db import transaction, models
 from django.utils import timezone
 import secrets
 import string
+import hashlib
 import logging
 
 logger = logging.getLogger('crypto_access.user')
@@ -39,6 +40,10 @@ def generate_default_password(length=12):
     """Generate a secure default password"""
     alphabet = string.ascii_letters + string.digits + "!@#$%"
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+def sha3_512_prehash(password):
+    """Pre-hash password with SHA3-512 (server-side, matching client flow)"""
+    return hashlib.sha3_512(password.encode('utf-8')).hexdigest()
 
 
 # =============================================================================
@@ -98,11 +103,14 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         # Generate default password if not provided
         password = data.get('password') or generate_default_password()
         
+        # Pre-hash password with SHA3-512 (matching client-side dual-hash flow)
+        prehashed_password = sha3_512_prehash(password)
+        
         # Create User
         user = User.objects.create_user(
             username=data['username'],
             email=data.get('email', ''),
-            password=password,
+            password=prehashed_password,
             first_name=data.get('first_name', ''),
             last_name=data.get('last_name', ''),
         )
@@ -263,8 +271,8 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         new_password = request.data.get('password')
         
         if new_password:
-            # Use provided password
-            user.set_password(new_password)
+            # Use provided password (pre-hash with SHA3-512)
+            user.set_password(sha3_512_prehash(new_password))
             user.save()
             return Response({
                 'success': True,
@@ -273,7 +281,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         else:
             # Generate new password
             new_password = generate_default_password()
-            user.set_password(new_password)
+            user.set_password(sha3_512_prehash(new_password))
             user.save()
             return Response({
                 'success': True,

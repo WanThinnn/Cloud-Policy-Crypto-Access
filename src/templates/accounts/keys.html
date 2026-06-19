@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Security Keys - Cloud Policy Crypto Access{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Security Keys</h1>
+            <p class="text-sm text-gray-500 mt-2">Manage your authentication and document signing keys here.</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Login Passkeys Card -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center mt-6">
+                    <div>
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                            Login Passkeys
+                        </h3>
+                        <p class="mt-1 max-w-2xl text-sm text-gray-500 mb-6">Sign in securely using FaceID, TouchID, or Security Keys.</p>
+                    </div>
+                    <button id="btn-add-login-passkey" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+                        + Add New
+                    </button>
+                </div>
+                <div class="flex-grow">
+                    <ul id="login-passkeys-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <li class="p-6 text-center text-gray-500 dark:text-gray-400">Loading passkeys...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- PQC Signature Keys Card -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center mt-6">
+                    <div>
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                            PQC Signature Keys
+                        </h3>
+                        <p class="mt-1 max-w-2xl text-sm text-gray-500 mb-6">Dual-Layer Signatures using Post-Quantum Cryptography.</p>
+                    </div>
+                    <button id="btn-add-pqc-key" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+                        + Create New
+                    </button>
+                </div>
+                <div class="flex-grow">
+                    <ul id="pqc-keys-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <li class="p-6 text-center text-gray-500 dark:text-gray-400">Loading signature keys...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadKeys();
+        
+        document.getElementById('btn-add-login-passkey').addEventListener('click', async () => {
+            // Initiate WebAuthn Reg
+            try {
+                const optRes = await fetch('/api/auth/passkey/register/options/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                });
+                if (!optRes.ok) throw new Error('Failed to get options');
+                const options = await optRes.json();
+                
+                // Helper functions for base64url conversion
+                const base64urlToBuffer = (base64url) => {
+                    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+                    const padLen = (4 - base64.length % 4) % 4;
+                    const padded = base64 + '='.repeat(padLen);
+                    const binary = atob(padded);
+                    const buffer = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i);
+                    return buffer.buffer;
+                };
+                
+                const bufferToBase64url = (buffer) => {
+                    const bytes = new Uint8Array(buffer);
+                    let binary = '';
+                    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+                    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                };
+                
+                // Convert arrays
+                options.user.id = base64urlToBuffer(options.user.id);
+                options.challenge = base64urlToBuffer(options.challenge);
+                if (options.excludeCredentials) {
+                    options.excludeCredentials = options.excludeCredentials.map(c => ({
+                        ...c,
+                        id: base64urlToBuffer(c.id)
+                    }));
+                }
+                
+                const credential = await navigator.credentials.create({ publicKey: options });
+                
+                const verifyRes = await fetch('/api/auth/passkey/register/complete/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        id: credential.id,
+                        rawId: bufferToBase64url(credential.rawId),
+                        type: credential.type,
+                        response: {
+                            attestationObject: bufferToBase64url(credential.response.attestationObject),
+                            clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                            transports: credential.response.getTransports ? credential.response.getTransports() : []
+                        }
+                    })
+                });
+                
+                if (!verifyRes.ok) throw new Error('Failed to register passkey');
+                alert('Login Passkey added successfully!');
+                loadKeys();
+            } catch (err) {
+                console.error(err);
+                if (err.name === 'NotAllowedError' || err.message.includes('not allowed') || err.message.includes('cancelled')) {
+                    return; // User cancelled, silently ignore
+                }
+                alert('Error registering Login Passkey: ' + err.message);
+            }
+        });
+        
+        document.getElementById('btn-add-pqc-key').addEventListener('click', async () => {
+            if (typeof pqcManager === 'undefined') {
+                alert('PQC Manager not loaded.');
+                return;
+            }
+            if (!confirm('This will create a new PQC Signature Key. It will be stored as a Passkey on your device. Proceed?')) return;
+            
+            try {
+                const mnemonic = await pqcManager.setup();
+                
+                // Trigger download of recovery phrase file
+                const text = "Cloud Policy Crypto Access - PQC Signature Recovery Phrase\n" +
+                             "WARNING: DO NOT SHARE THIS FILE WITH ANYONE.\n\n" +
+                             mnemonic.join(' ');
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const username = localStorage.getItem('username') || 'unknown_user';
+                a.download = `cloud-policy-pqc-recovery-${username}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                alert('PQC Signature Key created successfully! \n\nA text file with your recovery phrase has been downloaded. IMPORTANT: Please save it in a secure place.');
+                loadKeys();
+            } catch (err) {
+                console.error(err);
+                if (err.name === 'NotAllowedError' || err.message.includes('not allowed') || err.message.includes('cancelled')) {
+                    return; // User cancelled
+                }
+                alert('Error creating PQC Signature Key: ' + err.message);
+            }
+        });
+    });
+
+    async function loadKeys() {
+        const loginList = document.getElementById('login-passkeys-list');
+        const pqcList = document.getElementById('pqc-keys-list');
+        
+        try {
+            // Load Login Passkeys
+            const passkeyRes = await fetch('/api/auth/passkey/', {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            if (passkeyRes.ok) {
+                const passkeys = await passkeyRes.json();
+                if (passkeys.length === 0) {
+                    loginList.innerHTML = '<li class="p-6 text-center text-gray-500">No login passkeys found.</li>';
+                } else {
+                    loginList.innerHTML = passkeys.map(pk => `
+                        <li class="px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">Device: ${pk.device_name || 'Unknown Device'}</p>
+                                <p class="text-xs text-gray-500">Added on ${new Date(pk.created_at).toLocaleDateString()}</p>
+                            </div>
+                            <button onclick="deleteLoginKey('${pk.id}')" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium">Delete</button>
+                        </li>
+                    `).join('');
+                }
+            }
+            
+            // Load PQC Keys
+            const pqcRes = await fetch('/api/pki/keys/my_keys/', {
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            if (pqcRes.ok) {
+                const pqcKeys = await pqcRes.json();
+                const activeKeys = pqcKeys.filter(k => k.status !== 'revoked');
+                if (activeKeys.length === 0) {
+                    pqcList.innerHTML = '<li class="p-6 text-center text-gray-500">No active PQC signature keys found.</li>';
+                } else {
+                    pqcList.innerHTML = activeKeys.map(k => `
+                        <li class="px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white font-mono" title="${k.pqc_public_key}">${k.pqc_public_key ? k.pqc_public_key.substring(0, 16) : 'Unknown'}...</p>
+                                <p class="text-xs text-gray-500">Added on ${new Date(k.created_at).toLocaleDateString()}</p>
+                            </div>
+                            <button onclick="deletePqcKey('${k.id}')" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium">Revoke</button>
+                        </li>
+                    `).join('');
+                }
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function deleteLoginKey(id) {
+        if (!confirm('Are you sure you want to delete this Login Passkey?')) return;
+        
+        try {
+            const res = await fetch(`/api/auth/passkey/${id}/`, {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            if (!res.ok) throw new Error('Failed to delete passkey');
+            
+            alert('Passkey disabled on the server.\n\nNOTE: For complete removal, you must manually delete this Passkey (named "'+localStorage.getItem('username')+' (Login)") from your device settings (e.g. Windows Hello, Apple Keychain).');
+            loadKeys();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function deletePqcKey(id) {
+        if (!confirm('Are you sure you want to revoke this Signature Key? You will need to create a new one to sign documents.')) return;
+        
+        try {
+            const res = await fetch(`/api/pki/keys/${id}/`, {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            if (!res.ok) throw new Error('Failed to revoke PQC key');
+            
+            // Clear local storage
+            localStorage.removeItem('pqc_public_key');
+            localStorage.removeItem('pqc_private_key');
+            localStorage.removeItem('pqc_device_id');
+            sessionStorage.removeItem('pqc_unlocked_private_key');
+            
+            alert('Signature Key revoked on server and local data cleared.\n\nNOTE: You must manually delete the associated Passkey (named "'+localStorage.getItem('username')+' (Signature)") from your device settings.');
+            loadKeys();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

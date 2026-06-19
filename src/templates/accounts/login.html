@@ -97,17 +97,35 @@
               </div>
             </div>
 
-            <!-- Submit Button -->
-            <button
-              type="submit"
-              class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3.5 px-4 rounded-lg shadow-lg hover:shadow-xl focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800/50 transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              <span id="button-text">Log in</span>
-              <svg id="spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <!-- Action Buttons -->
+            <div class="flex gap-3 pt-2">
+              <button
+                type="submit"
+                class="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800/50 transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                <span id="button-text">Log in</span>
+                <svg id="spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                id="passkey-login-btn"
+                class="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:border-indigo-400 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold py-3 px-4 rounded-lg shadow-sm focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-800 transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed group"
+                title="Use your fingerprint, Face ID, or security key"
+              >
+                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
+                </svg>
+                <span id="passkey-button-text">Passkey</span>
+                <svg id="passkey-spinner" class="hidden animate-spin h-5 w-5 text-indigo-600 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </button>
+                </svg>
+              </button>
+            </div>
           </form>
 
           <!-- OTP Verification Form (Hidden by default) -->
@@ -149,7 +167,8 @@
             </div>
           </form>
 
-          <!-- Divider -->
+
+          <!-- Second Divider -->
           <div class="relative my-6">
             <div class="absolute inset-0 flex items-center">
               <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
@@ -173,6 +192,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/sha3-hasher.js' %}"></script>
 <script>
     const form = document.getElementById('login-form');
     const alertBox = document.getElementById('alert');
@@ -211,7 +231,7 @@
         }, 5000);
     }
 
-    // Handle form submission
+    // Handle form submission with SHA3-512 pre-hash
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -220,9 +240,13 @@
         buttonText.textContent = 'Logging in...';
         spinner.classList.remove('hidden');
         
+        // Pre-hash password with SHA3-512 before sending to server
+        const rawPassword = document.getElementById('password').value;
+        const hashedPassword = prehashPassword(rawPassword);
+        
         const formData = {
             username: document.getElementById('username').value,
-            password: document.getElementById('password').value
+            password: hashedPassword
         };
 
         try {
@@ -248,6 +272,7 @@
                     // Normal login success
                     localStorage.setItem('username', data.user.username);
                     localStorage.setItem('user_id', data.user.id);
+                    localStorage.setItem('login_method', 'password');
                     
                     showAlert('Login successful! Redirecting...', 'success');
                     
@@ -305,6 +330,7 @@
                 // Verify success
                 localStorage.setItem('username', data.user.username);
                 localStorage.setItem('user_id', data.user.id);
+                localStorage.setItem('login_method', 'password');
                 
                 showAlert('Verification successful! Redirecting...', 'success');
                 
@@ -325,6 +351,133 @@
             otpSpinner.classList.add('hidden');
         }
     });
+
+    // ============= PASSKEY LOGIN =============
+    
+    const passkeyLoginBtn = document.getElementById('passkey-login-btn');
+    const passkeyButtonText = document.getElementById('passkey-button-text');
+    const passkeySpinner = document.getElementById('passkey-spinner');
+    
+    // Check if WebAuthn is supported
+    if (!window.PublicKeyCredential) {
+        passkeyLoginBtn.disabled = true;
+        passkeyLoginBtn.title = 'Your browser does not support Passkeys';
+        passkeyButtonText.textContent = 'Passkeys not supported';
+    }
+    
+    passkeyLoginBtn.addEventListener('click', async () => {
+        try {
+            passkeyLoginBtn.disabled = true;
+            passkeyButtonText.textContent = 'Waiting for Passkey...';
+            passkeySpinner.classList.remove('hidden');
+            
+            // Step 1: Get authentication options from server
+            const optionsRes = await fetch('/api/auth/passkey/login/options/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            
+            if (!optionsRes.ok) {
+                const errData = await optionsRes.json();
+                throw new Error(errData.error || 'Failed to get passkey options');
+            }
+            
+            const options = await optionsRes.json();
+            
+            // Convert base64url fields to ArrayBuffer
+            options.challenge = base64urlToBuffer(options.challenge);
+            
+            if (options.allowCredentials) {
+                options.allowCredentials = options.allowCredentials.map(cred => ({
+                    ...cred,
+                    id: base64urlToBuffer(cred.id)
+                }));
+            }
+            
+            // Step 2: Prompt user for passkey authentication
+            const credential = await navigator.credentials.get({
+                publicKey: options
+            });
+            
+            if (!credential) {
+                throw new Error('Passkey authentication was cancelled.');
+            }
+            
+            // Step 3: Send assertion to server for verification
+            const assertionData = {
+                id: credential.id,
+                rawId: bufferToBase64url(credential.rawId),
+                type: credential.type,
+                response: {
+                    authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+                    clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                    signature: bufferToBase64url(credential.response.signature),
+                    userHandle: credential.response.userHandle 
+                        ? bufferToBase64url(credential.response.userHandle) 
+                        : null
+                },
+                temp_auth_id: options.temp_auth_id
+            };
+            
+            const verifyRes = await fetch('/api/auth/passkey/login/complete/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(assertionData)
+            });
+            
+            const verifyData = await verifyRes.json();
+            
+            if (verifyRes.ok) {
+                localStorage.setItem('username', verifyData.user.username);
+                localStorage.setItem('user_id', verifyData.user.id);
+                localStorage.setItem('login_method', 'passkey');
+                
+                showAlert('Passkey login successful! Redirecting...', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+            } else {
+                throw new Error(verifyData.error || 'Passkey verification failed');
+            }
+            
+        } catch (error) {
+            console.error('Passkey login error:', error);
+            if (error.name === 'NotAllowedError') {
+                // User cancelled - don't show error
+            } else {
+                showAlert(error.message || 'Passkey login failed. Please try again.');
+            }
+        } finally {
+            passkeyLoginBtn.disabled = false;
+            passkeyButtonText.textContent = 'Login with Passkey';
+            passkeySpinner.classList.add('hidden');
+        }
+    });
+    
+    // ============= BASE64URL UTILITIES =============
+    
+    function base64urlToBuffer(base64url) {
+        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        const padLen = (4 - base64.length % 4) % 4;
+        const padded = base64 + '='.repeat(padLen);
+        const binary = atob(padded);
+        const buffer = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            buffer[i] = binary.charCodeAt(i);
+        }
+        return buffer.buffer;
+    }
+    
+    function bufferToBase64url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
 
     // Check if already logged in
     if (localStorage.getItem('username')) {

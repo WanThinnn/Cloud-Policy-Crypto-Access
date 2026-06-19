@@ -106,13 +106,20 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Password hashers - Using Argon2 for better security
+# Password hashers - Using Dual-Hash (SHA3-512 client + Argon2id server)
+# DualHashArgon2PasswordHasher provides backward compatibility for existing passwords
 PASSWORD_HASHERS = [
+    'crypto_access.hashers.DualHashArgon2PasswordHasher',
     'django.contrib.auth.hashers.Argon2PasswordHasher',
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
     'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
     'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
 ]
+
+# WebAuthn / Passkey Configuration
+WEBAUTHN_RP_ID = os.environ.get('WEBAUTHN_RP_ID', 'localhost')
+WEBAUTHN_RP_NAME = os.environ.get('WEBAUTHN_RP_NAME', 'Cloud Policy Crypto Access')
+WEBAUTHN_ORIGIN = os.environ.get('WEBAUTHN_ORIGIN', 'http://localhost:8000')
 
 
 # Internationalization
@@ -205,7 +212,10 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-
+# WebAuthn Configuration
+WEBAUTHN_RP_ID = os.environ.get('WEBAUTHN_RP_ID', 'cloudsafe.cyberfortress.local')
+WEBAUTHN_RP_NAME = os.environ.get('WEBAUTHN_RP_NAME', 'Cloud Policy Crypto Access')
+WEBAUTHN_ORIGIN = os.environ.get('WEBAUTHN_ORIGIN', 'https://cloudsafe.cyberfortress.local')
 
 # Logging configuration
 ENVIRONMENT = os.environ.get('ENVIRONMENT', 'production')
