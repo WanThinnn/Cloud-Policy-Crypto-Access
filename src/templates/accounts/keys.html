@@ -42,9 +42,14 @@
                         </h3>
                         <p class="mt-1 max-w-2xl text-sm text-gray-500 mb-6">Dual-Layer Signatures using Post-Quantum Cryptography.</p>
                     </div>
-                    <button id="btn-add-pqc-key" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-                        + Create New
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-import-pqc-key" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/70 dark:text-indigo-400 px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+                            Import
+                        </button>
+                        <button id="btn-add-pqc-key" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            + Create New
+                        </button>
+                    </div>
                 </div>
                 <div class="flex-grow">
                     <ul id="pqc-keys-list" class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -165,6 +170,18 @@
                 alert('Error creating PQC Signature Key: ' + err.message);
             }
         });
+
+        document.getElementById('btn-import-pqc-key').addEventListener('click', () => {
+            const recoverModal = document.getElementById('pqc-recover-modal');
+            if (recoverModal) {
+                recoverModal.classList.remove('hidden');
+            }
+        });
+        
+        document.addEventListener('pqcKeyRecovered', function() {
+            alert('PQC Signature Key imported successfully to this device!');
+            loadKeys();
+        });
     });
 
     async function loadKeys() {
@@ -200,6 +217,16 @@
             if (pqcRes.ok) {
                 const pqcKeys = await pqcRes.json();
                 const activeKeys = pqcKeys.filter(k => k.status !== 'revoked');
+                
+                const btnAdd = document.getElementById('btn-add-pqc-key');
+                if (activeKeys.length > 0) {
+                    btnAdd.disabled = true;
+                    btnAdd.title = "You already have an active PQC Key. You can only have one at a time. Please revoke it or use Import.";
+                } else {
+                    btnAdd.disabled = false;
+                    btnAdd.title = "";
+                }
+
                 if (activeKeys.length === 0) {
                     pqcList.innerHTML = '<li class="p-6 text-center text-gray-500">No active PQC signature keys found.</li>';
                 } else {

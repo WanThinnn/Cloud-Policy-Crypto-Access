@@ -695,6 +695,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.pqcUnlockPromiseResolve();
                     window.pqcUnlockPromiseResolve = null;
                 }
+                
+                document.dispatchEvent(new Event('pqcKeyRecovered'));
             } catch (e) {
                 console.error(e);
                 recoverStatus.textContent = "Recovery failed: " + e.message;
