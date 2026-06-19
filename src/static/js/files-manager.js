@@ -833,66 +833,59 @@
                     if (typeof pqcManager !== 'undefined') {
                         const isValid = await pqcManager.verifySignature(buffer, fileObj.metadata.user_signature, fileObj.metadata.signer_public_key);
                         if (isValid) {
-                            sigVerificationHtml = `
-                            <div class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-3">
-                                <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                                <div>
-                                    <p class="text-sm font-medium text-green-800 dark:text-green-300">End-to-End Cryptographic Signature Verified</p>
-                                    <p class="text-xs text-green-600 dark:text-green-400">This file has not been tampered with since upload.</p>
-                                </div>
-                            </div>`;
+                        sigVerificationHtml = `
+                        <div class="justify-center w-32 h-10 px-2 py-1 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded flex items-center gap-1.5" title="End-to-End Cryptographic Signature Verified">
+                            <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                            <span class="text-xs font-medium text-green-800 dark:text-green-300">PQC Valid</span>
+                        </div>`;
                             
-                            // Check TSA Signature
-                            if (fileObj.metadata.tsa_signature && fileObj.metadata.trusted_timestamp) {
-                                const isTsaValid = await pqcManager.verifyTSASignature(
-                                    buffer, 
-                                    fileObj.metadata.user_signature, 
-                                    fileObj.metadata.trusted_timestamp, 
-                                    fileObj.metadata.tsa_signature
-                                );
-                                
-                                if (isTsaValid) {
-                                    sigVerificationHtml += `
-                                    <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-3">
-                                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                        <div>
-                                            <p class="text-sm font-medium text-blue-800 dark:text-blue-300">Trusted Timestamp Verified (Root CA)</p>
-                                            <p class="text-xs text-blue-600 dark:text-blue-400">Time of signature: ${new Date(fileObj.trusted_timestamp).toLocaleString()}</p>
-                                        </div>
-                                    </div>`;
-                                } else {
-                                    sigVerificationHtml += `
-                                    <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-center gap-3">
-                                        <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                        <div>
-                                            <p class="text-sm font-bold text-yellow-800 dark:text-yellow-300">TSA Signature Invalid</p>
-                                            <p class="text-xs text-yellow-600 dark:text-yellow-400">The timestamp signature from the Root CA could not be verified.</p>
-                                        </div>
-                                    </div>`;
-                                }
+                        // Check TSA Signature
+                        if (fileObj.metadata.tsa_signature && fileObj.metadata.trusted_timestamp) {
+                            const isTsaValid = await pqcManager.verifyTSASignature(
+                                buffer, 
+                                fileObj.metadata.user_signature, 
+                                fileObj.metadata.trusted_timestamp, 
+                                fileObj.metadata.tsa_signature
+                            );
+                            
+                            if (isTsaValid) {
+                                sigVerificationHtml += `
+                                <div class="justify-center w-32 h-10 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded flex items-center gap-1.5" title="Trusted Timestamp Verified: ${new Date(fileObj.metadata.trusted_timestamp).toLocaleString()}">
+                                    <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <span class="text-xs font-medium text-blue-800 dark:text-blue-300">TSA Valid</span>
+                                </div>`;
+                            } else {
+                                sigVerificationHtml += `
+                                <div class="justify-center w-32 h-10 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded flex items-center gap-1.5" title="TSA Signature Invalid">
+                                    <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    <span class="text-xs font-medium text-yellow-800 dark:text-yellow-300">TSA Invalid</span>
+                                </div>`;
                             }
-                            
-                        } else {
-                            sigVerificationHtml = `
-                            <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
-                                <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                <div>
-                                    <p class="text-sm font-bold text-red-800 dark:text-red-300">⚠️ INVALID SIGNATURE DETECTED</p>
-                                    <p class="text-xs text-red-600 dark:text-red-400">The file content does not match the ML-DSA-87 signature. It may have been corrupted or tampered with.</p>
-                                </div>
-                            </div>`;
                         }
+                        
+                    } else {
+                        sigVerificationHtml = `
+                        <div class="px-2 py-1 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center gap-1.5" title="INVALID SIGNATURE DETECTED">
+                            <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            <span class="text-xs font-medium text-red-800 dark:text-red-300">Signature Invalid</span>
+                        </div>`;
                     }
-                } catch (err) {
-                    console.error("Sig Verify Error", err);
                 }
+            } catch (err) {
+                console.error("Sig Verify Error", err);
             }
+        }
+        
+        const sigContainer = document.getElementById('preview-signatures');
+        if (sigContainer) {
+            sigContainer.innerHTML = sigVerificationHtml;
+        }
 
             // Handle different file types
             if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
                 // Image preview
                 const imageUrl = URL.createObjectURL(blob);
-                content.innerHTML = sigVerificationHtml + `
+                content.innerHTML = `
                 <div class="text-center">
                     <img src="${imageUrl}" alt="${fileName}" class="max-w-full max-h-[600px] mx-auto rounded-lg shadow-lg">
                 </div>`;
@@ -910,20 +903,20 @@
                         .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 rounded">$1</code>')
                         .replace(/\n\n/g, '</p><p class="mb-4">')
                         .replace(/\n/g, '<br>');
-                    content.innerHTML = sigVerificationHtml + `<div class="prose max-w-none"><p class="mb-4">${html}</p></div>`;
+                    content.innerHTML = `<div class="prose max-w-none"><p class="mb-4">${html}</p></div>`;
                 } else {
-                    content.innerHTML = sigVerificationHtml + `<pre class="whitespace-pre-wrap font-mono text-sm bg-gray-50 p-4 rounded">${text}</pre>`;
+                    content.innerHTML = `<pre class="whitespace-pre-wrap font-mono text-sm bg-gray-50 p-4 rounded">${text}</pre>`;
                 }
             } else if (ext === 'pdf') {
                 // PDF preview using iframe
                 const pdfUrl = URL.createObjectURL(blob);
-                content.innerHTML = sigVerificationHtml + `
+                content.innerHTML = `
                 <div style="width: 100%; height: 75vh; min-height: 500px;">
                     <iframe src="${pdfUrl}#toolbar=0" style="width: 100%; height: 100%; border: none; border-radius: 0.5rem;" type="application/pdf" title="${fileName}"></iframe>
                 </div>`;
             } else {
                 // Unsupported format
-                content.innerHTML = sigVerificationHtml + `
+                content.innerHTML = `
                 <div class="text-center py-12">
                     <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>

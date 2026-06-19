@@ -842,6 +842,18 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 else:
                     # It's a regular file
                     if file_dir == path:
+                        meta = dict(db_file.metadata) if db_file.metadata else {}
+                        latest_version = db_file.get_latest_version()
+                        if latest_version:
+                            if latest_version.user_signature:
+                                meta['user_signature'] = latest_version.user_signature
+                            if latest_version.signer_public_key:
+                                meta['signer_public_key'] = latest_version.signer_public_key.pqc_public_key
+                            if latest_version.tsa_signature:
+                                meta['tsa_signature'] = latest_version.tsa_signature
+                            if latest_version.trusted_timestamp:
+                                meta['trusted_timestamp'] = latest_version.trusted_timestamp.isoformat()
+                        
                         result.append({
                             'name': db_file.file_name,
                             'type': 'file',
@@ -850,7 +862,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                             'created_at': db_file.uploaded_at,
                             'updated_at': db_file.updated_at,
                             'path': db_file.file_path,
-                            'metadata': db_file.metadata
+                            'metadata': meta
                         })
                     elif db_file.file_path.startswith(path + '/') or (not path and '/' in db_file.file_path):
                         # It's in a subdirectory, so we infer a logical folder
