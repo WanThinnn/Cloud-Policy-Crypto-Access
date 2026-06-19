@@ -15,6 +15,7 @@ services:
       - /app/lib # Thêm dòng này để Docker sử dụng file .so bên trong image thay vì đọc từ Windows sang
       - ./docs:/docs
       - ./logs:/app/logs
+      - ./config:/config:ro
       - ./scripts/gunicorn.conf.py:/app/gunicorn.conf.py:ro
       - static_volume:/app/staticfiles
       - ${DB_DIR:-sqlite_volume}:/app/data
@@ -135,6 +136,35 @@ services:
     restart: unless-stopped
     profiles:
       - tunnel
+
+  pki_signer:
+    image: openquantumsafe/openssl3
+    container_name: pki_signer
+    user: root
+    volumes:
+      - ./config/certs:/certs:ro
+    command: |
+      sh -c "apk add --no-cache python3 && python3 -c \"
+      import http.server, socketserver, subprocess
+      class Handler(http.server.BaseHTTPRequestHandler):
+          def do_POST(self):
+              length = int(self.headers['Content-Length'])
+              payload = self.rfile.read(length)
+              with open('/tmp/payload', 'wb') as f: f.write(payload)
+              res = subprocess.run(['openssl', 'pkeyutl', '-sign', '-inkey', '/certs/pq-CyberFortress-RootCA.key', '-rawin', '-in', '/tmp/payload'], capture_output=True)
+              if res.returncode == 0:
+                  self.send_response(200)
+                  self.end_headers()
+                  self.wfile.write(res.stdout)
+              else:
+                  self.send_response(500)
+                  self.end_headers()
+                  self.wfile.write(res.stderr)
+      socketserver.TCPServer(('0.0.0.0', 5000), Handler).serve_forever()
+      \""
+    networks:
+      - app-network
+    restart: unless-stopped
 
 volumes:
   static_volume:

@@ -521,8 +521,26 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             
             # Create FileVersion
             signer_key = None
+            trusted_timestamp = None
+            tsa_signature = None
+            
             if user_signature and request.user.is_authenticated:
                 signer_key = request.user.pqc_keys.filter(status='active').order_by('-created_at').first()
+                # Generate Trusted Timestamp
+                from ..services.pki_service import PKIService
+                import hashlib
+                trusted_timestamp = timezone.now()
+                file_hash = hashlib.sha3_256(file_data).hexdigest()
+                tsa_payload = {
+                    "file_hash": file_hash,
+                    "user_signature": user_signature,
+                    "timestamp": trusted_timestamp.isoformat(),
+                    "issuer": "CyberFortress-TSA"
+                }
+                try:
+                    tsa_signature = PKIService.sign_payload(tsa_payload)
+                except Exception as e:
+                    logger.error(f"TSA signing failed: {e}")
 
             FileVersion.objects.create(
                 file=uploaded_file,
@@ -532,7 +550,9 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 cpabe_policy=cpabe_policy_str,
                 uploaded_by=request.user if request.user.is_authenticated else None,
                 user_signature=user_signature,
-                signer_public_key=signer_key
+                signer_public_key=signer_key,
+                trusted_timestamp=trusted_timestamp,
+                tsa_signature=tsa_signature
             )
             
             if policy_obj:

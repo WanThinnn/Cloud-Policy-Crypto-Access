@@ -150,6 +150,18 @@ class FileVersion(models.Model):
         help_text="Reference to the exact public key used to sign this version"
     )
     
+    # Trusted Timestamping
+    trusted_timestamp = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="The exact server time when the signature was received"
+    )
+    tsa_signature = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Base64 encoded ML-DSA-87 signature from the Server/RootCA over (file_hash + user_signature + timestamp)"
+    )
+    
     class Meta:
         db_table = 'file_versions'
         ordering = ['-version_number']

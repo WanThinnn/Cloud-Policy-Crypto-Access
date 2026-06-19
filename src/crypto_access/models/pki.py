@@ -52,6 +52,12 @@ class UserPublicKey(BaseModel):
         blank=True,
         help_text="Optional device/browser name where this key was generated"
     )
+    
+    ca_signature = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Base64 encoded ML-DSA-87 signature from the RootCA over the JSON representation of this key"
+    )
 
     class Meta:
         db_table = 'crypto_user_pki_keys'

@@ -28,6 +28,8 @@ class UploadedFileSerializer(serializers.ModelSerializer):
     uploaded_by_username = serializers.CharField(source='uploaded_by.username', read_only=True)
     user_signature = serializers.SerializerMethodField()
     signer_public_key = serializers.SerializerMethodField()
+    trusted_timestamp = serializers.SerializerMethodField()
+    tsa_signature = serializers.SerializerMethodField()
     
     class Meta:
         model = UploadedFile
@@ -37,7 +39,8 @@ class UploadedFileSerializer(serializers.ModelSerializer):
             'public_url', 'signed_url', 'signed_url_expires_at',
             'uploaded_by', 'uploaded_by_username', 'description',
             'tags', 'metadata', 'uploaded_at', 'updated_at',
-            'is_deleted', 'deleted_at', 'user_signature', 'signer_public_key'
+            'is_deleted', 'deleted_at', 'user_signature', 'signer_public_key',
+            'trusted_timestamp', 'tsa_signature'
         ]
         read_only_fields = ['uploaded_at', 'updated_at']
 
@@ -50,6 +53,14 @@ class UploadedFileSerializer(serializers.ModelSerializer):
         if latest and latest.signer_public_key:
             return latest.signer_public_key.pqc_public_key
         return None
+
+    def get_trusted_timestamp(self, obj):
+        latest = obj.get_latest_version()
+        return latest.trusted_timestamp if latest else None
+
+    def get_tsa_signature(self, obj):
+        latest = obj.get_latest_version()
+        return latest.tsa_signature if latest else None
 
 
 class FileUploadSerializer(serializers.Serializer):

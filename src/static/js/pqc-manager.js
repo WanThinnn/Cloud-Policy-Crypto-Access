@@ -494,13 +494,21 @@ class PqcManager {
         await this.initPromise;
         
         const msgArray = new Uint8Array(fileBuffer);
+        return this.verifySignatureRaw(msgArray, sigBase64, pkBase64);
+    }
+    
+    /**
+     * Internal method to verify any Uint8Array payload against a signature and public key.
+     */
+    async verifySignatureRaw(msgArray, sigBase64, pkBase64) {
+        await this.initPromise;
         const msgLen = msgArray.length;
         
         const sigArray = Uint8Array.from(atob(sigBase64), c => c.charCodeAt(0));
         const pkArray = Uint8Array.from(atob(pkBase64), c => c.charCodeAt(0));
         
         const msgPtr = this.module._malloc(msgLen);
-        if (msgPtr === 0) throw new Error("WASM Memory Allocation Failed! File may be too large.");
+        if (msgPtr === 0) throw new Error("WASM Memory Allocation Failed!");
         
         this.module.HEAPU8.set(msgArray, msgPtr);
         
@@ -517,6 +525,40 @@ class PqcManager {
         this.module._free(pkPtr);
         
         return ret === 0;
+    }
+
+    /**
+     * Verify TSA Signature from the Server
+     */
+    async verifyTSASignature(fileBuffer, userSignature, timestampIso, tsaSignatureBase64) {
+        if (!window.ROOT_CA_PUBLIC_KEY) {
+            console.warn("ROOT_CA_PUBLIC_KEY not found!");
+            return false;
+        }
+        
+        // sha3_256 returns a hex string directly when passed a buffer/string
+        const fileHashHex = typeof sha3_256 !== 'undefined' ? sha3_256(fileBuffer) : '';
+        
+        // Construct the EXACT JSON string that the python backend generated:
+        // json.dumps(payload_dict, separators=(',', ':'), sort_keys=True)
+        const payloadStr = `{"file_hash":"${fileHashHex}","issuer":"CyberFortress-TSA","timestamp":"${timestampIso}","user_signature":"${userSignature}"}`;
+        const encoder = new TextEncoder();
+        const payloadArray = encoder.encode(payloadStr);
+        
+        return this.verifySignatureRaw(payloadArray, tsaSignatureBase64, window.ROOT_CA_PUBLIC_KEY);
+    }
+    
+    /**
+     * Verify CA Signature of a User Key
+     */
+    async verifyCASignature(username, userPkBase64, caSignatureBase64) {
+        if (!window.ROOT_CA_PUBLIC_KEY) return false;
+        
+        const payloadStr = `{"issuer":"CyberFortress-RootCA","public_key":"${userPkBase64}","user":"${username}"}`;
+        const encoder = new TextEncoder();
+        const payloadArray = encoder.encode(payloadStr);
+        
+        return this.verifySignatureRaw(payloadArray, caSignatureBase64, window.ROOT_CA_PUBLIC_KEY);
     }
 }
 

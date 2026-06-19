@@ -826,12 +826,12 @@
             
             // PQC Signature Verification
             let sigVerificationHtml = '';
-            if (fileObj && fileObj.user_signature && fileObj.signer_public_key) {
+            if (fileObj && fileObj.metadata && fileObj.metadata.user_signature && fileObj.metadata.signer_public_key) {
                 try {
                     const buffer = await blob.arrayBuffer();
                     // Load PQC Module if needed
                     if (typeof pqcManager !== 'undefined') {
-                        const isValid = await pqcManager.verifySignature(buffer, fileObj.user_signature, fileObj.signer_public_key);
+                        const isValid = await pqcManager.verifySignature(buffer, fileObj.metadata.user_signature, fileObj.metadata.signer_public_key);
                         if (isValid) {
                             sigVerificationHtml = `
                             <div class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-3">
@@ -841,6 +841,37 @@
                                     <p class="text-xs text-green-600 dark:text-green-400">This file has not been tampered with since upload.</p>
                                 </div>
                             </div>`;
+                            
+                            // Check TSA Signature
+                            if (fileObj.metadata.tsa_signature && fileObj.metadata.trusted_timestamp) {
+                                const isTsaValid = await pqcManager.verifyTSASignature(
+                                    buffer, 
+                                    fileObj.metadata.user_signature, 
+                                    fileObj.metadata.trusted_timestamp, 
+                                    fileObj.metadata.tsa_signature
+                                );
+                                
+                                if (isTsaValid) {
+                                    sigVerificationHtml += `
+                                    <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-3">
+                                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        <div>
+                                            <p class="text-sm font-medium text-blue-800 dark:text-blue-300">Trusted Timestamp Verified (Root CA)</p>
+                                            <p class="text-xs text-blue-600 dark:text-blue-400">Time of signature: ${new Date(fileObj.trusted_timestamp).toLocaleString()}</p>
+                                        </div>
+                                    </div>`;
+                                } else {
+                                    sigVerificationHtml += `
+                                    <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-center gap-3">
+                                        <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                        <div>
+                                            <p class="text-sm font-bold text-yellow-800 dark:text-yellow-300">TSA Signature Invalid</p>
+                                            <p class="text-xs text-yellow-600 dark:text-yellow-400">The timestamp signature from the Root CA could not be verified.</p>
+                                        </div>
+                                    </div>`;
+                                }
+                            }
+                            
                         } else {
                             sigVerificationHtml = `
                             <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
