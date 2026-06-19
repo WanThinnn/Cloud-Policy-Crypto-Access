@@ -368,7 +368,7 @@
             if (folderCache.has(path)) {
                 const cached = folderCache.get(path);
                 if (Date.now() - cached.timestamp < CACHE_TTL) {
-                    console.log('Serving folder from cache:', path);
+                    // console.log('Serving folder from cache:', path);
                     allFiles = cached.data.files || [];
                     renderFiles(allFiles);
                     return;
@@ -377,7 +377,7 @@
 
             showLoading();
             const url = `${API_BASE}files/browse/?path=${encodeURIComponent(path)}&bucket=documents&t=${Date.now()}`;
-            console.log('Loading folder:', url);
+            // console.log('Loading folder:', url);
             const response = await fetch(url, { headers });
 
             if (!response.ok) {
@@ -800,7 +800,7 @@
 
         try {
             const url = `${API_BASE}files/preview_by_path/?path=${encodeURIComponent(filePath)}&bucket=documents`;
-            console.log('Previewing file:', url);
+            // console.log('Previewing file:', url);
             const response = await fetch(url, { headers });
 
             if (response.status === 403) {
@@ -1432,7 +1432,7 @@
             formData.append('policy_id', selectedPolicyId);
         }
 
-        console.log('Uploading file:', file.name, 'to path:', targetPath);
+        // console.log('Uploading file:', file.name, 'to path:', targetPath);
 
         try {
             const errContainer = document.getElementById('upload-error-container');
@@ -1492,7 +1492,7 @@
                 progressBar.classList.add('bg-indigo-600');
                 document.getElementById('upload-error-container').classList.add('hidden');
                 const result = await response.json();
-                console.log('Upload successful:', result);
+                // console.log('Upload successful:', result);
                 
                 // Backend now handles policy creation and assignment within the upload API itself
                 // so we don't need to call assignPolicyToUploadedFile here.

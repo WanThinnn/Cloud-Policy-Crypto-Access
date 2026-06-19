@@ -354,8 +354,8 @@ class PqcManager {
         
         // 3. Decrypt SK
         const username = localStorage.getItem('username');
-        console.log('[DEBUG] username from localStorage:', username);
-        console.log('[DEBUG] encrypted_pqc_sk_primary:', keyData.encrypted_pqc_sk_primary?.slice(0, 30));
+        // console.log('[DEBUG] username from localStorage:', username);
+        // console.log('[DEBUG] encrypted_pqc_sk_primary:', keyData.encrypted_pqc_sk_primary?.slice(0, 30));
     
         const rawSkBuffer = await this._decryptKey(prfKey, keyData.encrypted_pqc_sk_primary);
         const rawSkArray = new Uint8Array(rawSkBuffer);
@@ -369,7 +369,7 @@ class PqcManager {
         
         this.isUnlocked = true;
         this._resetLockTimeout();
-        console.log("PQC Manager: Unlocked and loaded to WASM Heap.");
+        // console.log("PQC Manager: Unlocked and loaded to WASM Heap.");
         return true;
     }
     
