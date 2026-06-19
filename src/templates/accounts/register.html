@@ -223,6 +223,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/sha3-hasher.js' %}"></script>
 <script>
     const form = document.getElementById('register-form');
     const alertBox = document.getElementById('alert');
@@ -320,11 +321,15 @@
         buttonText.textContent = 'Processing...';
         spinner.classList.remove('hidden');
         
+        // Pre-hash passwords with SHA3-512 before sending to server
+        const hashedPassword = prehashPassword(passwordInput.value);
+        const hashedPassword2 = prehashPassword(password2Input.value);
+        
         const formData = {
             username: document.getElementById('username').value,
             email: document.getElementById('email').value,
-            password: passwordInput.value,
-            password2: password2Input.value,
+            password: hashedPassword,
+            password2: hashedPassword2,
             full_name: document.getElementById('full_name').value,
             phone: document.getElementById('phone').value || ''
         };
