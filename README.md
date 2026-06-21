@@ -11,9 +11,17 @@ Please switch to the **[`feature/cloud-policy-quantum-access`](https://github.co
 ### 1. Hybrid PQC CP-ABE
 The `feature/cloud-policy-quantum-access` branch replaces the standard CP-ABE wrapper with a heavily modified PQC version that incorporates NIST-standardized algorithms, ensuring the cryptographic mechanisms are quantum-resistant.
 
-### 2. Post-Quantum Dual-Layer Signature (ML-DSA)
-To ensure long-term integrity, the experimental branch implements a **Dual-Layer Signature** mechanism. It signs the encrypted payloads with both classical signatures (for immediate compatibility) and **Post-Quantum ML-DSA (formerly Dilithium)** signatures. This ensures that even if classical signature schemes are broken by Shor's algorithm, the data remains mathematically authentic and tamper-proof.
 
+### 2. Post-Quantum Hybrid TLS 1.3 (ML-KEM-768)
+Data-in-transit is secured using a **Hybrid Key Encapsulation Mechanism (KEM)** on an OpenQuantumSafe (OQS) Nginx architecture.
+* **Algorithm**: `X25519 + ML-KEM-768` (formerly Kyber768).
+* **Security Grade**: NIST Level 3 (Equivalent to AES-192).
+* **Optimization**: Perfectly balances security and performance, fitting within standard TCP packet limits to prevent handshake fragmentation over network traffic.
+
+### 3. Post-Quantum Dual-Layer Signature (ML-DSA-87)
+To prevent adversarial tampering and ensure non-repudiation in the post-quantum era, all encrypted payloads and database audit logs are bound by a **Dual-Layer Digital Signature**:
+* **Quantum-Resistant Layer**: **ML-DSA-87** (formerly Dilithium5).
+* **Security Grade**: **NIST Level 5 (Highest Protection)**, equivalent to the computational hardness of AES-256. This ensures that even if a Cryptographically Relevant Quantum Computer (CRQC) breaks the classical layer, the mathematical integrity and authenticity of the files remain absolute.
 
 ## Project Overview
 
