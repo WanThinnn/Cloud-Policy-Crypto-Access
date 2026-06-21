@@ -315,7 +315,7 @@
 
 <!-- File Preview Modal -->
 <div id="preview-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-[9999]">
-    <div class="bg-white dark:bg-gray-800 rounded-lg w-full mx-4 flex flex-col overflow-hidden shadow-2xl" style="max-width: 90vw; max-height: 90vh;">
+    <div class="bg-white dark:bg-gray-800 rounded-lg w-full mx-4 flex flex-col overflow-hidden shadow-2xl" style="max-width: 90vw; height: 90vh;">
         <div class="flex items-center justify-between p-4 border-b relative z-10 bg-white dark:bg-gray-800 rounded-t-lg shadow-sm">
             <div class="flex items-center gap-4 flex-1">
                 <h3 class="text-lg font-semibold flex-1" id="preview-title">Preview</h3>
@@ -327,7 +327,7 @@
                 </svg>
             </button>
         </div>
-        <div id="preview-content" class="flex-1 overflow-auto p-6 flex flex-col items-center justify-center min-h-[50vh]">
+        <div id="preview-content" class="flex-1 overflow-auto p-6 flex flex-col items-center justify-center min-h-0">
             <!-- Content here -->
         </div>
         <div id="preview-metadata-container" class="hidden flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
@@ -807,7 +807,7 @@
 
 {% block extra_js %}
 <script src="{% static 'js/policy-builder.js' %}?v=3"></script>
-<script src="{% static 'js/files-manager.js' %}?v=36"></script>
+<script src="{% static 'js/files-manager.js' %}?v=37"></script>
 <!-- Hidden form for version upload -->
 <input type="file" id="version-file-input" class="hidden" onchange="handleVersionUpload(event)">
 

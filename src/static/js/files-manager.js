@@ -948,8 +948,8 @@
                 // PDF preview using iframe
                 const pdfUrl = URL.createObjectURL(blob);
                 content.innerHTML = `
-                <div style="width: 100%; height: 75vh; min-height: 500px;">
-                    <iframe src="${pdfUrl}#toolbar=0" style="width: 100%; height: 100%; border: none; border-radius: 0.5rem;" type="application/pdf" title="${fileName}"></iframe>
+                <div class="w-full h-full min-h-[500px]">
+                    <iframe src="${pdfUrl}#toolbar=0" class="w-full h-full border-none rounded-lg" type="application/pdf" title="${fileName}"></iframe>
                 </div>`;
             } else {
                 // Unsupported format
