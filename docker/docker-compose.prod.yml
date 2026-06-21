@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: wanthinnn/cloud-policy-crypto-access:latest
+    image: wanthinnn/cloud-policy-crypto-access:pqc-latest
     container_name: crypto-web
     env_file:
       - .env
