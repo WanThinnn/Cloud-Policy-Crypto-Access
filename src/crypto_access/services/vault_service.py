@@ -14,7 +14,7 @@ class VaultService:
         return cls._instance
     
     def _init(self):
-        self.vault_addr = os.environ.get('VAULT_ADDR', 'http://vault:8200')
+        self.vault_addr = os.environ.get('VAULT_ADDR', 'http://localhost:8200')
         self.secret_path = os.environ.get('VAULT_SECRET_PATH', 'secret/data/crypto_access')
         
         # Try to read token from file first (written by auto-unseal script)

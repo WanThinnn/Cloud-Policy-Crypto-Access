@@ -12,7 +12,7 @@ except ImportError:
     print("hvac not installed. Run 'pip install hvac'")
     exit(1)
 
-VAULT_ADDR = os.environ.get('VAULT_ADDR', 'http://vault:8200')
+VAULT_ADDR = os.environ.get('VAULT_ADDR', 'http://localhost:8200')
 KEYS_DIR = os.environ.get('KEYS_DIR', '/app/config/keys')
 UNSEAL_KEYS_FILE = os.path.join(KEYS_DIR, 'vault_unseal_keys.json')
 TOKEN_FILE = os.path.join(KEYS_DIR, 'vault_token.txt')

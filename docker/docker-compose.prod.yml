@@ -96,9 +96,9 @@ services:
       - ./config/certs:/opt/nginx/certs:ro
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME:-cloudsafe.cyberfortress.local}
-      - SSL_CERT_FILE=${PQC_SSL_CERT_FILE:-_.pq-cyberfortress.local.crt}
-      - SSL_KEY_FILE=${PQC_SSL_KEY_FILE:-_.pq-cyberfortress.local.key}
-      - SSL_CA_FILE=${PQC_SSL_CA_FILE:-pq-CyberFortress-RootCA.crt}
+      - PQC_SSL_CERT_FILE=${PQC_SSL_CERT_FILE:-_.pq-cyberfortress.local.crt}
+      - PQC_SSL_KEY_FILE=${PQC_SSL_KEY_FILE:-_.pq-cyberfortress.local.key}
+      - PQC_SSL_CA_FILE=${PQC_SSL_CA_FILE:-pq-CyberFortress-RootCA.crt}
     depends_on:
       - web
     networks:
