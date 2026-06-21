@@ -78,7 +78,7 @@ Prefix: `/api/storage/`
 | Phương thức | Endpoint | Mô tả | Yêu cầu Auth |
 | ----------- | -------- | ----- | ------------ |
 | GET/POST | `/buckets/` | Quản lý Storage Buckets (Kho lưu trữ logic để nhóm file). | Có |
-| GET/POST | `/files/` | API chính xử lý Upload File. Dữ liệu POST bao gồm `file` và `policy` (Chính sách CP-ABE mong muốn). File sẽ được mã hóa AES, khóa AES mã hóa CP-ABE trước khi lưu. **Đồng thời**, các thông tin metadata, tên file và đường dẫn cũng được tự động trích xuất và mã hóa bằng AES-256-GCM trước khi lưu xuống SQL. | Có |
+| GET/POST | `/files/` | API chính xử lý Upload File. Dữ liệu POST bao gồm `file` và `policy` (Chính sách CP-ABE mong muốn). Dữ liệu Plaintext (chưa mã hóa) sẽ được stream vào tiến trình quét mã độc ClamAV chạy ngầm (Asynchronous). File sẽ được băm (hashing chunk) và mã hóa AES, khóa AES mã hóa CP-ABE trước khi lưu. **Đồng thời**, các thông tin metadata, tên file và đường dẫn cũng được tự động trích xuất và mã hóa bằng AES-256-GCM trước khi lưu xuống SQL. File bị phát hiện mã độc sẽ tự động bị quarantine (xóa mềm). | Có |
 | GET | `/files/{id}/` | Lấy metadata của file. | Có |
 | GET | `/files/{id}/download/` | Yêu cầu tải nội dung file. Hệ thống thực hiện check ABAC -> sinh khóa CP-ABE (nếu chưa cache) -> giải mã -> trả về stream data. | Có |
 | DELETE | `/files/{id}/` | Xóa mềm file (đưa vào Thùng rác). Xóa cứng (Permanent delete) chỉ dành cho Admin/Owner. | File Owner/Admin |

@@ -91,7 +91,7 @@ Tags: _______
 Upload Date: _______  
 Uploader: _______  
 
-**R2:** There are 5 main file types supported (text/plain, document, image, video, audio). Maximum file size is 100MB. The system only accepts virus-free files that are encrypted based on Ciphertext-Policy Attribute-Based Encryption (CP-ABE). The attribute policy is defined by the file's owner (Data Owner). Data Users with attributes satisfying this policy can access the file. No one can change the file's Access Policy except its owner.
+**R2:** There are 5 main file types supported (text/plain, document, image, video, audio). Maximum file size is 100MB. The system only accepts virus-free files through an **Asynchronous ClamAV Scanning mechanism**. The scanning and hashing processes operate implicitly in-memory (RAM) via streaming chunks instead of reading the entire file, guaranteeing high-speed uploads, optimal RAM utilization, and ensuring sensitive plaintext data is never written to disk. Files are encrypted based on Ciphertext-Policy Attribute-Based Encryption (CP-ABE). The attribute policy is defined by the file's owner (Data Owner). Data Users with attributes satisfying this policy can access the file. No one can change the file's Access Policy except its owner.
 
 Additionally, the system automatically extracts **metadata** such as: IP, User-Agent, Uploader Identity (Name, Email, Role), file size, and MIME Type. All metadata, along with sensitive fields (Original File Name, Path, Signed URL), is **completely encrypted** using AES-256-GCM in the SQL database. The physical storage path on Cloud Storage is assigned a random UUID string to prevent directory structure inference.
 
