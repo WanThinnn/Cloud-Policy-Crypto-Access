@@ -1,7 +1,7 @@
 # Post-Quantum Certificates (ML-DSA-87)
 
 > [!WARNING]
-> **These certificates are self-signed and should only be used for development and testing purposes. Do not use them in production!**
+> **The certificates in this folder are self-signed and should only be used for development and testing purposes. Do not use them in production!**
 
 This directory contains scripts to generate Post-Quantum Cryptography (PQC) certificates using the `ML-DSA-87` signature algorithm. Because standard OS OpenSSL distributions do not yet support PQC algorithms, we use a pre-compiled OpenQuantumSafe (OQS) Docker container to generate the keys.
 
