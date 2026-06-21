@@ -450,6 +450,10 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         try:
             file_data = file.read()
             
+            # Pre-compute hash of plaintext BEFORE encryption for TSA integrity
+            import hashlib
+            plaintext_file_hash = hashlib.sha3_256(file_data).hexdigest()
+            
             # Scan for malware before any processing
             from ..services.clamav_service import clamav_service
             is_safe, message = clamav_service.scan_file_buffer(file_data)
@@ -528,9 +532,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 signer_key = request.user.pqc_keys.filter(status='active').order_by('-created_at').first()
                 # Generate Trusted Timestamp
                 from ..services.pki_service import PKIService
-                import hashlib
                 trusted_timestamp = timezone.now()
-                file_hash = hashlib.sha3_256(file_data).hexdigest()
+                file_hash = plaintext_file_hash  # Use pre-computed hash (no plaintext retained)
                 tsa_payload = {
                     "file_hash": file_hash,
                     "user_signature": user_signature,
