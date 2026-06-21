@@ -5,9 +5,16 @@ DOMAIN_NAME=${DOMAIN_NAME:-cyberfortress.local}
 COMPANY_NAME=${COMPANY_NAME:-CyberFortress}
 ROOT_CA_NAME="pq-${COMPANY_NAME}-RootCA"
 
+COUNTRY=${COUNTRY:-VN}
+STATE=${STATE:-Ho Chi Minh}
+LOCALITY=${LOCALITY:-Thu Duc}
+ORG=${ORG:-VNU}
+ORG_UNIT=${ORG_UNIT:-UIT}
+
 echo "============================================================"
 echo "Generating PQC (mldsa87) for Domain: $DOMAIN_NAME"
 echo "Company Name: $COMPANY_NAME"
+echo "Subject: /C=$COUNTRY/ST=$STATE/L=$LOCALITY/O=$ORG/OU=$ORG_UNIT"
 echo "============================================================"
 
 # Create minimal openssl config
@@ -17,7 +24,7 @@ distinguished_name = req_distinguished_name
 x509_extensions = v3_ca
 prompt = no
 [req_distinguished_name]
-C = VN
+C = ${COUNTRY}
 [v3_ca]
 basicConstraints = critical,CA:true
 EOF
@@ -26,13 +33,13 @@ EOF
 echo "\n[1/4] Generating PQC Root CA..."
 openssl req -config pq-openssl.cnf -x509 -new -newkey mldsa87 \
     -keyout "${ROOT_CA_NAME}.key" -out "${ROOT_CA_NAME}.crt" -nodes \
-    -subj "/C=VN/ST=Ho Chi Minh/L=Thu Duc/O=VNU/OU=UIT/CN=${COMPANY_NAME}-RootCA" -days 3650
+    -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${ORG}/OU=${ORG_UNIT}/CN=${COMPANY_NAME}-RootCA" -days 3650
 
 # 2. Generate Leaf Certificate (Key & CSR)
 echo "\n[2/4] Generating PQC Leaf Key and CSR..."
 openssl req -config pq-openssl.cnf -new -newkey mldsa87 \
     -keyout "_.pq-${DOMAIN_NAME}.key" -out "_.pq-${DOMAIN_NAME}.csr" -nodes \
-    -subj "/C=VN/ST=Ho Chi Minh/L=Thu Duc/O=VNU/OU=UIT/CN=${DOMAIN_NAME}"
+    -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${ORG}/OU=${ORG_UNIT}/CN=${DOMAIN_NAME}"
 
 # 3. Create extension file
 echo "\n[3/4] Creating extension config file..."

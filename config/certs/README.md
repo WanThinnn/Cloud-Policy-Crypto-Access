@@ -26,9 +26,14 @@ docker run -it --rm -e DOMAIN_NAME="mycompany.com" -e COMPANY_NAME="MyCompany" -
 ```
 
 ### Customization (Optional):
-The script supports generating certificates for any domain or company name by passing Environment Variables (`-e`) into the Docker container.
+The script supports generating certificates for any domain, company name, or subject details by passing Environment Variables (`-e`) into the Docker container.
 - `DOMAIN_NAME`: The domain for the certificate (e.g., `mycompany.com`). *Default: `cyberfortress.local`*
 - `COMPANY_NAME`: The organization name for the Root CA (e.g., `MyCompany`). *Default: `CyberFortress`*
+- `COUNTRY`: Two-letter country code (e.g., `US`). *Default: `VN`*
+- `STATE`: State or Province (e.g., `California`). *Default: `Ho Chi Minh`*
+- `LOCALITY`: City or Locality (e.g., `San Francisco`). *Default: `Thu Duc`*
+- `ORG`: Organization (e.g., `TechCorp`). *Default: `VNU`*
+- `ORG_UNIT`: Organizational Unit (e.g., `IT Dept`). *Default: `UIT`*
 
 ### What it does:
 1. Spawns an ephemeral `openquantumsafe/curl` container (which includes OQS-OpenSSL).
