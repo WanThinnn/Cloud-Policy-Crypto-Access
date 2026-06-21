@@ -44,6 +44,28 @@ def call_setup(script_path: Path) -> None:
     run([sys.executable, str(script_path)])
 
 
+def extract_pqc_raw_key(c: list[str]) -> None:
+    cert_path = CERTS_DIR / "pq-CyberFortress-RootCA.crt"
+    raw_pk_path = CERTS_DIR / "root_ca_raw_pk.b64"
+    if not cert_path.exists():
+        return
+    # Check if raw_pk_path exists and is newer than cert_path
+    if raw_pk_path.exists() and raw_pk_path.stat().st_mtime >= cert_path.stat().st_mtime:
+        return
+    
+    print(color_info(f"\n[+] Extracting PQC Raw Public Key from Root CA..."))
+    try:
+        # Run docker exec on pki_signer to extract the key
+        cmd_extract = c + ["exec", "-T", "pki_signer", "sh", "-c", "openssl x509 -in /certs/pq-CyberFortress-RootCA.crt -pubkey -noout | openssl pkey -pubin -outform der | tail -c +23 | base64 -w0"]
+        result = subprocess.run(cmd_extract, capture_output=True, text=True, check=True)
+        raw_b64 = result.stdout.strip()
+        if raw_b64:
+            raw_pk_path.write_text(raw_b64, encoding="ascii")
+            print("[OK] Raw Public Key extracted successfully.")
+    except Exception as e:
+        print(color_warning(f"Failed to extract Raw Public Key: {e}"))
+
+
 def add_manage_args(base: list[str], extra: list[str]) -> list[str]:
     return base + extra
 
@@ -201,6 +223,9 @@ def main(argv: list[str]) -> int:
                     time.sleep(2)
             if not success:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
+            
+            extract_pqc_raw_key(c)
+            
             print(color_info(f"\n[OK] Services started.\n"))
             print(color_info(f"{env_access_urls(use_ssl)}"))
         elif cmd in {"down"}:
@@ -222,6 +247,9 @@ def main(argv: list[str]) -> int:
                     time.sleep(2)
             if not success:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
+            
+            extract_pqc_raw_key(c)
+            
             print("[OK] Services restarted.")
         elif cmd == "logs":
             # print(f"{status_line}\n")
@@ -244,6 +272,9 @@ def main(argv: list[str]) -> int:
             run(add_manage_args(c + ["exec", "web", "python", "manage.py", "seed_policies"], []))
             print(color_info("\n[4/4] Seeding test users & ABAC attributes..."))
             run(add_manage_args(c + ["exec", "web", "python", "manage.py", "seed_test_data"], []))
+            
+            extract_pqc_raw_key(c)
+            
             print(color_info("\n[OK] Initialization complete!"))
         elif cmd == "initsettings":
             # print(f"{status_line}\n")
@@ -272,6 +303,9 @@ def main(argv: list[str]) -> int:
                 run(c + vault_cmd)
             except subprocess.CalledProcessError:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
+            
+            extract_pqc_raw_key(c)
+            
             print(f"[OK] Rebuilt and started services.\n")
             print(f"{env_access_urls(use_ssl)}")
         elif cmd == "help":

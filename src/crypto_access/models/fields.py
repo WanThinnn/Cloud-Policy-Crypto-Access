@@ -37,14 +37,14 @@ def get_encryption_key(info: bytes = b"") -> bytes:
         
     try:
         master_key = base64.urlsafe_b64decode(key_b64)
-        if len(master_key) != 32:
-            raise ValueError(f"AES key must be 32 bytes (256 bits). Got {len(master_key)} bytes.")
-            
-        if not info:
-            return master_key
+        
+        # If no specific column info is provided, use a default context
+        # This ensures that even arbitrarily large master keys (e.g., 12288-bit)
+        # are safely compressed down to exactly 32 bytes for AES-256.
+        actual_info = info if info else b"cyberfortress_default_context"
             
         # Derive specific key using HKDF for Blast Radius isolation
-        cache_key = info
+        cache_key = actual_info
         with _cache_lock:
             if cache_key in _derived_keys_cache:
                 return _derived_keys_cache[cache_key]
@@ -53,7 +53,7 @@ def get_encryption_key(info: bytes = b"") -> bytes:
                 algorithm=hashes.SHA3_256(),
                 length=32,
                 salt=b"cyberfortress_static_salt_v1", 
-                info=info,
+                info=actual_info,
             )
             derived_key = hkdf.derive(master_key)
             _derived_keys_cache[cache_key] = derived_key
