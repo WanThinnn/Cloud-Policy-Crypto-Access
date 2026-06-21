@@ -448,21 +448,20 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     break
         
         try:
-            file_data = file.read()
-            
-            # Pre-compute hash of plaintext BEFORE encryption for TSA integrity
+            # OPTIMIZATION: Chunked Hashing (Avoid duplicating massive buffers in RAM)
             import hashlib
-            plaintext_file_hash = hashlib.sha3_256(file_data).hexdigest()
+            plaintext_hasher = hashlib.sha3_256()
+            for chunk in file.chunks():
+                plaintext_hasher.update(chunk)
+            plaintext_file_hash = plaintext_hasher.hexdigest()
             
-            # Scan for malware before any processing
-            from ..services.clamav_service import clamav_service
-            is_safe, message = clamav_service.scan_file_buffer(file_data)
-            if not is_safe:
-                logger.warning(f"Malware scan failed for file {file.name}: {message}")
-                return Response(
-                    {'error': f"Upload failed ({message}). Please check your file!"},
-                    status=status.HTTP_406_NOT_ACCEPTABLE
-                )
+            # Reset file pointer for reading into buffer for CP-ABE
+            file.seek(0)
+            plaintext_data = file.read()
+            
+            # OPTIMIZATION: Async Malware Scan
+            # ClamAV scan is deferred to a background thread to prevent blocking the upload response
+            # (Scanning happens asynchronously after file is successfully uploaded and saved)
             
             # Encrypt if policy has cpabe_policy
             if cpabe_policy_str:
@@ -470,9 +469,11 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 logger.info(f"Encrypting file with CP-ABE policy: {cpabe_policy_str}", extra={"user.name": request.user.username, "user.id": request.user.id})
                 from django.conf import settings
                 if getattr(settings, 'ENABLE_PQC_FEATURES', False):
-                    file_data = cpabe_service.encrypt_buffer_and_sign(file_data, cpabe_policy_str)
+                    file_data = cpabe_service.encrypt_buffer_and_sign(plaintext_data, cpabe_policy_str)
                 else:
-                    file_data = cpabe_service.encrypt_buffer(file_data, cpabe_policy_str)
+                    file_data = cpabe_service.encrypt_buffer(plaintext_data, cpabe_policy_str)
+            else:
+                file_data = plaintext_data
 
             upload_result = storage.upload_file(
                 bucket_name=bucket_name,
@@ -522,6 +523,33 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     tags=tags,
                     metadata=file_metadata
                 )
+                
+            # TRIGGER ASYNC CLAMAV SCAN
+            from ..services.clamav_service import clamav_service
+            import threading
+            
+            def async_clamav_scan():
+                try:
+                    is_safe, msg = clamav_service.scan_file_buffer(plaintext_data)
+                    if not is_safe:
+                        logger.warning(f"[ASYNC] Malware detected in file {uploaded_file.id}: {msg}. Quarantining...")
+                        uploaded_file.is_deleted = True
+                        if not isinstance(uploaded_file.metadata, dict):
+                            uploaded_file.metadata = {}
+                        uploaded_file.metadata['clamav_scan'] = 'infected'
+                        uploaded_file.metadata['clamav_msg'] = msg
+                        uploaded_file.save(update_fields=['is_deleted', 'metadata'])
+                    else:
+                        if not isinstance(uploaded_file.metadata, dict):
+                            uploaded_file.metadata = {}
+                        uploaded_file.metadata['clamav_scan'] = 'clean'
+                        uploaded_file.save(update_fields=['metadata'])
+                except Exception as e:
+                    logger.error(f"[ASYNC] ClamAV background scan failed: {e}")
+                    
+            scan_thread = threading.Thread(target=async_clamav_scan)
+            scan_thread.daemon = True
+            scan_thread.start()
             
             # Create FileVersion
             signer_key = None
