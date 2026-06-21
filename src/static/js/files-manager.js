@@ -834,7 +834,7 @@
                         const isValid = await pqcManager.verifySignature(buffer, fileObj.metadata.user_signature, fileObj.metadata.signer_public_key);
                         if (isValid) {
                         sigVerificationHtml = `
-                        <div class="justify-center w-32 h-10 px-2 py-1 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded flex items-center gap-1.5" title="End-to-End Cryptographic Signature Verified">
+                        <div class="justify-center w-32 h-10 px-2 py-1 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded flex items-center gap-2" title="End-to-End Cryptographic Signature Verified">
                             <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                             <span class="text-xs font-medium text-green-800 dark:text-green-300">PQC Valid</span>
                         </div>`;
@@ -856,7 +856,7 @@
                                 </div>`;
                             } else {
                                 sigVerificationHtml += `
-                                <div class="justify-center w-32 h-10 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded flex items-center gap-1.5" title="TSA Signature Invalid">
+                                <div class="justify-center w-32 h-10 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded flex items-center gap-2" title="TSA Signature Invalid">
                                     <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                                     <span class="text-xs font-medium text-yellow-800 dark:text-yellow-300">TSA Invalid</span>
                                 </div>`;
