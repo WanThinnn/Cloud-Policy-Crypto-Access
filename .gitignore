@@ -516,6 +516,6 @@ config/cloudflare/*
 !config/certs/pq-CyberFortress-RootCA.crt
 !config/certs/pq-CyberFortress-RootCA.key
 !config/certs/pq-CyberFortress-RootCA.srl
-!config/certs/generate_pq_certs.py
 !config/certs/.gitkeep
 !config/certs/generate_pq_certs_docker.sh
+!config/cloudflare/.gitkeep
