@@ -83,10 +83,16 @@ if redis_url:
     
     if redis_use_tls:
         # Require SSL/TLS for secure transit
-        redis_options['CONNECTION_POOL_KWARGS'] = {
-            'ssl': True,
-            'ssl_cert_reqs': None  # Set to 'CERT_REQUIRED' if using strict CA validation
-        }
+        redis_ca_cert = os.environ.get('REDIS_CACERT')
+        if redis_ca_cert and os.path.exists(redis_ca_cert):
+            redis_options['CONNECTION_POOL_KWARGS'] = {
+                'ssl_cert_reqs': 'required',
+                'ssl_ca_certs': redis_ca_cert
+            }
+        else:
+            redis_options['CONNECTION_POOL_KWARGS'] = {
+                'ssl_cert_reqs': None  # Fallback to no strict CA validation
+            }
 
     CACHES = {
         'default': {

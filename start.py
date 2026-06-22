@@ -168,7 +168,9 @@ def main(argv: list[str]) -> int:
     cert_path = CERTS_DIR / ssl_cert_file
     key_path = CERTS_DIR / ssl_key_file
     
-    use_ssl = cert_path.exists() and key_path.exists()
+    use_ssl_env = str(env_vars.get("USE_EXTERNAL_TLS", "True")).lower() in ("true", "1", "yes", "on")
+    use_ssl = use_ssl_env and cert_path.exists() and key_path.exists()
+    
     compose_files = [compose_file] if use_ssl else [compose_file, NO_SSL_OVERRIDE]
     use_tunnel = False
     tunnel_note = ""

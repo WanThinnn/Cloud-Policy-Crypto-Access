@@ -29,7 +29,11 @@ class VaultService:
         
         # Only initialize client if addr is provided and not empty
         if self.vault_addr:
-            self.client = hvac.Client(url=self.vault_addr, token=self.vault_token)
+            ca_cert_path = os.environ.get('VAULT_CACERT', '/certs/CyberFortress-RootCA.crt')
+            if self.vault_addr.startswith('https') and os.path.exists(ca_cert_path):
+                self.client = hvac.Client(url=self.vault_addr, token=self.vault_token, verify=ca_cert_path)
+            else:
+                self.client = hvac.Client(url=self.vault_addr, token=self.vault_token)
         else:
             self.client = None
             

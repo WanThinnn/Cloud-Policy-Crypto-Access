@@ -16,6 +16,7 @@ services:
       - ./docs:/docs
       - ./logs:/app/logs
       - ./config:/config:ro
+      - ${CERTS_DIR:-./config/certs}:/certs:ro
       - ./scripts/gunicorn.conf.py:/app/gunicorn.conf.py:ro
       - static_volume:/app/staticfiles
       - ${DB_DIR:-sqlite_volume}:/app/data
@@ -34,10 +35,15 @@ services:
       - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/db.sqlite3}
       - PYTHONUNBUFFERED=1
       - DJANGO_SETTINGS_MODULE=config.settings.production
-      - REDIS_URL=redis://redis_cache:6379/1
-      - VAULT_ADDR=${VAULT_ADDR:-http://vault:8200}
+      - REDIS_URL=rediss://:${REDIS_PASSWORD:-strongpassword123}@redis_cache.cyberfortress.local:6379/1
+      - REDIS_USE_TLS=True
+      - REDIS_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
+      - VAULT_ADDR=${VAULT_ADDR:-https://vault.cyberfortress.local:8200}
       - VAULT_TOKEN=${VAULT_TOKEN:-root}
       - VAULT_SECRET_PATH=${VAULT_SECRET_PATH:-secret/data/crypto_access}
+      - VAULT_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
+      - PKI_SIGNER_URL=${PKI_SIGNER_URL:-https://pki_signer.cyberfortress.local:5000}
+      - PKI_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
       - CLAMAV_HOST=clamav
       - CLAMAV_PORT=3310
     depends_on:
@@ -71,23 +77,39 @@ services:
       - "8200:8200"
     command: server
     environment:
-      - VAULT_API_ADDR=http://127.0.0.1:8200
+      - VAULT_API_ADDR=https://127.0.0.1:8200
     volumes:
       - ./docker/vault/config.hcl:/vault/config/config.hcl:ro
       - vault_data:/vault/file
+      - ${CERTS_DIR:-./config/certs}:/vault/config/certs:ro
     cap_add:
       - IPC_LOCK
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - vault.${INTERNAL_DOMAIN:-cyberfortress.local}
     restart: unless-stopped
 
   redis_cache:
     image: redis:7-alpine
     container_name: redis_cache
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-strongpassword123}
+      --tls-port 6379
+      --port 0
+      --tls-cert-file /certs/${TLS_CERT_FILENAME:-_.cyberfortress.local.crt}
+      --tls-key-file /certs/${TLS_KEY_FILENAME:-_.cyberfortress.local.key}
+      --tls-ca-cert-file /certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
+      --tls-auth-clients no
     expose:
       - "6379"
+    volumes:
+      - ${CERTS_DIR:-./config/certs}:/certs:ro
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - redis_cache.${INTERNAL_DOMAIN:-cyberfortress.local}
     restart: unless-stopped
 
   clamav:
@@ -95,6 +117,11 @@ services:
     container_name: clamav_scanner
     expose:
       - "3310"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2G
     networks:
       - app-network
     restart: unless-stopped
@@ -108,7 +135,7 @@ services:
       - ssl
     volumes:
       - static_volume:/app/staticfiles
-      - ./config/certs:/opt/nginx/certs:ro
+      - ${CERTS_DIR:-./config/certs}:/opt/nginx/certs:ro
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME:-cloudsafe.cyberfortress.local}
       - PQC_SSL_CERT_FILE=${PQC_SSL_CERT_FILE:-_.pq-cyberfortress.local.crt}
@@ -142,10 +169,13 @@ services:
     container_name: pki_signer
     user: root
     volumes:
-      - ./config/certs:/certs:ro
+      - ${CERTS_DIR:-./config/certs}:/certs:ro
+    environment:
+      - TLS_CERT=/certs/${TLS_CERT_FILENAME:-_.cyberfortress.local.crt}
+      - TLS_KEY=/certs/${TLS_KEY_FILENAME:-_.cyberfortress.local.key}
     command: |
       sh -c "apk add --no-cache python3 && python3 -c \"
-      import http.server, socketserver, subprocess
+      import http.server, socketserver, subprocess, ssl, os
       class Handler(http.server.BaseHTTPRequestHandler):
           def do_POST(self):
               length = int(self.headers['Content-Length'])
@@ -160,10 +190,16 @@ services:
                   self.send_response(500)
                   self.end_headers()
                   self.wfile.write(res.stderr)
-      socketserver.TCPServer(('0.0.0.0', 5000), Handler).serve_forever()
+      httpd = socketserver.TCPServer(('0.0.0.0', 5000), Handler)
+      context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+      context.load_cert_chain(os.environ.get('TLS_CERT'), os.environ.get('TLS_KEY'))
+      httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+      httpd.serve_forever()
       \""
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - pki_signer.${INTERNAL_DOMAIN:-cyberfortress.local}
     restart: unless-stopped
 
 volumes:

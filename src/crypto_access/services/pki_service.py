@@ -6,7 +6,9 @@ import os
 from django.conf import settings
 
 # Path to the Root CA Key
-ROOT_CA_KEY_PATH = os.path.join(settings.BASE_DIR, '..', 'config', 'certs', 'pq-CyberFortress-RootCA.key')
+ROOT_CA_KEY_PATH = os.environ.get('PQC_SSL_CA_KEY_FILE', '/certs/pq-CyberFortress-RootCA.key')
+if not os.path.exists(ROOT_CA_KEY_PATH):
+    ROOT_CA_KEY_PATH = os.path.join(settings.BASE_DIR, '..', 'config', 'certs', 'pq-CyberFortress-RootCA.key')
 
 class PKIService:
     """Service to handle PKI operations using OpenSSL and the Root CA."""
@@ -32,11 +34,25 @@ class PKIService:
         try:
             import urllib.request
             import urllib.error
+            import ssl
             # Try to use the dedicated pki_signer service first
-            req = urllib.request.Request("http://pki_signer:5000", data=payload_json, method="POST")
+            pki_url = os.environ.get('PKI_SIGNER_URL', 'https://pki_signer:5000')
+            req = urllib.request.Request(pki_url, data=payload_json, method="POST")
             req.add_header('Content-Length', str(len(payload_json)))
+            
+            ctx = ssl.create_default_context()
+            ca_cert_path = os.environ.get('PKI_CACERT', '/certs/CyberFortress-RootCA.crt')
+            if pki_url.startswith('https') and os.path.exists(ca_cert_path):
+                ctx.load_verify_locations(cafile=ca_cert_path)
+                # Disable strict hostname checking for internal Docker networks 
+                # (since the cert might not have a SAN for the internal pki_signer alias)
+                ctx.check_hostname = False
+            else:
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+
             try:
-                with urllib.request.urlopen(req, timeout=5) as response:
+                with urllib.request.urlopen(req, context=ctx, timeout=5) as response:
                     signature_bytes = response.read()
                     return base64.b64encode(signature_bytes).decode('utf-8')
             except urllib.error.URLError:

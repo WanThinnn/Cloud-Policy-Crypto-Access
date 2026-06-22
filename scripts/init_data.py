@@ -38,8 +38,8 @@ def init():
             os.makedirs(os.path.dirname(key_path), exist_ok=True)
             with open(key_path, 'w') as f:
                 f.write(new_key)
-            print(f"\n[!] IMPORTANT: A backup of the FIELD_ENCRYPTION_KEY has been saved to: {key_path}")
-            print("[!] Please store this key securely! If Vault loses data, you will need this key to decrypt your database fields.\n")
+            print(f"\n\033[93m[!] IMPORTANT: A backup of the FIELD_ENCRYPTION_KEY has been saved to: {key_path}\033[0m")
+            print("\033[93m[!] Please store this key securely! If Vault loses data, you will need this key to decrypt your database fields.\033[0m\n")
         except Exception as e:
             print(f"Warning: Failed to save backup key to {key_path}: {e}")
 

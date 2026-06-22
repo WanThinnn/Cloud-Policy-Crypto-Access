@@ -4,6 +4,8 @@ import time
 import urllib.request
 import urllib.error
 import argparse
+import ssl
+import urllib3
 
 # Install hvac if running outside container but we assume it's running inside `web` container
 try:
@@ -17,13 +19,32 @@ KEYS_DIR = os.environ.get('KEYS_DIR', '/app/config/keys')
 UNSEAL_KEYS_FILE = os.path.join(KEYS_DIR, 'vault_unseal_keys.json')
 TOKEN_FILE = os.path.join(KEYS_DIR, 'vault_token.txt')
 
+def get_ca_cert_path():
+    ca_cert_path = os.environ.get('VAULT_CACERT', '/certs/CyberFortress-RootCA.crt')
+    if os.path.exists(ca_cert_path):
+        return ca_cert_path
+    # Fallback to local path when running outside container (e.g., via start.py on Windows)
+    local_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config', 'certs', 'CyberFortress-RootCA.crt')
+    if os.path.exists(local_path):
+        return local_path
+    return None
+
 def wait_for_vault():
     print(f"Waiting for Vault at {VAULT_ADDR}...")
+    
+    ctx = ssl.create_default_context()
+    ca_cert_path = get_ca_cert_path()
+    if VAULT_ADDR.startswith('https') and ca_cert_path:
+        ctx.load_verify_locations(cafile=ca_cert_path)
+    else:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
     for _ in range(30):
         try:
             req = urllib.request.Request(f"{VAULT_ADDR}/v1/sys/health")
             try:
-                with urllib.request.urlopen(req) as response:
+                with urllib.request.urlopen(req, context=ctx) as response:
                     if response.status in [200, 429, 472, 473, 501, 503]:
                         return True
             except urllib.error.HTTPError as e:
@@ -44,7 +65,16 @@ def init_and_unseal():
     if not wait_for_vault():
         return
 
-    client = hvac.Client(url=VAULT_ADDR)
+    ca_cert_path = get_ca_cert_path()
+    if VAULT_ADDR.startswith('https'):
+        if ca_cert_path:
+            client = hvac.Client(url=VAULT_ADDR, verify=ca_cert_path)
+        else:
+            # Running locally on Windows without the cert mounted, disable verification
+            client = hvac.Client(url=VAULT_ADDR, verify=False)
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    else:
+        client = hvac.Client(url=VAULT_ADDR)
     
     try:
         is_initialized = client.sys.is_initialized()
@@ -81,34 +111,49 @@ def init_and_unseal():
             if not res.get('sealed', True):
                 break
         
+        # Wait for Raft leader election
+        print("Waiting for Raft leader election...")
+        time.sleep(2)
+        
         # Enable KV v2 secrets engine
         print("Enabling KV v2 secrets engine at 'secret/'...")
-        client.sys.enable_secrets_engine(
-            backend_type='kv',
-            path='secret',
-            options={'version': '2'}
-        )
+        for attempt in range(10):
+            try:
+                client.sys.enable_secrets_engine(
+                    backend_type='kv',
+                    path='secret',
+                    options={'version': '2'}
+                )
+                break
+            except Exception as e:
+                if "path is already in use" in str(e):
+                    break
+                elif "local node not active" in str(e):
+                    print(f"Raft leader not ready yet (attempt {attempt+1}/10), waiting...")
+                    time.sleep(2)
+                else:
+                    raise
         print("Vault setup complete.")
 
         if is_prod:
-            print("\n=======================================================")
+            print("\n\033[1;93m=======================================================")
             print("🚨 [WARNING] PRODUCTION ENVIRONMENT DETECTED 🚨")
             print(f"Vault initialized with {shares} keys, {threshold} required to unseal.")
             print(f"Keys are saved in {UNSEAL_KEYS_FILE}.")
             print("Please backup these keys securely and DELETE THE FILE!")
             print("Auto-unseal will be DISABLED for all subsequent restarts.")
-            print("=======================================================\n")
+            print("=======================================================\033[0m\n")
 
     else:
         print("Vault is already initialized.")
         is_sealed = client.sys.is_sealed()
         if is_sealed:
             if is_prod:
-                print("\n=======================================================")
+                print("\n\033[1;93m=======================================================")
                 print("🚨 [WARNING] PRODUCTION ENVIRONMENT DETECTED 🚨")
                 print("Vault is SEALED. Auto-unseal is DISABLED for security.")
                 print(f"Please log in to Vault UI at {VAULT_ADDR} and unseal manually.")
-                print("=======================================================\n")
+                print("=======================================================\033[0m\n")
                 return
 
             print("Vault is sealed. Attempting auto-unseal...")
