@@ -140,6 +140,7 @@ Open `.env` in your text editor and fill in the missing critical values:
 - `KEYS_DIR`: Keep as `./config/keys` to securely mount your encryption master keys outside the source code.
 - `FIELD_ENCRYPTION_KEY`: If using HashiCorp Vault, **leave this blank** and the system will auto-generate a secure 256-bit AES key and push it to Vault during `initdata`. If NOT using Vault, you must provide a URL-safe Base64 32-byte key.
 - `ENABLE_PQC_FEATURES`: Set to `True` (default) to enable ML-DSA dual-layer signatures during file uploads. Set to `False` to fallback to standard CP-ABE encryption.
+- `USE_EXTERNAL_TLS`: Set to `True` (default) to enable Nginx HTTPS and Post-Quantum TLS. Set to `False` to disable the external reverse proxy and test locally via HTTP (port 8080). Note: Internal services will still use zero-trust TLS.
 - `SSL_CERT_FILE` & `SSL_KEY_FILE`: (Optional) By default, the system uses self-signed CyberFortress certs. To use your own certificates in production, place your `.crt` and `.key` files in the `./certs` folder and specify their filenames here.
 
 ### 4. Setup Supabase Storage
@@ -171,7 +172,8 @@ python start.py createsuperuser
 ```
 
 ### 7. Access the Application
-- Open your web browser and navigate to: **`http://localhost:8000/auth/login/`**
+- If `USE_EXTERNAL_TLS=True` (default), open your web browser and navigate to: **`https://localhost`** or **`https://cloudsafe.cyberfortress.local`** (if you configured your `hosts` file).
+- If `USE_EXTERNAL_TLS=False`, navigate to: **`http://localhost:8080`**
 - Log in using the Super Admin credentials you just created.
 - Upon login, navigate to the **Manage** section to start creating User Types, defining Attribute Schemas, assigning attributes to users, and uploading files!
 
