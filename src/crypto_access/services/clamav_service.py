@@ -5,16 +5,44 @@ from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
+class ClamdTLSSocket(clamd.ClamdNetworkSocket):
+    def __init__(self, host, port, timeout=None, ca_certs=None):
+        super().__init__(host, port, timeout)
+        self.ca_certs = ca_certs
+
+    def _init_socket(self):
+        import socket, ssl, sys
+        from clamd import ConnectionError
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            if self.timeout:
+                s.settimeout(self.timeout)
+            s.connect((self.host, self.port))
+            
+            ctx = ssl.create_default_context(cafile=self.ca_certs)
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            
+            self.clamd_socket = ctx.wrap_socket(s, server_hostname=self.host)
+        except Exception:
+            e = sys.exc_info()[1]
+            raise ConnectionError(f"Error connecting to {self.host}:{self.port} over TLS. {e}")
+
 class ClamAVService:
     def __init__(self):
         self.host = os.environ.get('CLAMAV_HOST', 'clamav')
         self.port = int(os.environ.get('CLAMAV_PORT', 3310))
+        self.use_tls = os.environ.get('CLAMAV_USE_TLS', 'False').lower() in ('true', '1', 'yes')
+        self.ca_cert = os.environ.get('CLAMAV_CACERT', None)
         self.cd = None
 
     def _get_client(self):
         if not self.cd:
             try:
-                self.cd = clamd.ClamdNetworkSocket(self.host, self.port)
+                if self.use_tls:
+                    self.cd = ClamdTLSSocket(self.host, self.port, timeout=15.0, ca_certs=self.ca_cert)
+                else:
+                    self.cd = clamd.ClamdNetworkSocket(self.host, self.port, timeout=15.0)
             except Exception as e:
                 logger.error(f"Failed to connect to ClamAV daemon: {e}")
                 self.cd = None

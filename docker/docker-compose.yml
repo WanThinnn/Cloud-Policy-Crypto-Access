@@ -1,6 +1,7 @@
 name: cloud-policy-crypto-access
 services:
   web:
+    platform: linux/amd64
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -44,13 +45,16 @@ services:
       - VAULT_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
       - PKI_SIGNER_URL=${PKI_SIGNER_URL:-https://pki_signer.cyberfortress.local:5000}
       - PKI_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
-      - CLAMAV_HOST=clamav
+      - CLAMAV_HOST=clamav_tls_proxy
       - CLAMAV_PORT=3310
+      - CLAMAV_USE_TLS=True
+      - CLAMAV_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
     depends_on:
       - nginx
       - redis_cache
       - vault
       - clamav
+      - clamav_tls_proxy
       # - db  # Uncomment if using postgres
     networks:
       - app-network
@@ -115,6 +119,7 @@ services:
   clamav:
     image: clamav/clamav:latest
     container_name: clamav_scanner
+    # No ports exposed directly, only internal network
     expose:
       - "3310"
     deploy:
@@ -124,6 +129,24 @@ services:
           memory: 2G
     networks:
       - app-network
+    restart: unless-stopped
+
+  clamav_tls_proxy:
+    image: alpine/socat
+    container_name: clamav_tls_proxy
+    command: >
+      OPENSSL-LISTEN:3310,cert=/certs/${TLS_CERT_FILENAME:-_.cyberfortress.local.crt},key=/certs/${TLS_KEY_FILENAME:-_.cyberfortress.local.key},cafile=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt},verify=0,reuseaddr,fork
+      TCP:clamav:3310
+    volumes:
+      - ${CERTS_DIR:-./config/certs}:/certs:ro
+    expose:
+      - "3310"
+    networks:
+      app-network:
+        aliases:
+          - clamav_tls_proxy.${INTERNAL_DOMAIN:-cyberfortress.local}
+    depends_on:
+      - clamav
     restart: unless-stopped
 
   nginx:

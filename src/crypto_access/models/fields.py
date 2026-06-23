@@ -22,18 +22,18 @@ def get_encryption_key(info: bytes = b"") -> bytes:
     """Retrieve the 256-bit AES key from Vault or settings, and derive a sub-key."""
     try:
         from crypto_access.services.vault_service import vault_service
-        key_b64 = vault_service.get_secret('FIELD_ENCRYPTION_KEY')
+        key_b64 = vault_service.get_secret('MASTER_FIELD_ENCRYPTION_KEY')
         if not key_b64:
-            key_b64 = getattr(settings, 'FIELD_ENCRYPTION_KEY', None)
+            key_b64 = getattr(settings, 'MASTER_FIELD_ENCRYPTION_KEY', None)
     except Exception as e:
         logger.warning(f"Failed to fetch key from Vault, falling back to settings: {e}")
-        key_b64 = getattr(settings, 'FIELD_ENCRYPTION_KEY', None)
+        key_b64 = getattr(settings, 'MASTER_FIELD_ENCRYPTION_KEY', None)
 
     if not key_b64:
-        key_b64 = os.environ.get('FIELD_ENCRYPTION_KEY')
+        key_b64 = os.environ.get('MASTER_FIELD_ENCRYPTION_KEY')
     
     if not key_b64:
-        raise ValueError("FIELD_ENCRYPTION_KEY is not set in Vault, environment or settings.")
+        raise ValueError("MASTER_FIELD_ENCRYPTION_KEY is not set in Vault, environment or settings.")
         
     try:
         master_key = base64.urlsafe_b64decode(key_b64)
@@ -60,7 +60,7 @@ def get_encryption_key(info: bytes = b"") -> bytes:
             return derived_key
             
     except Exception as e:
-        raise ValueError(f"Invalid FIELD_ENCRYPTION_KEY format: {e}")
+        raise ValueError(f"Invalid MASTER_FIELD_ENCRYPTION_KEY format: {e}")
 
 class EncryptedFieldMixin:
     """Mixin to handle AES-GCM encryption for Django model fields with HKDF."""

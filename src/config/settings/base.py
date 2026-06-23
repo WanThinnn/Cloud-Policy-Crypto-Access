@@ -196,9 +196,9 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti',
 }
 
-# SQL DB Field Encryption Key
+# SQL DB Master Field Encryption Key
 FIELD_ENCRYPTION = os.environ.get('FIELD_ENCRYPTION', 'False').lower() in ('true', '1', 't')
-FIELD_ENCRYPTION_KEY = os.environ.get('FIELD_ENCRYPTION_KEY')
+MASTER_FIELD_ENCRYPTION_KEY = os.environ.get('MASTER_FIELD_ENCRYPTION_KEY')
 
 # Global toggle for Post-Quantum Cryptography (ML-DSA) features
 ENABLE_PQC_FEATURES = os.environ.get('ENABLE_PQC_FEATURES', 'True').lower() in ('true', '1', 't')
