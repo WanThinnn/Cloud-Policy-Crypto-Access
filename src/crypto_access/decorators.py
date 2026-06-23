@@ -20,7 +20,7 @@ def require_permission(resource: str, action: str):
             ...
         
         # For DRF views:
-        @require_permission('key', 'manage')
+        @require_permission('key', '*')
         @api_view(['POST'])
         def create_key(request):
             ...
@@ -66,7 +66,7 @@ def require_any_permission(permissions: list):
     Usage:
         @require_any_permission([
             ('document', 'read'),
-            ('document', 'manage')
+            ('document', '*')
         ])
         def view_document(request):
             ...

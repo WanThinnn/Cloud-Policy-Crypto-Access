@@ -37,7 +37,6 @@ class AccessPolicy(BaseModel):
         ('download', 'Download'),
         ('encrypt', 'Encrypt'),
         ('decrypt', 'Decrypt'),
-        ('manage', 'Full Management'),
         ('*', 'All Actions'),
     ]
     

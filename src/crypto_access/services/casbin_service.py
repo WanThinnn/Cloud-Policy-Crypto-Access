@@ -160,7 +160,6 @@ DEFAULT_ACTION_PERMISSION_MAP = {
     'upload': ['file_upload', '*'],
     'encrypt': ['file_encrypt', 'key_manage', '*'],
     'decrypt': ['file_decrypt', 'key_manage', '*'],
-    'manage': ['*'],
     'view': ['file_read', 'file_view', 'file_read_limited', 'logs_view', 'reports_view', '*'],
     'policy_read': ['policy_view', '*'],
     'policy_write': ['policy_define', 'policy_manage', '*'],
@@ -396,7 +395,7 @@ class CasbinService:
         """
         Get list of actions a user is allowed to perform on a resource
         """
-        all_actions = ['read', 'write', 'update', 'delete', 'upload', 'download', 'encrypt', 'decrypt', 'manage']
+        all_actions = ['read', 'write', 'update', 'delete', 'upload', 'download', 'encrypt', 'decrypt', '*']
         return [action for action in all_actions if self.check_access(user, resource, action)]
     
     def explain_decision(self, user, resource: str, action: str) -> dict:
@@ -461,13 +460,13 @@ class CasbinService:
         
         for policy in all_policies:
             if action == 'download':
-                if policy.action not in ['download', 'manage', '*']:
+                if policy.action not in ['download', '*']:
                     continue
             elif action in ['read', 'view']:
-                if policy.action not in ['read', 'view', 'download', 'manage', '*']:
+                if policy.action not in ['read', 'view', 'download', '*']:
                     continue
             else:
-                if policy.action not in [action, 'manage', '*']:
+                if policy.action not in [action, '*']:
                     continue
                     
             try:
@@ -529,13 +528,13 @@ class CasbinService:
             # If asking for download, requires explicit download or wildcard
             # If asking for read, download policy also grants read
             if action == 'download':
-                if policy.action not in ['download', 'manage', '*']:
+                if policy.action not in ['download', '*']:
                     continue
             elif action in ['read', 'view']:
-                if policy.action not in ['read', 'view', 'download', 'manage', '*']:
+                if policy.action not in ['read', 'view', 'download', '*']:
                     continue
             else:
-                if policy.action not in [action, 'manage', '*']:
+                if policy.action not in [action, '*']:
                     continue
             
             # Evaluate the subject condition

@@ -635,11 +635,11 @@ def user_permissions(request):
             # Base Admin UI toggles (Requires at least admin status)
             'can_access_admin': profile.is_admin() or profile.is_super_admin(),
             # ABAC-based Management Permissions
-            'can_manage_users': casbin_service.check_access(user, 'user', 'manage'),
-            'can_manage_policies': casbin_service.check_access(user, 'policy', 'manage'),
-            'can_manage_keys': casbin_service.check_access(user, 'key', 'manage'),
+            'can_manage_users': casbin_service.check_access(user, 'user', '*'),
+            'can_manage_policies': casbin_service.check_access(user, 'policy', '*'),
+            'can_manage_keys': casbin_service.check_access(user, 'key', '*'),
             'can_view_audit_logs': casbin_service.check_access(user, 'audit', 'read'),
-            'can_manage_attributes': casbin_service.check_access(user, 'attribute', 'manage'),
+            'can_manage_attributes': casbin_service.check_access(user, 'attribute', '*'),
             # File system generic checks
             'can_manage_files': user_type in ['super_admin', 'admin', 'data_owner'],
             # File permissions based on ABAC

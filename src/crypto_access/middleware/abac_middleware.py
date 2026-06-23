@@ -57,7 +57,7 @@ class ABACMiddleware:
                 'resource': 'key',
                 'methods': {
                     'GET': 'read',
-                    'POST': 'manage',
+                    'POST': '*',
                 }
             },
         ]

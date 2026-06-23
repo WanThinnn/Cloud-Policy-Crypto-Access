@@ -422,44 +422,44 @@ ABAC_PROTECTED_ROUTES = [
         'pattern': r'^/api/admin/users/',
         'resource': 'user',
         'methods': {
-            'GET': 'manage',
-            'POST': 'manage',
-            'PUT': 'manage',
-            'PATCH': 'manage',
-            'DELETE': 'manage',
+            'GET': '*',
+            'POST': '*',
+            'PUT': '*',
+            'PATCH': '*',
+            'DELETE': '*',
         }
     },
     {
         'pattern': r'^/api/admin/user-types/',
         'resource': 'attribute',
         'methods': {
-            'GET': 'manage',
-            'POST': 'manage',
-            'PUT': 'manage',
-            'PATCH': 'manage',
-            'DELETE': 'manage',
+            'GET': '*',
+            'POST': '*',
+            'PUT': '*',
+            'PATCH': '*',
+            'DELETE': '*',
         }
     },
     {
         'pattern': r'^/api/admin/attributes/',
         'resource': 'attribute',
         'methods': {
-            'GET': 'manage',
-            'POST': 'manage',
-            'PUT': 'manage',
-            'PATCH': 'manage',
-            'DELETE': 'manage',
+            'GET': '*',
+            'POST': '*',
+            'PUT': '*',
+            'PATCH': '*',
+            'DELETE': '*',
         }
     },
     {
         'pattern': r'^/api/admin/policies/',
         'resource': 'policy',
         'methods': {
-            'GET': 'manage',
-            'POST': 'manage',
-            'PUT': 'manage',
-            'PATCH': 'manage',
-            'DELETE': 'manage',
+            'GET': '*',
+            'POST': '*',
+            'PUT': '*',
+            'PATCH': '*',
+            'DELETE': '*',
         }
     },
     {
@@ -467,21 +467,21 @@ ABAC_PROTECTED_ROUTES = [
         'resource': 'audit',
         'methods': {
             'GET': 'read',
-            'POST': 'manage',
-            'PUT': 'manage',
-            'PATCH': 'manage',
-            'DELETE': 'manage',
+            'POST': '*',
+            'PUT': '*',
+            'PATCH': '*',
+            'DELETE': '*',
         }
     },
     {
         'pattern': r'^/api/admin/key-revocations/',
         'resource': 'key',
         'methods': {
-            'GET': 'manage',
-            'POST': 'manage',
-            'PUT': 'manage',
-            'PATCH': 'manage',
-            'DELETE': 'manage',
+            'GET': '*',
+            'POST': '*',
+            'PUT': '*',
+            'PATCH': '*',
+            'DELETE': '*',
         }
     },
 ]
