@@ -459,9 +459,18 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             file.seek(0)
             plaintext_data = file.read()
             
-            # OPTIMIZATION: Async Malware Scan
-            # ClamAV scan is deferred to a background thread to prevent blocking the upload response
-            # (Scanning happens asynchronously after file is successfully uploaded and saved)
+            # SYNCHRONOUS MALWARE SCAN (EARLY REJECTION)
+            # Quét virus ngay lập tức trước khi thực hiện mã hóa CP-ABE nặng nề
+            from ..services.clamav_service import clamav_service
+            is_safe, msg = clamav_service.scan_file_buffer(plaintext_data)
+            if not is_safe:
+                logger.warning(f"Upload rejected by Anti-Virus: {msg}")
+                return Response(
+                    {'error': f'Upload thất bại: Phát hiện mã độc ({msg})'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            file_metadata['clamav_scan'] = 'clean'
             
             # Encrypt if policy has cpabe_policy
             if cpabe_policy_str:
@@ -524,33 +533,6 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     metadata=file_metadata
                 )
                 
-            # TRIGGER ASYNC CLAMAV SCAN
-            from ..services.clamav_service import clamav_service
-            import threading
-            
-            def async_clamav_scan():
-                try:
-                    is_safe, msg = clamav_service.scan_file_buffer(plaintext_data)
-                    if not is_safe:
-                        logger.warning(f"[ASYNC] Malware detected in file {uploaded_file.id}: {msg}. Quarantining...")
-                        uploaded_file.is_deleted = True
-                        if not isinstance(uploaded_file.metadata, dict):
-                            uploaded_file.metadata = {}
-                        uploaded_file.metadata['clamav_scan'] = 'infected'
-                        uploaded_file.metadata['clamav_msg'] = msg
-                        uploaded_file.save(update_fields=['is_deleted', 'metadata'])
-                    else:
-                        if not isinstance(uploaded_file.metadata, dict):
-                            uploaded_file.metadata = {}
-                        uploaded_file.metadata['clamav_scan'] = 'clean'
-                        uploaded_file.save(update_fields=['metadata'])
-                except Exception as e:
-                    logger.error(f"[ASYNC] ClamAV background scan failed: {e}")
-                    
-            scan_thread = threading.Thread(target=async_clamav_scan)
-            scan_thread.daemon = True
-            scan_thread.start()
-            
             # Create FileVersion
             signer_key = None
             trusted_timestamp = None
@@ -611,6 +593,12 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
     def download(self, request, pk=None):
         """Download file from Supabase Storage"""
         uploaded_file = self.get_object()
+        
+        # Check if file is infected
+        if uploaded_file.metadata and uploaded_file.metadata.get('clamav_scan') == 'infected':
+            msg = uploaded_file.metadata.get('clamav_msg', 'Unknown malware')
+            return Response({'error': f'File đã bị khóa do chứa mã độc: {msg}.'}, status=status.HTTP_403_FORBIDDEN)
+            
         storage = get_storage_service()
         version_param = request.query_params.get('version')
         
@@ -948,6 +936,11 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         # This is already passed ABAC middleware, but we track ownership for audit
         uploaded_file = get_db_file_by_path(bucket_name, file_path)
         
+        # Check if file is infected
+        if uploaded_file and uploaded_file.metadata and uploaded_file.metadata.get('clamav_scan') == 'infected':
+            msg = uploaded_file.metadata.get('clamav_msg', 'Unknown malware')
+            return Response({'error': f'File đã bị khóa do chứa mã độc: {msg}.'}, status=status.HTTP_403_FORBIDDEN)
+            
         is_owner = uploaded_file and uploaded_file.uploaded_by == request.user
         
         version_param = request.query_params.get('version')
