@@ -1,26 +1,17 @@
-FROM openquantumsafe/nginx
+FROM nginx
 
-# Copy custom nginx configuration (OQS uses /opt/nginx/)
-COPY nginx.conf /opt/nginx/conf/nginx.conf
-COPY conf.d/django.conf.template /opt/nginx/conf/templates/django.conf.template
+# Copy custom nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY conf.d/django.conf.template /etc/nginx/templates/django.conf.template
 
 # Create directory for certificates
-RUN mkdir -p /opt/nginx/certs /opt/nginx/conf/conf.d
-
-# Install envsubst (gettext) for template processing
-USER root
-RUN apk add --no-cache gettext
+RUN mkdir -p /etc/nginx/certs
 
 # Expose ports
 EXPOSE 80 443
 
-# Environment variables (PQC cert names) are now passed via docker-compose.yml / .env
-# rather than hardcoded here.
+# Environment variables (PQC cert names) are passed via docker-compose.yml / .env
 ENV DOMAIN_NAME=${DOMAIN_NAME}
 ENV PQC_SSL_CERT_FILE=${PQC_SSL_CERT_FILE}
 ENV PQC_SSL_KEY_FILE=${PQC_SSL_KEY_FILE}
 ENV PQC_SSL_CA_FILE=${PQC_SSL_CA_FILE}
-
-# Use envsubst to replace environment variables in config template at startup
-# Then start nginx with the OQS-specific binary path
-CMD ["/bin/sh", "-c", "envsubst '${DOMAIN_NAME} ${PQC_SSL_CERT_FILE} ${PQC_SSL_KEY_FILE} ${PQC_SSL_CA_FILE}' < /opt/nginx/conf/templates/django.conf.template > /opt/nginx/conf/conf.d/django.conf && /opt/nginx/sbin/nginx -g 'daemon off;'"]

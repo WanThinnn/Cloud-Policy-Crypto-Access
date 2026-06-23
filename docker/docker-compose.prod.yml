@@ -92,8 +92,7 @@ services:
     image: alpine/socat
     container_name: clamav_tls_proxy
     command: >
-      OPENSSL-LISTEN:3310,cert=/certs/${TLS_CERT_FILENAME:-_.cyberfortress.local.crt},key=/certs/${TLS_KEY_FILENAME:-_.cyberfortress.local.key},cafile=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt},verify=0,reuseaddr,fork
-      TCP:clamav:3310
+      OPENSSL-LISTEN:3310,cert=/certs/${TLS_CERT_FILENAME:-_.cyberfortress.local.crt},key=/certs/${TLS_KEY_FILENAME:-_.cyberfortress.local.key},cafile=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt},verify=0,reuseaddr,fork TCP:clamav:3310
     volumes:
       - ${CERTS_DIR:-./config/certs}:/certs:ro
     expose:
@@ -137,7 +136,7 @@ services:
       - "${NGINX_HTTPS_PORT:-443}:443"
     volumes:
       - static_volume:/app/staticfiles:ro
-      - ${CERTS_DIR:-./config/certs}:/opt/nginx/certs:ro
+      - ${CERTS_DIR:-./config/certs}:/etc/nginx/certs:ro
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME:-cloudsafe.cyberfortress.local}
       - PQC_SSL_CERT_FILE=${PQC_SSL_CERT_FILE:-_.pq-cyberfortress.local.crt}

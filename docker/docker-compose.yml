@@ -158,7 +158,7 @@ services:
       - ssl
     volumes:
       - static_volume:/app/staticfiles
-      - ${CERTS_DIR:-./config/certs}:/opt/nginx/certs:ro
+      - ${CERTS_DIR:-./config/certs}:/etc/nginx/certs:ro
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME:-cloudsafe.cyberfortress.local}
       - PQC_SSL_CERT_FILE=${PQC_SSL_CERT_FILE:-_.pq-cyberfortress.local.crt}
