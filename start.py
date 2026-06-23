@@ -278,6 +278,14 @@ def main(argv: list[str]) -> int:
             extract_pqc_raw_key(c)
             
             print(color_info("\n[OK] Initialization complete!"))
+            super_admin_user = env_vars.get("DJANGO_SUPERUSER_USERNAME", "super_admin")
+            super_admin_pass = env_vars.get("DJANGO_SUPERUSER_PASSWORD", "super_admin123")
+            print(color_warning("\n" + "="*50))
+            print(color_warning("⚠️  SUPER ADMIN ACCOUNT CREDENTIALS ⚠️"))
+            print(color_warning(f"Username: {super_admin_user}"))
+            print(color_warning(f"Password: {super_admin_pass}"))
+            print(color_warning("\n[!] WARNING: Please log in and change this password IMMEDIATELY!"))
+            print(color_warning("="*50 + "\n"))
         elif cmd == "initsettings":
             # print(f"{status_line}\n")
             run(add_manage_args(c + ["exec", "web", "python", "manage.py", "init_settings"], extra))

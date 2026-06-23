@@ -29,6 +29,13 @@ def invalidate_setting_cache_handler(sender, instance, **kwargs):
     logger.info(f"Invalidated cache for system setting: {instance.key}")
 
 
+@receiver(pre_save, sender=User)
+def force_lowercase_username(sender, instance, **kwargs):
+    """Ensure username is always lowercase (e.g. Admin=admin=ADMIN) to prevent impersonation"""
+    if instance.username:
+        instance.username = instance.username.lower()
+
+
 @receiver(post_save, sender=User)
 def user_created_handler(sender, instance, created, **kwargs):
     """Handle user creation events"""

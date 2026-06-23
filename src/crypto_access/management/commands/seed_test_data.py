@@ -53,10 +53,10 @@ class Command(BaseCommand):
         # Test users configuration
         test_users = [
             {
-                'username': 'it_owner',
-                'email': 'it_owner@company.com',
+                'username': 'alice_it',
+                'email': 'alice.it@company.com',
                 'password': 'Test@123',
-                'full_name': 'Trần IT Manager',
+                'full_name': 'Alice Smith',
                 'user_type': 'data_owner',
                 'attributes': {
                     'department': 'it',
@@ -66,10 +66,10 @@ class Command(BaseCommand):
                 }
             },
             {
-                'username': 'hr_admin',
-                'email': 'hr_admin@company.com',
+                'username': 'bob_hr',
+                'email': 'bob.hr@company.com',
                 'password': 'Test@123',
-                'full_name': 'Lê HR Manager',
+                'full_name': 'Bob Jones',
                 'user_type': 'admin',
                 'attributes': {
                     'department': 'hr',
@@ -79,10 +79,10 @@ class Command(BaseCommand):
                 }
             },
             {
-                'username': 'dev_user',
-                'email': 'dev@company.com',
+                'username': 'charlie_dev',
+                'email': 'charlie.dev@company.com',
                 'password': 'Test@123',
-                'full_name': 'Phạm Developer',
+                'full_name': 'Charlie Brown',
                 'user_type': 'data_user',
                 'attributes': {
                     'department': 'it',
@@ -92,10 +92,10 @@ class Command(BaseCommand):
                 }
             },
             {
-                'username': 'hr_user',
-                'email': 'hr_user@company.com',
+                'username': 'diana_hr',
+                'email': 'diana.hr@company.com',
                 'password': 'Test@123',
-                'full_name': 'Nguyễn HR Staff',
+                'full_name': 'Diana Prince',
                 'user_type': 'data_user',
                 'attributes': {
                     'department': 'hr',
@@ -105,10 +105,10 @@ class Command(BaseCommand):
                 }
             },
             {
-                'username': 'finance_user',
-                'email': 'finance@company.com',
+                'username': 'edward_finance',
+                'email': 'edward.fin@company.com',
                 'password': 'Test@123',
-                'full_name': 'Hoàng Kế Toán',
+                'full_name': 'Edward Stark',
                 'user_type': 'data_user',
                 'attributes': {
                     'department': 'finance',

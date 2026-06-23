@@ -271,6 +271,7 @@
                 } else {
                     // Normal login success
                     localStorage.setItem('username', data.user.username);
+                    localStorage.setItem('full_name', data.user.profile?.full_name || data.user.full_name || '');
                     localStorage.setItem('user_id', data.user.id);
                     localStorage.setItem('login_method', 'password');
                     
@@ -329,6 +330,7 @@
             if (response.ok) {
                 // Verify success
                 localStorage.setItem('username', data.user.username);
+                localStorage.setItem('full_name', data.user.profile?.full_name || data.user.full_name || '');
                 localStorage.setItem('user_id', data.user.id);
                 localStorage.setItem('login_method', 'password');
                 
@@ -430,6 +432,7 @@
             
             if (verifyRes.ok) {
                 localStorage.setItem('username', verifyData.user.username);
+                localStorage.setItem('full_name', verifyData.user.profile?.full_name || verifyData.user.full_name || '');
                 localStorage.setItem('user_id', verifyData.user.id);
                 localStorage.setItem('login_method', 'passkey');
                 

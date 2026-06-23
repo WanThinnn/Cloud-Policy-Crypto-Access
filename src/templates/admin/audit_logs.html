@@ -199,7 +199,7 @@ async function loadLogs() {
                     </div>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    <div class="font-medium text-gray-900 dark:text-white">${log.user ? log.user.username : 'Unknown'}</div>
+                    <div class="font-medium text-gray-900 dark:text-white">${log.user ? (log.user.full_name ? `${log.user.full_name} (@${log.user.username})` : `@${log.user.username}`) : 'Unknown'}</div>
                     ${log.user_attributes && Object.keys(log.user_attributes).length > 0 ? `
                     <details class="mt-2 outline-none">
                         <summary class="text-xs text-indigo-500 hover:text-indigo-700 cursor-pointer outline-none">User Attributes (Decrypted)</summary>

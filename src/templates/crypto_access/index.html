@@ -9,7 +9,7 @@
   <!-- Welcome Header -->
   <div class="mb-8">
     <h1 class="text-3xl font-bold mb-2 flex items-center flex-wrap gap-2 text-gray-900 dark:text-gray-100">
-      Welcome, <span id="dashboard-username">Users</span> 
+      Welcome, <span id="dashboard-username">Loading...</span> 
       <span id="dashboard-role-badge" class="hidden text-sm font-medium px-3 py-1 rounded-full"></span>
     </h1>
     <p class="text-gray-600 dark:text-gray-400">System Overview Cloud Policy Crypto Access</p>
@@ -174,13 +174,14 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const username = localStorage.getItem('username');
-    
-    if (username) {
-        document.getElementById('auth-view').classList.remove('hidden');
-        document.getElementById('unauth-view').classList.add('hidden');
-        document.getElementById('dashboard-username').textContent = username;
+  document.addEventListener('DOMContentLoaded', () => {
+      const username = localStorage.getItem('username');
+      const fullName = localStorage.getItem('full_name');
+      
+      if (username) {
+          document.getElementById('auth-view').classList.remove('hidden');
+          document.getElementById('unauth-view').classList.add('hidden');
+          document.getElementById('dashboard-username').textContent = `@${username}`;
 
         // Fetch User Info to get role
         fetch('/api/auth/profile/', {
@@ -189,11 +190,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         })
         .then(res => res.json())
-        .then(data => {
-            if (data.username) {
-                document.getElementById('dashboard-username').textContent = data.username;
-            }
-            if (data.is_superuser || data.is_staff) {
+          .then(data => {
+              if (data.username) {
+                  document.getElementById('dashboard-username').textContent = `@${data.username}`;
+              }
+            const isSuperAdmin = data.is_superuser || data.profile?.user_type === 'super_admin';
+            const isAdmin = data.is_staff || data.profile?.user_type === 'admin';
+            
+            if (isSuperAdmin || isAdmin) {
                 const badge = document.getElementById('dashboard-role-badge');
                 badge.classList.remove('hidden');
                 
@@ -201,12 +205,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('card-policies').style.display = 'block';
                 document.getElementById('admin-section').style.display = 'block';
                 
-                if (data.is_superuser) {
+                if (isSuperAdmin) {
+                    badge.classList.add('bg-purple-100', 'dark:bg-purple-900/50', 'text-purple-800', 'dark:text-purple-300', 'border', 'border-purple-200', 'dark:border-purple-800', 'shadow-sm');
+                    badge.textContent = 'SuperAdmin';
+                } else if (isAdmin) {
                     badge.classList.add('bg-blue-100', 'dark:bg-blue-900', 'text-blue-800', 'dark:text-blue-200');
-                    badge.textContent = 'Administrator';
-                } else if (data.is_staff) {
-                    badge.classList.add('bg-purple-100', 'dark:bg-purple-900', 'text-purple-800', 'dark:text-purple-200');
-                    badge.textContent = 'Employee';
+                    badge.textContent = 'Admin';
                 }
             }
         });

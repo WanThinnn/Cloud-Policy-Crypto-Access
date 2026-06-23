@@ -33,6 +33,13 @@ class RegisterSerializer(serializers.ModelSerializer):
             'email': {'required': True}
         }
     
+    def validate_username(self, value):
+        # Force username to be lowercase for case-insensitive (Admin = admin = aDmin = ADMIN)
+        value = value.lower()
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with that username already exists.")
+        return value
+        
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password": "Passwords do not match."})
@@ -76,6 +83,10 @@ class LoginSerializer(serializers.Serializer):
         write_only=True,
         style={'input_type': 'password'}
     )
+    
+    def validate_username(self, value):
+        # Force username to be lowercase before authenticate (Admin = admin = aDmin = ADMIN)
+        return value.lower()
 
 
 class ChangePasswordSerializer(serializers.Serializer):

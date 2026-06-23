@@ -463,6 +463,7 @@
 
       // Authentication state
       const username = localStorage.getItem('username');
+      const fullName = localStorage.getItem('full_name');
       const isLoggedIn = !!username;
       
       async function initAuthUI() {
@@ -474,7 +475,9 @@
               if (userSection) userSection.classList.remove('hidden');
               
               const userInfo = document.getElementById('user-info');
-              if (userInfo) userInfo.textContent = username;
+              if (userInfo) userInfo.textContent = fullName;
+
+              // if (userInfo) userInfo.textContent = fullName ? `${fullName} (@${username})` : `@${username}`;
               
               try {
                   const response = await fetch('/api/auth/permissions/', {
@@ -554,6 +557,7 @@
       
       {% if user.is_authenticated %}
       localStorage.setItem('username', '{{ user.username|escapejs }}');
+      localStorage.setItem('full_name', '{{ user.profile.full_name|escapejs }}');
       {% endif %}
       
       // Setup Logout

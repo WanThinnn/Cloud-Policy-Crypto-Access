@@ -139,6 +139,6 @@ LOGGING['loggers']['crypto_access.user']['level'] = 'INFO'
 
 # Admin email for error notifications
 ADMINS = [
-    ('Admin', os.environ.get('ADMIN_EMAIL', 'admin@example.com')),
+    ('Admin', os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.com')),
 ]
 MANAGERS = ADMINS

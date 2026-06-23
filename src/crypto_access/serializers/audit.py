@@ -3,9 +3,10 @@ from crypto_access.models import AccessLog, KeyRevocation
 from django.contrib.auth.models import User
 
 class UserSimpleSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source='profile.full_name', read_only=True, default='')
     class Meta:
         model = User
-        fields = ['id', 'username', 'email']
+        fields = ['id', 'username', 'email', 'full_name']
 
 class AccessLogSerializer(serializers.ModelSerializer):
     user = UserSimpleSerializer(read_only=True)

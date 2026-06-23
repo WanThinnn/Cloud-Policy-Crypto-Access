@@ -44,16 +44,16 @@ def init():
             print(f"Warning: Failed to save backup key to {key_path}: {e}")
 
     # Create Superuser if not exists
-    admin_username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')
-    admin_email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.local')
-    admin_password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'admin123')
+    super_admin_username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'super_admin')
+    super_admin_email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'super_admin@example.local')
+    super_admin_password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'super_admin123')
 
-    if not User.objects.filter(username=admin_username).exists():
-        print(f"Creating superuser: {admin_username}")
+    if not User.objects.filter(username=super_admin_username).exists():
+        print(f"Creating superuser: {super_admin_username}")
         user = User.objects.create_superuser(
-            username=admin_username,
-            email=admin_email,
-            password=admin_password
+            username=super_admin_username,
+            email=super_admin_email,
+            password=super_admin_password
         )
         
         # Get super_admin UserType reference
@@ -63,6 +63,7 @@ def init():
         # Create user profile
         UserProfile.objects.create(
             user=user,
+            full_name='Super Administrator',
             phone='0123456789',
             address='CyberFortress HQ',
             bio='System Administrator',
@@ -70,10 +71,15 @@ def init():
             user_type_ref=super_admin_type
         )
         print("Superuser created successfully.")
+        print(f"\033[93m[!] SuperAdmin account: {super_admin_username} | Password: {super_admin_password}\033[0m")
+        print("\033[93m[!] WARNING: Please log in and change your password immediately!\033[0m\n")
     else:
         print("Superuser already exists.")
+        print(f"\033[93m[!] SuperAdmin account: {super_admin_username} | Password: {super_admin_password} (if not changed)\033[0m")
+        print("\033[93m[!] WARNING: Please log in and change your password immediately!\033[0m\n")
         
     # Create default storage bucket
+    # pyrefly: ignore [missing-import]
     from crypto_access.models.storage import StorageBucket
     bucket, created = StorageBucket.objects.get_or_create(
         name='documents',

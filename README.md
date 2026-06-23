@@ -163,7 +163,7 @@ python start.py up
 ### 6. Initialize Database & Create Super Admin
 Once the containers are successfully running (`python start.py status`), initialize the system. The `initdata` command will automatically migrate the database, seed ABAC policies, and create a default super admin account.
 ```bash
-# Initialize DB, seed policies, and auto-create super admin (admin/admin123)
+# Initialize DB, seed policies, and auto-create super admin (super_admin/super_admin123)
 python start.py initdata
 ```
 *(Optional)* If you wish to create a custom super admin manually:

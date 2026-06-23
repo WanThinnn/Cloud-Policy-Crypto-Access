@@ -350,6 +350,7 @@
                 // Tokens are now stored in HttpOnly cookies by the server
                 // Refresh token is stored in HttpOnly cookie
                 localStorage.setItem('username', data.user.username);
+                localStorage.setItem('full_name', data.user.full_name || '');
                 localStorage.setItem('user_id', data.user.id);
                 
                 showAlert('Registered successfully! Redirecting...', 'success');
