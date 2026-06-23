@@ -466,7 +466,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             if not is_safe:
                 logger.warning(f"Upload rejected by Anti-Virus: {msg}")
                 return Response(
-                    {'error': f'Upload thất bại: Phát hiện mã độc ({msg})'}, 
+                    {'error': f'Upload failed: malware detected ({msg})'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
                 
