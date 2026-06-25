@@ -123,6 +123,7 @@ Follow these instructions to deploy the system from scratch on a brand new machi
 # Clone this main repository
 git clone https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
 cd Cloud-Policy-Crypto-Access
+git switch feature/cloud-policy-quantum-access
 
 ```
 *Note: The required C++ cryptography library (`libhybrid-cp-abe` v4.0.0) is already included in the `src/lib/` directory of this repository by default. You only need to visit the [Hybrid-CP-ABE-Library repository](https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git) if you wish to compile or update to a newer version.*
