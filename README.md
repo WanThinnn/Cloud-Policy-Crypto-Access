@@ -125,7 +125,7 @@ git clone https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
 cd Cloud-Policy-Crypto-Access
 
 ```
-*Note: The required C++ cryptography library (`libhybrid-cp-abe` v3.1.0) is already included in the `src/lib/` directory of this repository by default. You only need to visit the [Hybrid-CP-ABE-Library repository](https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git) if you wish to compile or update to a newer version.*
+*Note: The required C++ cryptography library (`libhybrid-cp-abe` v4.0.0) is already included in the `src/lib/` directory of this repository by default. You only need to visit the [Hybrid-CP-ABE-Library repository](https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git) if you wish to compile or update to a newer version.*
 
 ### 3. Environment Configuration
 Create the `.env` file from the example template:
