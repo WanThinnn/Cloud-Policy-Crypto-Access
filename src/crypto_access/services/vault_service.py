@@ -100,4 +100,12 @@ class VaultService:
             logger.error(f"Error writing to Vault: {e}")
             return False
 
+    @property
+    def get_token(self):
+        return self.vault_token
+
+    @property
+    def get_addr(self):
+        return self.vault_addr
+
 vault_service = VaultService()

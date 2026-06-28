@@ -56,6 +56,46 @@ def wait_for_vault():
     print("Vault did not become reachable in time.")
     return False
 
+def register_abe_plugin(client):
+    use_plugin = os.environ.get('USE_VAULT_ABE_PLUGIN', 'False').lower() in ('true', '1', 't')
+    if not use_plugin:
+        return
+        
+    plugin_path = '/vault/plugins/vault-plugin-abe'
+    if not os.path.exists(plugin_path):
+        print(f"Plugin binary not found at {plugin_path}. Please build it first.")
+        return
+        
+    import hashlib
+    with open(plugin_path, "rb") as f:
+        plugin_hash = hashlib.sha256(f.read()).hexdigest()
+        
+    print(f"Registering vault-plugin-abe (sha256: {plugin_hash})...")
+    try:
+        client.sys.register_plugin(
+            name='vault-plugin-abe',
+            plugin_type='secret',
+            command='vault-plugin-abe',
+            sha256=plugin_hash
+        )
+    except Exception as e:
+        if "already registered" not in str(e):
+            print(f"Failed to register plugin: {e}")
+            return
+            
+    try:
+        client.sys.enable_secrets_engine(
+            backend_type='vault-plugin-abe',
+            path='abe',
+            description='Hybrid PQC CP-ABE Engine'
+        )
+        print("ABE Secrets engine successfully enabled at 'abe/'.")
+    except Exception as e:
+        if "path is already in use" in str(e):
+            print("ABE engine already enabled.")
+        else:
+            print(f"Failed to enable ABE secrets engine: {e}")
+
 def init_and_unseal():
     parser = argparse.ArgumentParser()
     parser.add_argument('--prod', action='store_true', help='Enable production mode (no auto-unseal)')
@@ -176,6 +216,14 @@ def init_and_unseal():
             print("Vault unsealed successfully.")
         else:
             print("Vault is already unsealed.")
+            
+    # Try to authenticate with root token if available to register the plugin
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, 'r') as f:
+            client.token = f.read().strip()
+        register_abe_plugin(client)
+    else:
+        print("No root token found. Skipping plugin registration.")
 
 if __name__ == '__main__':
     init_and_unseal()

@@ -7,6 +7,7 @@ from typing import List
 from django.conf import settings
 from crypto_access.services.vault_service import vault_service
 import base64
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,8 @@ class CPABEService:
     """Wrapper for libhybrid-cp-abe using ctypes"""
     
     def __init__(self):
+        self.use_vault_plugin = getattr(settings, 'USE_VAULT_ABE_PLUGIN', False)
+        
         system = platform.system()
         if system == 'Windows':
             lib_name = 'libhybrid-pq-cp-abe.dll'
@@ -30,14 +33,15 @@ class CPABEService:
         self.pqc_sk_path = os.path.join(self.keys_dir, 'pqc_sk.key')
         self.pqc_pk_path = os.path.join(self.keys_dir, 'pqc_pk.key')
         
-        # Load DLL
-        try:
-            self._lib = ctypes.CDLL(self.dll_path)
-            self._setup_bindings()
-            self._ensure_keys_exist()
-        except Exception as e:
-            logger.error(f"Failed to initialize CPABE library: {e}")
-            self._lib = None
+        self._lib = None
+        if not self.use_vault_plugin:
+            try:
+                self._lib = ctypes.CDLL(self.dll_path)
+                self._setup_bindings()
+            except Exception as e:
+                logger.error(f"Failed to initialize CPABE library: {e}")
+                
+        self._ensure_keys_exist()
             
     def _setup_bindings(self):
         """Define C function signatures"""
@@ -126,6 +130,45 @@ class CPABEService:
         """Load CP-ABE keys from Vault (primary) or local backup (fallback), or generate new ones.
         After loading/generating, always saves a local backup for disaster recovery."""
         from django.conf import settings
+        
+        if self.use_vault_plugin:
+            is_pqc_enabled = getattr(settings, 'ENABLE_PQC_FEATURES', False)
+            cpabe_pk_b64 = vault_service.get_secret('CPABE_PK')
+            pqc_pk_b64 = vault_service.get_secret('PQC_PK')
+            
+            has_keys = bool(cpabe_pk_b64)
+            if is_pqc_enabled:
+                has_keys = has_keys and bool(pqc_pk_b64)
+                
+            if has_keys:
+                self.pk_data = base64.b64decode(cpabe_pk_b64)
+                if is_pqc_enabled:
+                    self.pqc_pk_data = base64.b64decode(pqc_pk_b64)
+                logger.info("CP-ABE keys (Vault Plugin Mode) fetched from Vault.")
+                return
+                
+            logger.info("Initializing Vault ABE Plugin...")
+            headers = {"X-Vault-Token": vault_service.get_token, "Content-Type": "application/json"}
+            payload = {"scheme": getattr(settings, 'CPABE_SCHEME', 'ac17'), "pqc": is_pqc_enabled}
+            
+            try:
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/setup", headers=headers, json=payload, verify=False)
+                resp.raise_for_status()
+                data = resp.json()["data"]
+                
+                self.pk_data = base64.b64decode(data["public_key"])
+                vault_service.put_secret('CPABE_PK', data["public_key"])
+                
+                if is_pqc_enabled:
+                    self.pqc_pk_data = base64.b64decode(data["pqc_public_key"])
+                    vault_service.put_secret('PQC_PK', data["pqc_public_key"])
+                    
+                logger.info("Vault ABE Plugin successfully initialized.")
+            except Exception as e:
+                raise CPABEError(f"Failed to initialize Vault ABE Plugin: {e}")
+            return
+            
+        # Legacy ctypes mode below
         is_pqc_enabled = getattr(settings, 'ENABLE_PQC_FEATURES', False) and bool(getattr(self, '_setup_pqc_func', None))
         
         backup_dir = os.environ.get('KEYS_DIR', self.keys_dir)
@@ -306,12 +349,25 @@ class CPABEService:
         
     def generate_user_key(self, user_attributes: dict, output_path: str):
         """Generate a private key file for a user based on their attributes"""
-        if not self._lib:
-            raise CPABEError("Library not loaded")
-            
         attr_strings = self.expand_hierarchical_attributes(user_attributes)
         attr_str = " ".join(attr_strings)
         logger.info(f"Generating Private Key with attributes: {attr_str}")
+        
+        if self.use_vault_plugin:
+            headers = {"X-Vault-Token": vault_service.get_token, "Content-Type": "application/json"}
+            payload = {"scheme": getattr(settings, 'CPABE_SCHEME', 'ac17'), "attributes": attr_str}
+            try:
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/genkey", headers=headers, json=payload, verify=False)
+                resp.raise_for_status()
+                sk_b64 = resp.json()["data"]["secret_key"]
+                with open(output_path, 'wb') as f:
+                    f.write(base64.b64decode(sk_b64))
+                return
+            except Exception as e:
+                raise CPABEError(f"Vault ABE Plugin GenKey failed: {e}")
+
+        if not self._lib:
+            raise CPABEError("Library not loaded")
         
         with tempfile.NamedTemporaryFile(delete=False) as tmp_msk:
             tmp_msk.write(self.msk_data)
@@ -384,6 +440,21 @@ class CPABEService:
 
     def encrypt_buffer(self, plaintext: bytes, policy: str) -> bytes:
         """Encrypt data buffer directly in memory"""
+        if self.use_vault_plugin:
+            headers = {"X-Vault-Token": vault_service.get_token, "Content-Type": "application/json"}
+            payload = {
+                "scheme": getattr(settings, 'CPABE_SCHEME', 'ac17'),
+                "plaintext": base64.b64encode(plaintext).decode('utf-8'),
+                "policy": policy,
+                "public_key": base64.b64encode(self.pk_data).decode('utf-8')
+            }
+            try:
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/encrypt", headers=headers, json=payload, verify=False)
+                resp.raise_for_status()
+                return base64.b64decode(resp.json()["data"]["ciphertext"])
+            except Exception as e:
+                raise CPABEError(f"Vault ABE Plugin encrypt failed: {e}")
+
         if not self._encrypt_buffer_func:
             raise CPABEError("Buffer encryption function not found in library")
 
@@ -418,6 +489,20 @@ class CPABEService:
 
     def decrypt_buffer(self, private_key_data: bytes, ciphertext: bytes) -> bytes:
         """Decrypt data buffer directly in memory"""
+        if self.use_vault_plugin:
+            headers = {"X-Vault-Token": vault_service.get_token, "Content-Type": "application/json"}
+            payload = {
+                "scheme": getattr(settings, 'CPABE_SCHEME', 'ac17'),
+                "ciphertext": base64.b64encode(ciphertext).decode('utf-8'),
+                "secret_key": base64.b64encode(private_key_data).decode('utf-8')
+            }
+            try:
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/decrypt", headers=headers, json=payload, verify=False)
+                resp.raise_for_status()
+                return base64.b64decode(resp.json()["data"]["plaintext"])
+            except Exception as e:
+                raise CPABEError(f"Vault ABE Plugin decrypt failed: {e}")
+
         if not self._decrypt_buffer_func:
             raise CPABEError("Buffer decryption function not found in library")
 
@@ -451,6 +536,23 @@ class CPABEService:
 
     def encrypt_buffer_and_sign(self, plaintext: bytes, policy: str) -> bytes:
         self._ensure_keys_exist()
+        
+        if self.use_vault_plugin:
+            headers = {"X-Vault-Token": vault_service.get_token, "Content-Type": "application/json"}
+            payload = {
+                "scheme": getattr(settings, 'CPABE_SCHEME', 'ac17'),
+                "plaintext": base64.b64encode(plaintext).decode('utf-8'),
+                "policy": policy,
+                "public_key": base64.b64encode(self.pk_data).decode('utf-8'),
+                "pqc_private_key": base64.b64encode(self.pqc_sk_data).decode('utf-8')
+            }
+            try:
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/encrypt", headers=headers, json=payload, verify=False)
+                resp.raise_for_status()
+                return base64.b64decode(resp.json()["data"]["ciphertext"])
+            except Exception as e:
+                raise CPABEError(f"Vault ABE Plugin PQC encrypt failed: {e}")
+
         if not getattr(self, '_encrypt_buffer_sign_func', None):
             raise CPABEError("PQC encryptBuffer_and_sign function not found in DLL")
 
@@ -485,6 +587,26 @@ class CPABEService:
 
     def decrypt_buffer_and_verify(self, sk_data: bytes, ciphertext: bytes) -> bytes:
         self._ensure_keys_exist()
+        
+        if self.use_vault_plugin:
+            headers = {"X-Vault-Token": vault_service.get_token, "Content-Type": "application/json"}
+            payload = {
+                "scheme": getattr(settings, 'CPABE_SCHEME', 'ac17'),
+                "ciphertext": base64.b64encode(ciphertext).decode('utf-8'),
+                "secret_key": base64.b64encode(sk_data).decode('utf-8'),
+                "pqc_public_key": base64.b64encode(self.pqc_pk_data).decode('utf-8')
+            }
+            try:
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/decrypt", headers=headers, json=payload, verify=False)
+                resp.raise_for_status()
+                return base64.b64decode(resp.json()["data"]["plaintext"])
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 400 or e.response.status_code == 403:
+                    raise CPABEError("Decryption failed or signature invalid (unauthorized)")
+                raise CPABEError(f"Vault ABE Plugin PQC decrypt failed: {e}")
+            except Exception as e:
+                raise CPABEError(f"Vault ABE Plugin PQC decrypt failed: {e}")
+
         if not getattr(self, '_decrypt_buffer_verify_func', None):
             raise CPABEError("PQC decryptBuffer_and_verify function not found in DLL")
 

@@ -44,6 +44,7 @@ services:
       - ./scripts/init_data.py:/app/init_data.py:ro
       - ./scripts/vault_manager.py:/app/vault_manager.py:ro
       - ./src/crypto_access/migrations:/app/crypto_access/migrations
+      - ./docker/vault/plugins:/vault/plugins:ro
     tmpfs:
       - /tmp
     expose:
@@ -112,10 +113,11 @@ services:
     environment:
       - VAULT_ADDR=https://127.0.0.1:8200
       - VAULT_API_ADDR=https://127.0.0.1:8200
-      - VAULT_LOCAL_CONFIG={"storage":{"raft":{"path":"/vault/file","node_id":"vault_server"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":0,"tls_cert_file":"/vault/config/certs/${TLS_CERT_FILENAME:-_.cyberfortress.local.crt}","tls_key_file":"/vault/config/certs/${TLS_KEY_FILENAME:-_.cyberfortress.local.key}"}},"default_lease_ttl":"168h","max_lease_ttl":"720h","ui":true,"disable_mlock":true,"api_addr":"https://127.0.0.1:8200","cluster_addr":"https://127.0.0.1:8201"}
+      - VAULT_LOCAL_CONFIG={"storage":{"raft":{"path":"/vault/file","node_id":"vault_server"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":0,"tls_cert_file":"/vault/config/certs/${TLS_CERT_FILENAME:-_.cyberfortress.local.crt}","tls_key_file":"/vault/config/certs/${TLS_KEY_FILENAME:-_.cyberfortress.local.key}"}},"default_lease_ttl":"168h","max_lease_ttl":"720h","ui":true,"disable_mlock":true,"api_addr":"https://127.0.0.1:8200","cluster_addr":"https://127.0.0.1:8201","plugin_directory":"/vault/plugins"}
     volumes:
       - vault_data:/vault/file
       - ${CERTS_DIR:-./config/certs}:/vault/config/certs:ro
+      - ./docker/vault/plugins:/vault/plugins:ro
     ports:
       - "8200:8200"
     cap_add:

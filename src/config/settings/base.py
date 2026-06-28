@@ -203,6 +203,10 @@ MASTER_FIELD_ENCRYPTION_KEY = os.environ.get('MASTER_FIELD_ENCRYPTION_KEY')
 # Global toggle for Post-Quantum Cryptography (ML-DSA) features
 ENABLE_PQC_FEATURES = os.environ.get('ENABLE_PQC_FEATURES', 'True').lower() in ('true', '1', 't')
 
+# Vault ABE Plugin Integration Toggle
+USE_VAULT_ABE_PLUGIN = os.environ.get('USE_VAULT_ABE_PLUGIN', 'False').lower() in ('true', '1', 't')
+CPABE_SCHEME = os.environ.get('CPABE_SCHEME', 'ac17')
+
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')

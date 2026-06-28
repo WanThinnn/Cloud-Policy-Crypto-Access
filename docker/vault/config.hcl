@@ -16,3 +16,4 @@ listener "tcp" {
 }
 
 ui = true
+plugin_directory = "/vault/plugins"

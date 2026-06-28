@@ -25,6 +25,7 @@ services:
       - ./scripts/init_data.py:/app/init_data.py:ro
       - ./scripts/vault_manager.py:/app/vault_manager.py:ro
       - ./src/crypto_access/migrations:/app/crypto_access/migrations
+      - ./docker/vault/plugins:/vault/plugins:ro
     tmpfs:
       - /tmp
 
@@ -86,6 +87,7 @@ services:
       - ./docker/vault/config.hcl:/vault/config/config.hcl:ro
       - vault_data:/vault/file
       - ${CERTS_DIR:-./config/certs}:/vault/config/certs:ro
+      - ./docker/vault/plugins:/vault/plugins:ro
     cap_add:
       - IPC_LOCK
     networks:
