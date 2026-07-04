@@ -72,6 +72,23 @@ def get_encryption_key(info: bytes = b"") -> bytes:
     except Exception as e:
         raise ValueError(f"Invalid MASTER_FIELD_ENCRYPTION_KEY format: {e}")
 
+def encrypt_bytes(data: bytes, info: bytes, aad: bytes = None) -> bytes:
+    """Encrypt raw bytes using AES-GCM with a Vault-derived key. Returns nonce + ciphertext."""
+    key = get_encryption_key(info)
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)  # 96-bit nonce
+    return nonce + aesgcm.encrypt(nonce, data, aad)
+
+def decrypt_bytes(encrypted_data: bytes, info: bytes, aad: bytes = None) -> bytes:
+    """Decrypt raw bytes (nonce + ciphertext) using AES-GCM with a Vault-derived key."""
+    if not encrypted_data or len(encrypted_data) < 28: # 12 bytes nonce + 16 bytes tag + 0 bytes data
+        return b""
+    key = get_encryption_key(info)
+    aesgcm = AESGCM(key)
+    nonce = encrypted_data[:12]
+    ciphertext = encrypted_data[12:]
+    return aesgcm.decrypt(nonce, ciphertext, aad)
+
 class EncryptedFieldMixin:
     """Mixin to handle AES-GCM encryption for Django model fields with HKDF."""
     

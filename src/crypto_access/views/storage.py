@@ -149,7 +149,19 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         attrs_str = json.dumps(user_attrs, sort_keys=True)
         attrs_hash = hashlib.sha3_256(attrs_str.encode('utf-8')).hexdigest()
         cache_key = f"cpabe_key_{user.id}_{attrs_hash}"
-        cached_key_data = cache.get(cache_key)
+        encrypted_cached_key = cache.get(cache_key)
+        
+        cached_key_data = None
+        from ..models.fields import encrypt_bytes, decrypt_bytes
+        cache_info = f"cpabe_cache_{user.id}".encode('utf-8')
+        cache_aad = cache_key.encode('utf-8')
+        
+        if encrypted_cached_key:
+            try:
+                cached_key_data = decrypt_bytes(encrypted_cached_key, info=cache_info, aad=cache_aad)
+            except Exception as e:
+                logger.warning(f"Failed to decrypt cached key data, regenerating... Error: {e}")
+                cached_key_data = None
         
         try:
             if not cached_key_data:
@@ -165,8 +177,10 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     with open(key_name, 'rb') as f:
                         cached_key_data = f.read()
                     
-                    # Cache the generated key for 1 hour
-                    cache.set(cache_key, cached_key_data, timeout=3600)
+                    # Encrypt the generated key before caching
+                    encrypted_key_to_cache = encrypt_bytes(cached_key_data, info=cache_info, aad=cache_aad)
+                    # Cache the encrypted key for 1 hour
+                    cache.set(cache_key, encrypted_key_to_cache, timeout=3600)
                 finally:
                     if os.path.exists(key_name):
                         os.remove(key_name)
