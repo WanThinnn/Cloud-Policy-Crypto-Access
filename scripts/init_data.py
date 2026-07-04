@@ -22,26 +22,24 @@ def init():
         print("MASTER_FIELD_ENCRYPTION_KEY already exists in Vault.")
     elif key_b64:
         print("Pushing MASTER_FIELD_ENCRYPTION_KEY from settings to Vault KV Engine...")
-        vault_service.put_secret('MASTER_FIELD_ENCRYPTION_KEY', key_b64)
-        print("Successfully stored MASTER_FIELD_ENCRYPTION_KEY in Vault.")
+        if vault_service.put_secret('MASTER_FIELD_ENCRYPTION_KEY', key_b64):
+            print("Successfully stored MASTER_FIELD_ENCRYPTION_KEY in Vault.")
+        else:
+            print("\033[91m[ERROR] Failed to store MASTER_FIELD_ENCRYPTION_KEY in Vault!\033[0m")
+            print("Setting MASTER_FIELD_ENCRYPTION_KEY as environment variable as fallback...")
+            os.environ['MASTER_FIELD_ENCRYPTION_KEY'] = key_b64
     else:
         print("Generating a new random MASTER_FIELD_ENCRYPTION_KEY and storing in Vault...")
         import base64
         # Generate a massive 12288-bit (1536-byte) master key for extreme security
         new_key = base64.urlsafe_b64encode(os.urandom(1536)).decode('utf-8')
-        vault_service.put_secret('MASTER_FIELD_ENCRYPTION_KEY', new_key)
-        print("Successfully generated and stored MASTER_FIELD_ENCRYPTION_KEY in Vault.")
-        
-        # Backup the generated key to config/keys directory
-        key_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config', 'keys', 'master_field_encryption.key')
-        try:
-            os.makedirs(os.path.dirname(key_path), exist_ok=True)
-            with open(key_path, 'w') as f:
-                f.write(new_key)
-            print(f"\n\033[93m[!] IMPORTANT: A backup of the MASTER_FIELD_ENCRYPTION_KEY has been saved to: {key_path}\033[0m")
-            print("\033[93m[!] Please store this key securely! If Vault loses data, you will need this key to decrypt your database fields.\033[0m\n")
-        except Exception as e:
-            print(f"Warning: Failed to save backup key to {key_path}: {e}")
+        if vault_service.put_secret('MASTER_FIELD_ENCRYPTION_KEY', new_key):
+            print("Successfully generated and stored MASTER_FIELD_ENCRYPTION_KEY in Vault.")
+            print("\033[92m[✓] Key is stored securely in Vault (encrypted at rest by Vault's barrier key).\033[0m")
+        else:
+            print("\033[91m[ERROR] Failed to store MASTER_FIELD_ENCRYPTION_KEY in Vault!\033[0m")
+            print("Setting MASTER_FIELD_ENCRYPTION_KEY as environment variable as fallback...")
+            os.environ['MASTER_FIELD_ENCRYPTION_KEY'] = new_key
 
     # Create Superuser if not exists
     super_admin_username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'super_admin')

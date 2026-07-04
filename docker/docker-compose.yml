@@ -25,7 +25,7 @@ services:
       - ./scripts/init_data.py:/app/init_data.py:ro
       - ./scripts/vault_manager.py:/app/vault_manager.py:ro
       - ./src/crypto_access/migrations:/app/crypto_access/migrations
-      - ./docker/vault/plugins:/vault/plugins:ro
+      - vault_plugins:/vault/plugins:ro
     tmpfs:
       - /tmp
 
@@ -76,18 +76,20 @@ services:
   #   restart: unless-stopped
 
   vault:
-    image: hashicorp/vault:latest
+    build:
+      context: .
+      dockerfile: docker/vault/Dockerfile
     container_name: vault_server
     ports:
       - "8200:8200"
-    command: server
+    command: ["server", "-config=/vault/config/config.hcl"]
     environment:
       - VAULT_API_ADDR=https://127.0.0.1:8200
     volumes:
       - ./docker/vault/config.hcl:/vault/config/config.hcl:ro
       - vault_data:/vault/file
       - ${CERTS_DIR:-./config/certs}:/vault/config/certs:ro
-      - ./docker/vault/plugins:/vault/plugins:ro
+      - vault_plugins:/vault/plugins
     cap_add:
       - IPC_LOCK
     networks:
@@ -232,6 +234,7 @@ volumes:
   sqlite_volume:
   keys_volume:
   vault_data:
+  vault_plugins:
 
 networks:
   app-network:

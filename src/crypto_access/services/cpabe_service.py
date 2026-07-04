@@ -8,6 +8,10 @@ from django.conf import settings
 from crypto_access.services.vault_service import vault_service
 import base64
 import requests
+import urllib3
+
+# Suppress InsecureRequestWarning for self-signed Vault certs
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -458,7 +462,6 @@ class CPABEService:
         if not self._encrypt_buffer_func:
             raise CPABEError("Buffer encryption function not found in library")
 
-        import base64
         pk_json = base64.b64decode(self.pk_data)
 
         pk_ptr = ctypes.cast(ctypes.create_string_buffer(pk_json), ctypes.POINTER(ctypes.c_ubyte))
@@ -506,7 +509,6 @@ class CPABEService:
         if not self._decrypt_buffer_func:
             raise CPABEError("Buffer decryption function not found in library")
 
-        import base64
         sk_json = base64.b64decode(private_key_data)
 
         sk_ptr = ctypes.cast(ctypes.create_string_buffer(sk_json), ctypes.POINTER(ctypes.c_ubyte))
@@ -543,8 +545,7 @@ class CPABEService:
                 "scheme": getattr(settings, 'CPABE_SCHEME', 'ac17'),
                 "plaintext": base64.b64encode(plaintext).decode('utf-8'),
                 "policy": policy,
-                "public_key": base64.b64encode(self.pk_data).decode('utf-8'),
-                "pqc_private_key": base64.b64encode(self.pqc_sk_data).decode('utf-8')
+                "public_key": base64.b64encode(self.pk_data).decode('utf-8')
             }
             try:
                 resp = requests.put(f"{vault_service.get_addr}/v1/abe/encrypt", headers=headers, json=payload, verify=False)
@@ -556,7 +557,6 @@ class CPABEService:
         if not getattr(self, '_encrypt_buffer_sign_func', None):
             raise CPABEError("PQC encryptBuffer_and_sign function not found in DLL")
 
-        import base64
         pk_json = base64.b64decode(self.pk_data)
         pqc_sk_json = base64.b64decode(self.pqc_sk_data)
         
@@ -610,7 +610,6 @@ class CPABEService:
         if not getattr(self, '_decrypt_buffer_verify_func', None):
             raise CPABEError("PQC decryptBuffer_and_verify function not found in DLL")
 
-        import base64
         sk_json = base64.b64decode(sk_data)
         pqc_pk_json = base64.b64decode(self.pqc_pk_data)
 

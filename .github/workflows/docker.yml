@@ -38,7 +38,7 @@ jobs:
           username: wanthinnn
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & Push to Docker Hub
+      - name: Build & Push Django App to Docker Hub
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -48,6 +48,19 @@ jobs:
           tags: |
             wanthinnn/cloud-policy-crypto-access:${{ steps.get_version.outputs.version }}
             wanthinnn/cloud-policy-crypto-access:${{ steps.get_version.outputs.alias }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Vault Image to Docker Hub
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./docker/vault/Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: |
+            wanthinnn/cloud-policy-vault:${{ steps.get_version.outputs.version }}
+            wanthinnn/cloud-policy-vault:${{ steps.get_version.outputs.alias }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

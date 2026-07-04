@@ -64,3 +64,4 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+!src/vault-plugin/lib/

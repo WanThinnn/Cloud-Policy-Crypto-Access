@@ -14,6 +14,9 @@ except ImportError:
     print("hvac not installed. Run 'pip install hvac'")
     exit(1)
 
+# Suppress InsecureRequestWarning for self-signed Vault certs
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 VAULT_ADDR = os.environ.get('VAULT_ADDR', 'http://localhost:8200')
 KEYS_DIR = os.environ.get('KEYS_DIR', '/app/config/keys')
 UNSEAL_KEYS_FILE = os.path.join(KEYS_DIR, 'vault_unseal_keys.json')
@@ -56,6 +59,47 @@ def wait_for_vault():
     print("Vault did not become reachable in time.")
     return False
 
+def ensure_kv_engine(client):
+    """Ensure the KV v2 secrets engine is enabled at 'secret/'."""
+    try:
+        # Check existing mounts first to prevent Vault from logging 'path already in use' errors
+        mounts = client.sys.list_mounted_secrets_engines()
+        if 'secret/' in mounts:
+            # Optionally check if it's kv v2, but usually it is if it exists
+            return
+            
+        client.sys.enable_secrets_engine(
+            backend_type='kv',
+            path='secret',
+            options={'version': '2'}
+        )
+        print("KV v2 secrets engine enabled at 'secret/'.")
+    except Exception as e:
+        if "local node not active" in str(e):
+            # Retry for Raft leader election
+            for attempt in range(10):
+                time.sleep(2)
+                try:
+                    mounts = client.sys.list_mounted_secrets_engines()
+                    if 'secret/' in mounts:
+                        return
+                    client.sys.enable_secrets_engine(
+                        backend_type='kv',
+                        path='secret',
+                        options={'version': '2'}
+                    )
+                    print("KV v2 secrets engine enabled at 'secret/'.")
+                    return
+                except Exception as retry_e:
+                    if "local node not active" in str(retry_e):
+                        print(f"Raft leader not ready yet (attempt {attempt+1}/10), waiting...")
+                    else:
+                        print(f"Failed to enable KV v2 engine: {retry_e}")
+                        return
+        else:
+            print(f"Failed to enable KV v2 engine: {e}")
+
+
 def register_abe_plugin(client):
     use_plugin = os.environ.get('USE_VAULT_ABE_PLUGIN', 'False').lower() in ('true', '1', 't')
     if not use_plugin:
@@ -72,18 +116,28 @@ def register_abe_plugin(client):
         
     print(f"Registering vault-plugin-abe (sha256: {plugin_hash})...")
     try:
-        client.sys.register_plugin(
-            name='vault-plugin-abe',
-            plugin_type='secret',
-            command='vault-plugin-abe',
-            sha256=plugin_hash
-        )
+        import requests
+        headers = {"X-Vault-Token": client.token}
+        payload = {
+            "sha256": plugin_hash,
+            "command": "vault-plugin-abe"
+        }
+        url = f"{client.url}/v1/sys/plugins/catalog/secret/vault-plugin-abe"
+        response = requests.put(url, headers=headers, json=payload, verify=False)
+        response.raise_for_status()
     except Exception as e:
         if "already registered" not in str(e):
-            print(f"Failed to register plugin: {e}")
+            print(f"Failed to register plugin: {repr(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"Details: {e.response.text}")
             return
             
     try:
+        mounts = client.sys.list_mounted_secrets_engines()
+        if 'abe/' in mounts:
+            print("ABE engine already enabled.")
+            return
+            
         client.sys.enable_secrets_engine(
             backend_type='vault-plugin-abe',
             path='abe',
@@ -91,10 +145,7 @@ def register_abe_plugin(client):
         )
         print("ABE Secrets engine successfully enabled at 'abe/'.")
     except Exception as e:
-        if "path is already in use" in str(e):
-            print("ABE engine already enabled.")
-        else:
-            print(f"Failed to enable ABE secrets engine: {e}")
+        print(f"Failed to enable ABE secrets engine: {e}")
 
 def init_and_unseal():
     parser = argparse.ArgumentParser()
@@ -155,24 +206,6 @@ def init_and_unseal():
         print("Waiting for Raft leader election...")
         time.sleep(2)
         
-        # Enable KV v2 secrets engine
-        print("Enabling KV v2 secrets engine at 'secret/'...")
-        for attempt in range(10):
-            try:
-                client.sys.enable_secrets_engine(
-                    backend_type='kv',
-                    path='secret',
-                    options={'version': '2'}
-                )
-                break
-            except Exception as e:
-                if "path is already in use" in str(e):
-                    break
-                elif "local node not active" in str(e):
-                    print(f"Raft leader not ready yet (attempt {attempt+1}/10), waiting...")
-                    time.sleep(2)
-                else:
-                    raise
         print("Vault setup complete.")
 
         if is_prod:
@@ -217,10 +250,15 @@ def init_and_unseal():
         else:
             print("Vault is already unsealed.")
             
-    # Try to authenticate with root token if available to register the plugin
+    # Try to authenticate with root token if available
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, 'r') as f:
             client.token = f.read().strip()
+        
+        # Always ensure KV v2 engine is enabled (idempotent)
+        ensure_kv_engine(client)
+        
+        # Register ABE plugin if configured
         register_abe_plugin(client)
     else:
         print("No root token found. Skipping plugin registration.")

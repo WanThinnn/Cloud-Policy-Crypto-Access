@@ -19,21 +19,31 @@ _derived_keys_cache = {}
 _cache_lock = threading.Lock()
 
 def get_encryption_key(info: bytes = b"") -> bytes:
-    """Retrieve the 256-bit AES key from Vault or settings, and derive a sub-key."""
+    """Retrieve the 256-bit AES key, and derive a sub-key using HKDF.
+    
+    Priority order:
+      1. Vault KV v2 (encrypted at rest by Vault's barrier key — most secure)
+      2. Environment variable MASTER_FIELD_ENCRYPTION_KEY (fallback for non-Vault setups)
+    """
+    key_b64 = None
+    
+    # 1) Try Vault first (recommended — key is encrypted at rest)
     try:
         from crypto_access.services.vault_service import vault_service
         key_b64 = vault_service.get_secret('MASTER_FIELD_ENCRYPTION_KEY')
-        if not key_b64:
-            key_b64 = getattr(settings, 'MASTER_FIELD_ENCRYPTION_KEY', None)
     except Exception as e:
-        logger.warning(f"Failed to fetch key from Vault, falling back to settings: {e}")
-        key_b64 = getattr(settings, 'MASTER_FIELD_ENCRYPTION_KEY', None)
+        logger.warning(f"Vault unavailable, falling back to environment variable: {e}")
 
+    # 2) Fallback to environment variable (for non-Vault setups)
     if not key_b64:
         key_b64 = os.environ.get('MASTER_FIELD_ENCRYPTION_KEY')
-    
+
     if not key_b64:
-        raise ValueError("MASTER_FIELD_ENCRYPTION_KEY is not set in Vault, environment or settings.")
+        raise ValueError(
+            "MASTER_FIELD_ENCRYPTION_KEY not found. Either:\n"
+            "  - Run 'python start.py initdata' to generate and store it in Vault, or\n"
+            "  - Set MASTER_FIELD_ENCRYPTION_KEY in your .env file"
+        )
         
     try:
         master_key = base64.urlsafe_b64decode(key_b64)

@@ -399,9 +399,9 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             existing_file = UploadedFile.objects.filter(bucket=bucket, file_path=file_path).first()
             
         is_new_version_val = request.data.get('is_new_version', 'false')
-        print(f"DEBUG: is_new_version received = {is_new_version_val} (type: {type(is_new_version_val)})")
+        #print(f"DEBUG: is_new_version received = {is_new_version_val} (type: {type(is_new_version_val)})")
         is_new_version = str(is_new_version_val).lower() == 'true'
-        print(f"DEBUG: is_new_version parsed = {is_new_version}")
+        #print(f"DEBUG: is_new_version parsed = {is_new_version}")
         
         version_number = 1
         
