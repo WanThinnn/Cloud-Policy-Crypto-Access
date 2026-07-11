@@ -2,9 +2,6 @@ name: cloud-policy-crypto-access
 services:
   web:
     platform: linux/amd64
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
     image: wanthinnn/cloud-policy-crypto-access:pqc-latest
     container_name: crypto_web
     env_file:
