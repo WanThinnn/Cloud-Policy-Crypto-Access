@@ -205,7 +205,7 @@ def main(argv: list[str]) -> int:
         elif cmd == "build":
             # print(f"{status_line}\n")
             if args.prod:
-                run(c + ["pull"])
+                run(c + ["pull", "--ignore-buildable"])
             run(c + ["build"])
             print(color_info(f"\n[OK] Build completed.\n"))
             print(color_info("Next: "))
