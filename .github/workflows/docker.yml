@@ -48,8 +48,8 @@ jobs:
           tags: |
             wanthinnn/cloud-policy-crypto-access:${{ steps.get_version.outputs.version }}
             wanthinnn/cloud-policy-crypto-access:${{ steps.get_version.outputs.alias }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=django
+          cache-to: type=gha,mode=max,scope=django
 
       - name: Build & Push Vault Image to Docker Hub
         uses: docker/build-push-action@v4
@@ -61,8 +61,8 @@ jobs:
           tags: |
             wanthinnn/cloud-policy-vault:${{ steps.get_version.outputs.version }}
             wanthinnn/cloud-policy-vault:${{ steps.get_version.outputs.alias }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=vault
+          cache-to: type=gha,mode=max,scope=vault
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')   # ← Chỉ chạy khi push tag v*
