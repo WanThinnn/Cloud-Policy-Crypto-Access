@@ -27,7 +27,6 @@ services:
       - CLAMAV_USE_TLS=True
       - CLAMAV_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
     depends_on:
-      - nginx
       - crypto-redis
       - vault
       - clamav
