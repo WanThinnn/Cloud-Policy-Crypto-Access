@@ -76,7 +76,7 @@ def passkey_register_options(request):
                 # Allow platform and cross-platform
                 authenticator_attachment=None,
                 resident_key=ResidentKeyRequirement.PREFERRED,
-                user_verification=UserVerificationRequirement.REQUIRED,
+                user_verification=UserVerificationRequirement.PREFERRED,
             ),
             exclude_credentials=exclude_credentials,
         )
@@ -173,7 +173,7 @@ def passkey_login_options(request):
         options = generate_authentication_options(
             rp_id=request.get_host().split(':')[0],
             allow_credentials=allow_credentials,
-            user_verification=UserVerificationRequirement.REQUIRED,
+            user_verification=UserVerificationRequirement.PREFERRED,
         )
         
         # We need to map this challenge to a temporary ID for the login completion
@@ -236,7 +236,7 @@ def passkey_login_complete(request):
             expected_origin=request.headers.get('Origin', ORIGIN),
             credential_public_key=db_cred.public_key,
             credential_current_sign_count=db_cred.sign_count,
-            require_user_verification=True,
+            require_user_verification=False,
         )
         
         # Update sign count
