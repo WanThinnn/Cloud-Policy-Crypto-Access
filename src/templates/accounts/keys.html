@@ -302,6 +302,7 @@
             localStorage.removeItem('pqc_public_key');
             localStorage.removeItem('pqc_private_key');
             localStorage.removeItem('pqc_device_id');
+            localStorage.removeItem('pqc_credential_id');
             sessionStorage.removeItem('pqc_unlocked_private_key');
             
             alert('Signature Key revoked on server and local data cleared.\n\nNOTE: You must manually delete the associated Passkey (named "'+localStorage.getItem('username')+' (Signature)") from your device settings.');

@@ -115,13 +115,9 @@ class PqcManager {
                 
                 const prfResults = credential.getClientExtensionResults().prf;
                 if (!prfResults || !prfResults.enabled || !prfResults.results) {
-                    console.warn("WebAuthn PRF not supported on this device/browser. Falling back to simple random key (NOT RECOMMENDED).");
-                    // In a real high-security app, you might abort here.
-                    // For compatibility, we'll generate a random key.
-                    prfOutput = crypto.getRandomValues(new Uint8Array(32));
-                } else {
-                    prfOutput = new Uint8Array(prfResults.results.first);
+                    throw new Error("WebAuthn PRF is not supported by your selected Passkey provider (e.g., Google Password Manager). Please cancel and choose 'Windows Hello', 'Mac Touch ID', or a hardware Security Key instead.");
                 }
+                prfOutput = new Uint8Array(prfResults.results.first);
                 
                 // Store credential ID so we can get it later
                 localStorage.setItem('pqc_credential_id', btoa(String.fromCharCode(...new Uint8Array(credential.rawId))));
