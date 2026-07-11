@@ -106,7 +106,7 @@ services:
   vault:
     image: wanthinnn/cloud-policy-vault:pqc-latest
     container_name: vault_server
-    command: [ "server", "-config=/vault/config/config.hcl" ]
+    command: [ "server" ]
     environment:
       - VAULT_ADDR=https://127.0.0.1:8200
       - VAULT_API_ADDR=https://127.0.0.1:8200
