@@ -637,7 +637,19 @@ class CPABEService:
             
         return plaintext
 
-# Singleton instance
-cpabe_service = CPABEService()
+# Lazy singleton – CPABEService is only created the first time it is accessed,
+# giving Vault enough time to start up before any connection is attempted.
+class _LazyCPABEService:
+    """Proxy that delays CPABEService() creation until first attribute access."""
+    def __init__(self):
+        self._instance = None
 
+    def _get_instance(self):
+        if self._instance is None:
+            self._instance = CPABEService()
+        return self._instance
 
+    def __getattr__(self, name):
+        return getattr(self._get_instance(), name)
+
+cpabe_service = _LazyCPABEService()
