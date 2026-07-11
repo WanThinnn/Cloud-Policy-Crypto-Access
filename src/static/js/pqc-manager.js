@@ -114,13 +114,20 @@ class PqcManager {
                 });
                 
                 const prfResults = credential.getClientExtensionResults().prf;
-                if (!prfResults || !prfResults.enabled || !prfResults.results) {
+                if (!prfResults || !prfResults.enabled) {
                     throw new Error("WebAuthn PRF is not supported by your selected Passkey provider (e.g., Google Password Manager). Please cancel and choose 'Windows Hello', 'Mac Touch ID', or a hardware Security Key instead.");
                 }
-                prfOutput = new Uint8Array(prfResults.results.first);
                 
                 // Store credential ID so we can get it later
                 localStorage.setItem('pqc_credential_id', btoa(String.fromCharCode(...new Uint8Array(credential.rawId))));
+
+                if (prfResults.results && prfResults.results.first) {
+                    prfOutput = new Uint8Array(prfResults.results.first);
+                } else {
+                    // Chrome on Windows Hello supports PRF but may not support eval during creation.
+                    // We must immediately invoke get() to evaluate the PRF (which prompts the user again).
+                    return await this._getPrfKey(false);
+                }
 
             } else {
                 const credIdB64 = localStorage.getItem('pqc_credential_id');
