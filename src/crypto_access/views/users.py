@@ -166,6 +166,16 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         # Security Check: Admin cannot promote someone to Super Admin
         if data.get('user_type') == 'super_admin' and not is_super:
             return Response({'error': 'Only Super Admins can promote users to Super Admin.'}, status=status.HTTP_403_FORBIDDEN)
+            
+        # Security Check: Prevent self-modification of critical fields
+        if instance.id == request.user.id:
+            current_type = getattr(instance.profile.user_type_ref, 'code', None) if hasattr(instance, 'profile') and instance.profile.user_type_ref else None
+            if data.get('user_type') and data.get('user_type') != current_type:
+                return Response({'error': 'You cannot change your own user type.'}, status=status.HTTP_403_FORBIDDEN)
+                
+            current_status = instance.profile.account_status if hasattr(instance, 'profile') else None
+            if data.get('account_status') and data.get('account_status') != current_status:
+                return Response({'error': 'You cannot change your own account status.'}, status=status.HTTP_403_FORBIDDEN)
         
         old_data = {
             'email': instance.email,
