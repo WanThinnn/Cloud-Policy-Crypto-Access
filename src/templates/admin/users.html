@@ -257,6 +257,7 @@
             <!-- Assign New Attribute -->
             <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                 <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Assign new attribute</h4>
+                <div id="attr-modal-error" class="hidden rounded-md p-3 mb-4 text-sm bg-red-50 text-red-800 border border-red-200"></div>
                 <form id="assign-attr-form" class="flex gap-2 items-end flex-wrap">
                     <input type="hidden" id="attr-user-id">
                     <div class="flex-1 min-w-[150px]">
@@ -845,6 +846,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         currentAttrUserId = userId;
         document.getElementById('attr-modal-username').textContent = username;
         document.getElementById('attr-user-id').value = userId;
+        document.getElementById('attr-modal-error').classList.add('hidden');
         document.getElementById('attributes-modal').classList.remove('hidden');
         
         // Load attribute definitions if not loaded
@@ -979,13 +981,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                 showAlert('Attribute assigned');
                 document.getElementById('attr-select-new').value = '';
                 document.getElementById('attr-value-text').value = '';
+                document.getElementById('attr-modal-error').classList.add('hidden');
                 loadUserAttributes(currentAttrUserId);
             } else {
                 const err = await response.json();
-                showAlert(JSON.stringify(err), 'error');
+                const errContainer = document.getElementById('attr-modal-error');
+                errContainer.textContent = err.error || err.detail || 'Error assigning attribute';
+                errContainer.classList.remove('hidden');
             }
         } catch (error) {
-            showAlert('Error: ' + error.message, 'error');
+            const errContainer = document.getElementById('attr-modal-error');
+            errContainer.textContent = 'Error: ' + error.message;
+            errContainer.classList.remove('hidden');
         }
     });
     

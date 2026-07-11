@@ -208,6 +208,10 @@ def assign_user_attribute(request, user_id):
     """
     user = get_object_or_404(User, pk=user_id)
     
+    # SoD Check: Prevent Self-Assignment
+    if user.id == request.user.id:
+        return Response({'error': 'Separation of Duties violation: You cannot manage your own attributes.'}, status=status.HTTP_403_FORBIDDEN)
+    
     serializer = UserAttributeAssignSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -249,6 +253,10 @@ def bulk_assign_user_attributes(request, user_id):
     Assign multiple attributes at once
     """
     user = get_object_or_404(User, pk=user_id)
+    
+    # SoD Check: Prevent Self-Assignment
+    if user.id == request.user.id:
+        return Response({'error': 'Separation of Duties violation: You cannot manage your own attributes.'}, status=status.HTTP_403_FORBIDDEN)
     
     serializer = UserAttributeBulkAssignSerializer(data=request.data)
     if not serializer.is_valid():
@@ -293,6 +301,11 @@ def delete_user_attribute(request, user_id, attribute_id):
     Remove an attribute from user
     """
     user = get_object_or_404(User, pk=user_id)
+    
+    # SoD Check: Prevent Self-Assignment
+    if user.id == request.user.id:
+        return Response({'error': 'Separation of Duties violation: You cannot manage your own attributes.'}, status=status.HTTP_403_FORBIDDEN)
+
     user_attr = get_object_or_404(UserAttribute, pk=attribute_id, user=user)
     
     attr_name = user_attr.attribute.name
