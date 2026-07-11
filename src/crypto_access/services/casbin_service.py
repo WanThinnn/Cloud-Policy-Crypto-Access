@@ -320,25 +320,14 @@ class CasbinService:
         actions_to_check = action_aliases.get(action, [action])
         
         try:
-            # Check with Casbin enforcer for action and its aliases
-            for check_action in actions_to_check:
-                result = self.enforcer.enforce(sub, resource, check_action)
-                if result:
-                    return True, f"abac_policy_allowed:{check_action}"
-            
-            # No policy allowed - check if there's any explicitly DENY matching policy
-            # If no explicitly DENY policy matched, return None to defer to RBAC
+            # Note: PyCasbin's native eval() often fails with standard python expressions 
+            # because it requires 'r.sub.' prefix for variables (e.g. r.sub.user_type == 'admin').
+            # We bypass enforcer.enforce() and evaluate all policies manually using our robust safe_eval_condition.
             all_actions = actions_to_check + ['*']
             matching_policies = AccessPolicy.objects.filter(
-                is_active=True,
-                effect='deny'
-            )
+                is_active=True
+            ).order_by('priority')
             
-            # Since resource/action can be comma separated now, we just filter python-side
-            # or evaluate all deny policies to see if they apply to this resource/action
-            # Actually we can just let Casbin check deny policies! But Casbin enforcer
-            # doesn't have an easy way to check if it matched a deny.
-            # We'll manually check the DENY policies in the DB.
             for policy in matching_policies:
                 resources = [r.strip() for r in policy.resource.split(',')]
                 actions = [a.strip() for a in policy.action.split(',')]
@@ -347,7 +336,10 @@ class CasbinService:
                    (any(act in actions for act in all_actions) or '*' in actions):
                     # Resource and action match, check condition
                     if safe_eval_condition(policy.subject_condition, attrs):
-                        return False, "abac_policy_explicit_deny"
+                        if policy.effect == 'deny':
+                            return False, "abac_policy_explicit_deny"
+                        elif policy.effect == 'allow':
+                            return True, f"abac_policy_explicit_allow:{policy.action}"
             
             return None, "no_abac_policy"
                     

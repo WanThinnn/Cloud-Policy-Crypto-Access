@@ -101,6 +101,12 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         
         data = serializer.validated_data
         
+        # Security Check: Only Super Admin can create another Super Admin
+        user_type_code = data.get('user_type', 'data_user')
+        is_super = request.user.profile.is_super_admin() if hasattr(request.user, 'profile') else False
+        if user_type_code == 'super_admin' and not is_super:
+            return Response({'error': 'Only Super Admins can create Super Admin users.'}, status=status.HTTP_403_FORBIDDEN)
+            
         # Generate default password if not provided
         password = data.get('password') or generate_default_password()
         
@@ -150,6 +156,16 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         
         data = request.data
+        
+        is_super = request.user.profile.is_super_admin() if hasattr(request.user, 'profile') else False
+        
+        # Security Check: Admin cannot modify Super Admin
+        if hasattr(instance, 'profile') and instance.profile.is_super_admin() and not is_super:
+            return Response({'error': 'Admins cannot modify Super Admin users.'}, status=status.HTTP_403_FORBIDDEN)
+            
+        # Security Check: Admin cannot promote someone to Super Admin
+        if data.get('user_type') == 'super_admin' and not is_super:
+            return Response({'error': 'Only Super Admins can promote users to Super Admin.'}, status=status.HTTP_403_FORBIDDEN)
         
         old_data = {
             'email': instance.email,
@@ -213,10 +229,18 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         """Delete user and all related data"""
         user = self.get_object()
         
-        # Prevent deleting superusers
+        # Prevent deleting superuser or super_admin
+        is_super = request.user.profile.is_super_admin() if hasattr(request.user, 'profile') else False
+        is_target_super = user.is_superuser or (hasattr(user, 'profile') and user.profile.is_super_admin())
+        
+        if is_target_super and not is_super:
+            return Response({
+                'error': 'Admins cannot delete Super Admin users.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
         if user.is_superuser:
             return Response({
-                'error': 'Không thể xóa tài khoản superuser'
+                'error': 'Không thể xóa tài khoản superuser root'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Prevent self-deletion
@@ -267,7 +291,12 @@ class UserManagementViewSet(viewsets.ModelViewSet):
     def reset_password(self, request, pk=None):
         """Reset user password to a new generated password"""
         user = self.get_object()
+        is_super = request.user.profile.is_super_admin() if hasattr(request.user, 'profile') else False
         
+        # Security Check: Admin cannot reset Super Admin password
+        if hasattr(user, 'profile') and user.profile.is_super_admin() and not is_super:
+            return Response({'error': 'Admins cannot reset passwords of Super Admin users.'}, status=status.HTTP_403_FORBIDDEN)
+            
         # Check if custom password provided
         new_password = request.data.get('password')
         

@@ -94,6 +94,7 @@
 <div id="user-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
         <h3 id="modal-title" class="text-lg font-semibold mb-4">Create new User</h3>
+        <div id="modal-error" class="hidden rounded-md p-3 mb-4 text-sm bg-red-50 text-red-800 border border-red-200"></div>
         <form id="user-form" class="space-y-4">
             <input type="hidden" name="user_id" id="user-id">
             
@@ -573,6 +574,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('user-form').reset();
         document.getElementById('username-input').disabled = false;
         document.getElementById('password-section').classList.remove('hidden');
+        document.getElementById('modal-error').classList.add('hidden');
         document.getElementById('user-modal').classList.remove('hidden');
     });
     
@@ -598,6 +600,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 document.getElementById('status-select').value = user.account_status || 'active';
                 document.getElementById('password-section').classList.add('hidden');
                 
+                document.getElementById('modal-error').classList.add('hidden');
                 document.getElementById('user-modal').classList.remove('hidden');
             }
         } catch (error) {
@@ -654,7 +657,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 loadUsers();
                 loadStats();
             } else {
-                showAlert('Error deleting user', 'error');
+                const error = await response.json();
+                showAlert(error.error || error.detail || 'Error deleting user', 'error');
             }
         } catch (error) {
             showAlert('Connection error server', 'error');
@@ -710,10 +714,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                 loadStats();
             } else {
                 const error = await response.json();
-                showAlert(error.detail || error.username?.[0] || 'Error saving', 'error');
+                const errorMsg = error.error || error.detail || error.username?.[0] || 'Error saving';
+                const modalError = document.getElementById('modal-error');
+                modalError.textContent = errorMsg;
+                modalError.classList.remove('hidden');
             }
         } catch (error) {
-            showAlert('Connection error server', 'error');
+            const modalError = document.getElementById('modal-error');
+            modalError.textContent = 'Connection error server';
+            modalError.classList.remove('hidden');
         }
     });
     
@@ -746,7 +755,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     showAlert(result.message);
                 }
             } else {
-                showAlert('Error resetting password', 'error');
+                const error = await response.json();
+                showAlert(error.error || error.detail || 'Error resetting password', 'error');
             }
         } catch (error) {
             showAlert('Connection error server', 'error');
