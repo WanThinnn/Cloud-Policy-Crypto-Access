@@ -106,12 +106,11 @@ services:
   vault:
     image: wanthinnn/cloud-policy-vault:pqc-latest
     container_name: vault_server
-    command: [ "server" ]
     environment:
       - VAULT_ADDR=https://127.0.0.1:8200
       - VAULT_API_ADDR=https://127.0.0.1:8200
-      - VAULT_LOCAL_CONFIG={"storage":{"raft":{"path":"/vault/file","node_id":"vault_server"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":0,"tls_cert_file":"/vault/config/certs/${TLS_CERT_FILENAME:-_.cyberfortress.local.crt}","tls_key_file":"/vault/config/certs/${TLS_KEY_FILENAME:-_.cyberfortress.local.key}"}},"default_lease_ttl":"168h","max_lease_ttl":"720h","ui":true,"disable_mlock":true,"api_addr":"https://127.0.0.1:8200","cluster_addr":"https://127.0.0.1:8201","plugin_directory":"/vault/plugins"}
     volumes:
+      - ./docker/vault/config.hcl:/vault/config/config.hcl:ro
       - vault_data:/vault/file
       - ${CERTS_DIR:-./config/certs}:/vault/config/certs:ro
       - vault_plugins:/vault/plugins
