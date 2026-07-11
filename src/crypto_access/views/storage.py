@@ -6,6 +6,7 @@ from rest_framework.decorators import action, throttle_classes
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
+from crypto_access.permissions import IsSuperAdmin
 from django.http import HttpResponse
 from django.utils import timezone
 from datetime import timedelta
@@ -18,6 +19,7 @@ from django.db import transaction
 from django.db.models import Q
 import tempfile
 import os
+import urllib.parse
 
 from ..models import StorageBucket, UploadedFile, FileAccessPolicy, AccessPolicy, FileVersion
 from ..serializers import (
@@ -63,7 +65,7 @@ class StorageBucketViewSet(viewsets.ModelViewSet):
     """
     queryset = StorageBucket.objects.all()
     serializer_class = StorageBucketSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
     
     @action(detail=True, methods=['post'])
     def create_in_supabase(self, request, pk=None):
@@ -656,7 +658,10 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             else:
                 file_name = uploaded_file.file_name
                 
-            response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+            # Sanitize filename to prevent header injection
+            safe_name = file_name.replace('"', '').replace('\r', '').replace('\n', '')
+            encoded_name = urllib.parse.quote(safe_name)
+            response['Content-Disposition'] = f"attachment; filename=\"{safe_name}\"; filename*=UTF-8''{encoded_name}"
             return response
             
         except Exception as e:
@@ -1009,7 +1014,10 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             content_type = content_types.get(ext, 'application/octet-stream')
             
             response = HttpResponse(file_data, content_type=content_type)
-            response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+            # Sanitize filename to prevent header injection
+            safe_name = file_name.replace('"', '').replace('\r', '').replace('\n', '')
+            encoded_name = urllib.parse.quote(safe_name)
+            response['Content-Disposition'] = f"attachment; filename=\"{safe_name}\"; filename*=UTF-8''{encoded_name}"
             return response
             
         except Exception as e:
@@ -1091,8 +1099,10 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             content_type = content_types.get(ext, 'application/octet-stream')
             
             response = HttpResponse(file_data, content_type=content_type)
-            # Use inline instead of attachment for preview
-            response['Content-Disposition'] = f'inline; filename="{file_name}"'
+            # Sanitize filename to prevent header injection
+            safe_name = file_name.replace('"', '').replace('\r', '').replace('\n', '')
+            encoded_name = urllib.parse.quote(safe_name)
+            response['Content-Disposition'] = f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{encoded_name}"
             return response
             
         except Exception as e:

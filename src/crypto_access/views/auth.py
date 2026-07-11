@@ -162,6 +162,17 @@ def login(request):
                 'error': 'Account locked temporarily due to too many failed attempts. Please try again in 15 minutes.'
             }, status=status.HTTP_429_TOO_MANY_REQUESTS)
         
+        # Check if user account exists and is active BEFORE attempting authentication
+        try:
+            user_obj = User.objects.get(username=username)
+            if not user_obj.is_active:
+                logger.warning(f"Login attempt for disabled account: {username}", extra={'user.name': username})
+                return Response({
+                    'error': 'Account is disabled'
+                }, status=status.HTTP_403_FORBIDDEN)
+        except User.DoesNotExist:
+            pass  # Don't reveal whether username exists
+        
         user = authenticate(username=username, password=password)
         
         if user is None:
@@ -173,13 +184,6 @@ def login(request):
             
         # Reset failed attempts on success
         cache.delete(cache_key)
-        
-        logger.info(f"User login successful: {username} from IP: {get_client_ip(request)}", extra={'user.name': username, 'user.id': user.id})
-        
-        if not user.is_active:
-            return Response({
-                'error': 'Account is disabled'
-            }, status=status.HTTP_403_FORBIDDEN)
         
         # Check account status
         if hasattr(user, 'profile'):
@@ -337,9 +341,24 @@ def verify_otp(request):
         
         cached_data = cache.get(f"otp_{temp_token}")
         
-        if not cached_data or cached_data['otp'] != otp:
+        if not cached_data:
             return Response({
-                'error': 'Invalid or expired OTP code.'
+                'error': 'OTP has expired. Please login again.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # OTP attempt counter — lock after 5 failed attempts
+        otp_attempts_key = f"otp_attempts_{temp_token}"
+        otp_attempts = cache.get(otp_attempts_key, 0)
+        if otp_attempts >= 5:
+            cache.delete(f"otp_{temp_token}")
+            return Response({
+                'error': 'Too many failed OTP attempts. Please login again.'
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        
+        if cached_data['otp'] != otp:
+            cache.set(otp_attempts_key, otp_attempts + 1, 300)
+            return Response({
+                'error': 'Invalid OTP code.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Valid OTP -> Process Login
@@ -396,7 +415,6 @@ def verify_otp(request):
         
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout(request):
@@ -447,7 +465,6 @@ def logout(request):
         response.delete_cookie('refresh_token')
         return response
 
-@csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def change_password(request):

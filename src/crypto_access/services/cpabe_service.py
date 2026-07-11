@@ -10,9 +10,6 @@ import base64
 import requests
 import urllib3
 
-# Suppress InsecureRequestWarning for self-signed Vault certs
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 logger = logging.getLogger(__name__)
 
 class CPABEError(Exception):
@@ -45,6 +42,10 @@ class CPABEService:
             except Exception as e:
                 logger.error(f"Failed to initialize CPABE library: {e}")
                 
+        # Vault CA cert for TLS verification on plugin API calls
+        vault_ca = os.environ.get('VAULT_CACERT')
+        self._vault_verify = vault_ca if (vault_ca and os.path.exists(vault_ca)) else True
+
         self._ensure_keys_exist()
             
     def _setup_bindings(self):
@@ -156,7 +157,7 @@ class CPABEService:
             payload = {"scheme": getattr(settings, 'CPABE_SCHEME', 'ac17'), "pqc": is_pqc_enabled}
             
             try:
-                resp = requests.put(f"{vault_service.get_addr}/v1/abe/setup", headers=headers, json=payload, verify=False)
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/setup", headers=headers, json=payload, verify=self._vault_verify)
                 resp.raise_for_status()
                 data = resp.json()["data"]
                 
@@ -361,7 +362,7 @@ class CPABEService:
             headers = {"X-Vault-Token": vault_service.get_token, "Content-Type": "application/json"}
             payload = {"scheme": getattr(settings, 'CPABE_SCHEME', 'ac17'), "attributes": attr_str}
             try:
-                resp = requests.put(f"{vault_service.get_addr}/v1/abe/genkey", headers=headers, json=payload, verify=False)
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/genkey", headers=headers, json=payload, verify=self._vault_verify)
                 resp.raise_for_status()
                 sk_b64 = resp.json()["data"]["secret_key"]
                 with open(output_path, 'wb') as f:
@@ -453,7 +454,7 @@ class CPABEService:
                 "public_key": base64.b64encode(self.pk_data).decode('utf-8')
             }
             try:
-                resp = requests.put(f"{vault_service.get_addr}/v1/abe/encrypt", headers=headers, json=payload, verify=False)
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/encrypt", headers=headers, json=payload, verify=self._vault_verify)
                 resp.raise_for_status()
                 return base64.b64decode(resp.json()["data"]["ciphertext"])
             except Exception as e:
@@ -500,7 +501,7 @@ class CPABEService:
                 "secret_key": base64.b64encode(private_key_data).decode('utf-8')
             }
             try:
-                resp = requests.put(f"{vault_service.get_addr}/v1/abe/decrypt", headers=headers, json=payload, verify=False)
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/decrypt", headers=headers, json=payload, verify=self._vault_verify)
                 resp.raise_for_status()
                 return base64.b64decode(resp.json()["data"]["plaintext"])
             except Exception as e:
@@ -548,7 +549,7 @@ class CPABEService:
                 "public_key": base64.b64encode(self.pk_data).decode('utf-8')
             }
             try:
-                resp = requests.put(f"{vault_service.get_addr}/v1/abe/encrypt", headers=headers, json=payload, verify=False)
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/encrypt", headers=headers, json=payload, verify=self._vault_verify)
                 resp.raise_for_status()
                 return base64.b64decode(resp.json()["data"]["ciphertext"])
             except Exception as e:
@@ -597,7 +598,7 @@ class CPABEService:
                 "pqc_public_key": base64.b64encode(self.pqc_pk_data).decode('utf-8')
             }
             try:
-                resp = requests.put(f"{vault_service.get_addr}/v1/abe/decrypt", headers=headers, json=payload, verify=False)
+                resp = requests.put(f"{vault_service.get_addr}/v1/abe/decrypt", headers=headers, json=payload, verify=self._vault_verify)
                 resp.raise_for_status()
                 return base64.b64decode(resp.json()["data"]["plaintext"])
             except requests.exceptions.HTTPError as e:

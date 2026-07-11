@@ -30,22 +30,21 @@ class GlobalRateLimitMiddleware:
             # We use a simple counter with expiration
             # Since memcached/redis add/incr operations are atomic
             try:
-                # Get current count
-                count = cache.get(cache_key)
-                if count is None:
-                    cache.set(cache_key, 1, self.RATE_LIMIT_WINDOW)
+                # Use atomic cache.add to initialize if not exists
+                if cache.add(cache_key, 1, self.RATE_LIMIT_WINDOW):
+                    count = 1
                 else:
-                    if count >= self.RATE_LIMIT:
-                        logger.warning(f"Rate limit exceeded for IP: {ip}")
-                        # Return 429
-                        return self.handle_rate_limit_exceeded(request)
-                    
-                    # Increment counter
+                    # Key exists, atomically increment it
                     try:
-                        cache.incr(cache_key)
+                        count = cache.incr(cache_key)
                     except ValueError:
-                        # Fallback if incr fails
-                        cache.set(cache_key, count + 1, self.RATE_LIMIT_WINDOW)
+                        # Fallback if incr fails (e.g. backend doesn't support it)
+                        count = cache.get(cache_key, 0) + 1
+                        cache.set(cache_key, count, self.RATE_LIMIT_WINDOW)
+                
+                if count > self.RATE_LIMIT:
+                    logger.warning(f"Rate limit exceeded for IP: {ip}")
+                    return self.handle_rate_limit_exceeded(request)
             except Exception as e:
                 # If cache fails (e.g. Redis down), allow request but log error
                 logger.error(f"Rate limiting cache error: {e}")

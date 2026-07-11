@@ -24,7 +24,9 @@ class VaultService:
             with open(token_file, 'r') as f:
                 self.vault_token = f.read().strip()
         else:
-            self.vault_token = os.environ.get('VAULT_TOKEN', 'root')
+            self.vault_token = os.environ.get('VAULT_TOKEN', '')
+            if not self.vault_token:
+                logger.warning("VAULT_TOKEN is not set and no token file found. Vault operations will fail.")
 
         
         # Only initialize client if addr is provided and not empty

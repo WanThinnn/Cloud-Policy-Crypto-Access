@@ -7,6 +7,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from ..permissions import IsAdminOrSuperAdmin
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404, render
@@ -57,7 +58,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
     Super Admin can manage all users
     """
     queryset = User.objects.select_related('profile', 'profile__user_type_ref').all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrSuperAdmin]
     
     def get_serializer_class(self):
         if self.action == 'create':

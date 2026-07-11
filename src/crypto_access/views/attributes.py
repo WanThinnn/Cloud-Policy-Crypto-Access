@@ -161,9 +161,8 @@ class AttributeDefinitionViewSet(viewsets.ModelViewSet):
 # UserAttribute APIs
 # =============================================================================
 
-@csrf_exempt
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, CanManageAttributes])
 def list_user_attributes(request, user_id):
     """
     GET /api/admin/users/<user_id>/attributes/
@@ -200,9 +199,8 @@ def list_user_attributes(request, user_id):
     })
 
 
-@csrf_exempt
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, CanManageAttributes])
 def assign_user_attribute(request, user_id):
     """
     POST /api/admin/users/<user_id>/attributes/
@@ -243,9 +241,8 @@ def assign_user_attribute(request, user_id):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, CanManageAttributes])
 def bulk_assign_user_attributes(request, user_id):
     """
     POST /api/admin/users/<user_id>/attributes/bulk/
@@ -288,9 +285,8 @@ def bulk_assign_user_attributes(request, user_id):
     }, status=status.HTTP_201_CREATED if results else status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, CanManageAttributes])
 def delete_user_attribute(request, user_id, attribute_id):
     """
     DELETE /api/admin/users/<user_id>/attributes/<attribute_id>/
@@ -307,9 +303,8 @@ def delete_user_attribute(request, user_id, attribute_id):
     })
 
 
-@csrf_exempt
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, CanManageAttributes])
 def list_users_with_attributes(request):
     """
     GET /api/admin/users-with-attributes/
@@ -336,7 +331,6 @@ def list_users_with_attributes(request):
     return Response({'users': serializer.data})
 
 
-@csrf_exempt
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_policy_builder_attributes(request):

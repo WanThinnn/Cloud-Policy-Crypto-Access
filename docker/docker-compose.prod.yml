@@ -18,6 +18,7 @@ services:
       - VAULT_SECRET_PATH=${VAULT_SECRET_PATH:-secret/data/crypto_access}
       - VAULT_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
       - PKI_SIGNER_URL=${PKI_SIGNER_URL:-https://pki_signer.cyberfortress.local:5000}
+      - PKI_AUTH_TOKEN=${PKI_AUTH_TOKEN:-pki-default-token}
       - PKI_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
       - CLAMAV_HOST=clamav_tls_proxy
       - CLAMAV_PORT=3310
@@ -171,11 +172,19 @@ services:
     environment:
       - TLS_CERT=/certs/${TLS_CERT_FILENAME:-_.cyberfortress.local.crt}
       - TLS_KEY=/certs/${TLS_KEY_FILENAME:-_.cyberfortress.local.key}
+      - PKI_AUTH_TOKEN=${PKI_AUTH_TOKEN:-pki-default-token}
     command: |
       sh -c "apk add --no-cache python3 && python3 -c \"
       import http.server, socketserver, subprocess, ssl, os
       class Handler(http.server.BaseHTTPRequestHandler):
           def do_POST(self):
+              auth_header = self.headers.get('Authorization')
+              expected_token = 'Bearer ' + os.environ.get('PKI_AUTH_TOKEN', 'pki-default-token')
+              if auth_header != expected_token:
+                  self.send_response(401)
+                  self.end_headers()
+                  self.wfile.write(b'Unauthorized')
+                  return
               length = int(self.headers['Content-Length'])
               payload = self.rfile.read(length)
               with open('/tmp/payload', 'wb') as f: f.write(payload)

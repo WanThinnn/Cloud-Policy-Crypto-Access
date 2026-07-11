@@ -13,6 +13,7 @@ logger = logging.getLogger('crypto_access.policy')
 from crypto_access.models import AccessPolicy
 from crypto_access.serializers import AccessPolicySerializer, AccessPolicyListSerializer
 from rest_framework.permissions import IsAuthenticated
+from ..permissions import IsSuperAdmin
 
 
 class AccessPolicyViewSet(viewsets.ModelViewSet):
@@ -22,7 +23,7 @@ class AccessPolicyViewSet(viewsets.ModelViewSet):
     """
     queryset = AccessPolicy.objects.all().order_by('priority', 'name')
     serializer_class = AccessPolicySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
     
     def get_serializer_class(self):
         if self.action == 'list':

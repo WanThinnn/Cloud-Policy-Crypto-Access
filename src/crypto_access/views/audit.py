@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from crypto_access.permissions import IsSuperAdmin
 from crypto_access.models import AccessLog, KeyRevocation
 from crypto_access.serializers.audit import AccessLogSerializer, KeyRevocationSerializer
 from django.shortcuts import render
@@ -13,7 +14,7 @@ class AccessLogViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = AccessLog.objects.all().order_by('-timestamp').select_related('user')
     serializer_class = AccessLogSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['log_id', 'user__username', 'user__email', 'resource_id', 'error_message']
     ordering_fields = ['timestamp', 'user__username', 'result']

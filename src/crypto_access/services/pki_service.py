@@ -37,8 +37,10 @@ class PKIService:
             import ssl
             # Try to use the dedicated pki_signer service first
             pki_url = os.environ.get('PKI_SIGNER_URL', 'https://pki_signer:5000')
+            pki_token = os.environ.get('PKI_AUTH_TOKEN', 'pki-default-token')
             req = urllib.request.Request(pki_url, data=payload_json, method="POST")
             req.add_header('Content-Length', str(len(payload_json)))
+            req.add_header('Authorization', f'Bearer {pki_token}')
             
             ctx = ssl.create_default_context()
             ca_cert_path = os.environ.get('PKI_CACERT', '/certs/CyberFortress-RootCA.crt')

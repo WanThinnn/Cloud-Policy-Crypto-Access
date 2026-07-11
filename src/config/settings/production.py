@@ -36,8 +36,12 @@ DATABASES = {
 
 
 # CORS settings for production
+CORS_ALLOW_ALL_ORIGINS = False  # Explicit override (base.py is also False, but defense-in-depth)
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
 CORS_ALLOW_CREDENTIALS = True
+
+# Override JWT signing key to use production SECRET_KEY (not the dev default)
+SIMPLE_JWT = {**SIMPLE_JWT, 'SIGNING_KEY': SECRET_KEY}
 
 
 # Email configuration for production

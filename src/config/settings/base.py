@@ -26,7 +26,6 @@ INSTALLED_APPS = [
     # Third-party apps
     'tailwind',
     'theme',
-    'django_browser_reload',
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -53,7 +52,6 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'crypto_access.middleware.rate_limit.GlobalRateLimitMiddleware',  # Rate Limiting
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files
-    'django_browser_reload.middleware.BrowserReloadMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -180,7 +178,7 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': True,
     
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': os.environ.get('DJANGO_SECRET_KEY', 'your-secret-key-here'),
+    'SIGNING_KEY': os.environ.get('DJANGO_SECRET_KEY', 'insecure-dev-key-do-not-use-in-production'),
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
@@ -347,8 +345,8 @@ LOGGING = {
     },
 }
 
-# CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+# CORS Configuration (restrictive by default; development.py overrides to allow all origins)
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Configuration  
