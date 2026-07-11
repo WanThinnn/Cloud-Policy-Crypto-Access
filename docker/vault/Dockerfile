@@ -4,8 +4,14 @@ FROM ubuntu:24.04 AS builder
 RUN apt-get update && apt-get install -y \
     build-essential cmake libssl-dev wget golang-go unzip
 
-WORKDIR /app
-COPY src/vault-plugin /app/src/vault-plugin
+WORKDIR /app/src/vault-plugin
+
+# Copy go.mod and go.sum to cache dependencies
+COPY src/vault-plugin/go.mod src/vault-plugin/go.sum ./
+RUN go mod download
+
+# Copy the rest of the plugin source code
+COPY src/vault-plugin/ ./
 
 WORKDIR /app/src/vault-plugin
 RUN go build -o build/vault-plugin-abe cmd/vault-plugin-abe/main.go

@@ -1,12 +1,16 @@
 # Build Tailwind assets separately to keep runtime image slim
 FROM node:20-slim AS tailwind-builder
-WORKDIR /app
+WORKDIR /app/src/theme/static_src
 
-# Copy the entire source code so Tailwind can scan templates
+# Copy only package files first to cache npm ci
+COPY src/theme/static_src/package*.json ./
+RUN npm ci
+
+# Copy the rest of the source code so Tailwind can scan templates
+WORKDIR /app
 COPY src/ ./src/
 
 WORKDIR /app/src/theme/static_src
-RUN npm ci
 RUN npm run build
 
 # Final runtime image
