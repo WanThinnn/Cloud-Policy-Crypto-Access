@@ -210,6 +210,38 @@ def main(argv: list[str]) -> int:
             print(color_info(f"\n[OK] Build completed.\n"))
             print(color_info("Next: "))
             print("  python start.py up")
+        elif cmd == "update":
+            print(color_info("\n[1/3] Pulling latest code from git..."))
+            try:
+                run(["git", "pull"])
+            except subprocess.CalledProcessError:
+                print(color_warning("Failed to git pull. Please check your git status."))
+                return 1
+            
+            print(color_info("\n[2/3] Pulling and building latest Docker images..."))
+            if args.prod:
+                run(c + ["pull"])
+            run(c + ["build"])
+            
+            print(color_info("\n[3/3] Restarting containers..."))
+            run(c + ["up", "-d"])
+            print(color_info(f"\n[+] Waiting for Vault to start and running Auto-Unseal..."))
+            import time
+            success = False
+            for _ in range(10):
+                try:
+                    run(c + vault_cmd)
+                    success = True
+                    break
+                except subprocess.CalledProcessError:
+                    time.sleep(2)
+            if not success:
+                print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
+            
+            extract_pqc_raw_key(c)
+            
+            print(color_info(f"\n[OK] Update completed successfully!\n"))
+            print(color_info(f"{env_access_urls(use_ssl)}"))
         elif cmd in {"up"}:
             # print(f"{status_line}\n")
             run(c + ["up", "-d"])
@@ -324,6 +356,7 @@ def main(argv: list[str]) -> int:
             print(color_info("Usage: python start.py [--prod|--dev] <command> [args]\n"))
             print(color_info("Commands:"))
             print("  setup           Setup environment (.env, certs, Root CA)")
+            print("  update          Pull latest code, update images, and restart")
             print("  build           Build Docker images (pull first in prod)")
             print("  up              Start all services")
             print("  down            Stop all services")
