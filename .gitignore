@@ -507,7 +507,8 @@ LMS_Templates
 config/keys/*
 config/certs/*
 config/cloudflare/*
-
+config/openvpn/*
+!config/openvpn/.gitkeep
 # Keep the directory structure, READMEs, and dev certificates
 !config/keys/README.md
 !config/certs/README.md
