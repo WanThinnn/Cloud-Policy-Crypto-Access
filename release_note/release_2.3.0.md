@@ -22,6 +22,68 @@ This release brings major improvements to the dynamic Attribute-Based Access Con
 #### 4. Cryptography Workflow Bug Fix
 - **PQC Master Public Key Retrieval:** Fixed an issue where the `download_public_key` API endpoint crashed because it attempted to retrieve the MPK from the wrong location. It now correctly fetches the MPK from the Vault KV backend (`secret/abe/mpk`) instead of the non-existent `abe/` namespace, restoring the ability for users to download the system's public key.
 
+
+### How PQC Signature & Passkey Works
+
+> [!NOTE] "How can my fingerprint sign a document?"
+> **Your fingerprint does NOT directly sign documents.** Instead, it **unlocks** a Post-Quantum Cryptography (PQC) signing key that was encrypted and stored securely on our server. Here is the full process:
+
+#### Architecture: Dual-Layer PQC Signature
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     One-Time Key Setup                          │
+│                                                                 │
+│  1. Browser generates ML-DSA-87 Keypair (Public + Secret Key)   │
+│  2. Browser creates a Passkey via WebAuthn (stored in TPM)      │
+│  3. WebAuthn PRF derives a 256-bit AES key from the Passkey     │
+│  4. Secret Key is encrypted (AES-GCM-256) with the PRF key     │
+│  5. Encrypted Secret Key is uploaded to the server              │
+│  6. A 24-word Recovery Phrase is generated as backup             │
+│                                                                 │
+│  ⚠️ The raw Secret Key NEVER leaves your device unencrypted     │
+│  ⚠️ The server ONLY stores the encrypted blob                   │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                   Signing a Document                            │
+│                                                                 │
+│  1. User clicks "Upload" on a document                            │
+│  2. Browser prompts for biometric (fingerprint/face/PIN)        │
+│  3. WebAuthn PRF re-derives the SAME 256-bit AES key            │
+│  4. Encrypted Secret Key is downloaded from server              │
+│  5. Secret Key is decrypted in browser memory (WASM sandbox)    │
+│  6. ML-DSA-87 signs the document hash using the Secret Key      │
+│  7. Signature is uploaded to server                             │
+│  8. Secret Key is wiped from memory after 30 min of inactivity  │
+│                                                                 │
+│  ✅ Your biometric = unlock key, NOT the signing key itself     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Key Concepts
+
+| Term | Explanation |
+|---|---|
+| **ML-DSA-87** | Post-Quantum digital signature algorithm (NIST standardized). Replaces RSA/ECDSA. Resistant to quantum computer attacks. |
+| **WebAuthn PRF** | A cryptographic extension that derives a deterministic secret from your Passkey + device hardware. Used to encrypt/decrypt the signing key. |
+| **TPM / Secure Enclave** | Hardware security chip on your device. Stores the Passkey securely — it cannot be extracted or copied. |
+| **Recovery Phrase** | A 24-word backup phrase. If you lose your device, you can use this phrase to decrypt your signing key and create a new Passkey on a new device. |
+
+#### Cross-Browser & Cross-Device Behavior
+
+| Platform | Passkey stored in | Cross-browser (same device) | Cross-device sync |
+|---|---|---|---|
+| **Windows** | Windows Hello (TPM) | ✅ All browsers (Chrome, Edge, etc.) share the same Passkey | ❌ Device-bound — cannot sync to another PC |
+| **macOS / iOS** | iCloud Keychain | ✅ All browsers (Safari, Chrome, etc.) share the same Passkey | ✅ Syncs across Mac ↔ iPhone ↔ iPad via iCloud |
+
+> [!IMPORTANT]
+> **When creating a Passkey, you MUST select your device's built-in security:**
+> - **Windows:** Select **"Windows Hello"** (fingerprint, PIN, or face recognition)
+> - **macOS:** Select **"This Device"** or **Touch ID**
+>
+> Do **NOT** select Google Password Manager, iCloud Keychain sync, 1Password, Bitwarden, or any third-party Password Manager — they do not reliably support the PRF encryption required for PQC signatures.
+
 ---
 
 ### Quick Start
