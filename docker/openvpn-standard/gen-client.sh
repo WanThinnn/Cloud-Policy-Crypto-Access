@@ -34,14 +34,28 @@ openssl x509 -req -in ${CLIENT_NAME}.csr \
 openvpn --tls-crypt-v2 /etc/openvpn/tls-crypt-v2-server.key \
     --genkey tls-crypt-v2-client private/${CLIENT_NAME}-tls.key
 
-REMOTE_HOST=${VPN_PUBLIC_IP:-${DOMAIN_NAME:-cyberfortress.local}}
+# 3. Determine proto and remote lines based on VPN_PROTO
+VPN_PROTO=${VPN_PROTO:-"ipv4"}
 
-# 3. Tạo file cấu hình OVPN
+if [ "$VPN_PROTO" = "ipv6" ]; then
+    PROTO_LINE="proto tcp"
+    REMOTE_LINES="remote ${VPN_PUBLIC_IP_V6:-${DOMAIN_NAME:-cyberfortress.local}} 1195"
+elif [ "$VPN_PROTO" = "dual" ]; then
+    PROTO_LINE="proto tcp"
+    REMOTE_LINES="remote ${VPN_PUBLIC_IP:-${DOMAIN_NAME:-cyberfortress.local}} 1195
+remote ${VPN_PUBLIC_IP_V6:-${DOMAIN_NAME:-cyberfortress.local}} 1195"
+else
+    # default: ipv4
+    PROTO_LINE="proto udp"
+    REMOTE_LINES="remote ${VPN_PUBLIC_IP:-${DOMAIN_NAME:-cyberfortress.local}} 1195"
+fi
+
+# 4. Tạo file cấu hình OVPN
 cat > $OVPN_FILE << EOF
 client
 dev tun
-proto udp
-remote $REMOTE_HOST 1195
+${PROTO_LINE}
+${REMOTE_LINES}
 resolv-retry infinite
 nobind
 persist-key
@@ -54,7 +68,7 @@ verb 3
 auth-user-pass
 EOF
 
-# 4. Gắn key vào file
+# 5. Gắn key vào file
 echo "<ca>" >> $OVPN_FILE
 cat ca.crt >> $OVPN_FILE
 echo "</ca>" >> $OVPN_FILE

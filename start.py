@@ -2,7 +2,7 @@
 Cross-platform Docker helper using only Python built-ins.
 
 Usage:
-    python start.py [--prod|--dev] <command> [args]
+    python start.py [--prod|--dev] [--vpn] [--ipv6|--ipv46] <command> [args]
 """
 
 from __future__ import annotations
@@ -122,6 +122,31 @@ def load_env_file(env_path: Path) -> dict[str, str]:
     return env_vars
 
 
+def set_env_var(env_path: Path, key: str, value: str) -> None:
+    """Set or update a single key=value in the .env file."""
+    if not env_path.exists():
+        env_path.write_text(f"{key}={value}\n")
+        return
+
+    content = env_path.read_text()
+    lines = content.splitlines(keepends=True)
+    found = False
+    new_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith(f"{key}=") or stripped.startswith(f"{key} ="):
+            new_lines.append(f"{key}={value}\n")
+            found = True
+        else:
+            new_lines.append(line)
+    if not found:
+        # Ensure there's a newline at end of file before appending
+        if new_lines and not new_lines[-1].endswith("\n"):
+            new_lines[-1] = new_lines[-1] + "\n"
+        new_lines.append(f"{key}={value}\n")
+    env_path.write_text("".join(new_lines))
+
+
 def should_enable_tunnel(env_vars: dict[str, str]) -> tuple[bool, str]:
     tunnel_id = env_vars.get("CLOUDFLARE_TUNNEL_ID")
     domain = env_vars.get("TUNNEL_DOMAIN")
@@ -155,6 +180,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--dev", action="store_true", help="Use development compose file (default)")
     parser.add_argument("--tunnel", action="store_true", help="Enable Cloudflare tunnel profile")
     parser.add_argument("--vpn", action="store_true", help="Enable VPN server profile")
+    parser.add_argument("--ipv6", action="store_true", help="Use IPv6 for VPN client profiles (VPN_PROTO=ipv6)")
+    parser.add_argument("--ipv46", action="store_true", help="Use both IPv4 and IPv6 for VPN client profiles (VPN_PROTO=dual)")
     parser.add_argument("command", nargs="?", help="Command to run")
     parser.add_argument("rest", nargs=argparse.REMAINDER, help="Extra args for manage.py commands")
     args = parser.parse_args(argv)
@@ -189,6 +216,22 @@ def main(argv: list[str]) -> int:
     # Force VPN profile if running vpn-related commands
     if args.command in ["vpn_client"]:
         args.vpn = True
+
+    # Determine VPN_PROTO from flags
+    if args.ipv46:
+        vpn_proto = "dual"
+    elif args.ipv6:
+        vpn_proto = "ipv6"
+    else:
+        vpn_proto = "ipv4"
+
+    # Persist VPN_PROTO to .env so containers read it on startup
+    # Only update when explicitly passing a VPN-related flag or vpn command
+    if args.vpn or args.command in ["vpn_client"]:
+        current_proto = env_vars.get("VPN_PROTO", "")
+        if current_proto != vpn_proto:
+            set_env_var(ENV_FILE, "VPN_PROTO", vpn_proto)
+            print(color_info(f"[*] VPN_PROTO set to '{vpn_proto}' in .env"))
 
     c = compose_cmd(compose_files, use_ssl, use_tunnel, args.vpn)
     environment = "prod" if args.prod else "dev"
@@ -381,6 +424,10 @@ def main(argv: list[str]) -> int:
             print("  rebuild         Clean rebuild and start")
             print("  vpn_client      Generate OpenVPN client profile (.ovpn)")
             print("  gencerts <path> Generate PQC certificates in a specific directory\n")
+            print(color_info("VPN Protocol Flags (for vpn_client):"))
+            print("  (none)          Default: IPv4 only (uses VPN_PUBLIC_IP)")
+            print("  --ipv6          IPv6 only (uses VPN_PUBLIC_IP_V6, proto udp6)")
+            print("  --ipv46         Dual-stack: adds both IPv4 and IPv6 remote entries\n")
             print(color_info("Examples:"))
             print("  python start.py setup")
             print("  python start.py build")
@@ -390,24 +437,28 @@ def main(argv: list[str]) -> int:
             print("  python start.py vpn_client my_laptop")
         elif cmd == "vpn_client":
             if not extra:
-                print(color_warning("Usage: python start.py [--dev/--prod] vpn_client <client_name>"))
+                print(color_warning("Usage: python start.py [--dev/--prod] [--ipv6|--ipv46] vpn_client <client_name>"))
                 return 1
             client_name = extra[0]
-            print(color_info(f"\n[+] Generating PQC Native .ovpn profile for {client_name}..."))
+
+            # Build environment for container exec to pass VPN_PROTO
+            env_override = ["--env", f"VPN_PROTO={vpn_proto}"]
+            proto_label = {"ipv4": "IPv4", "ipv6": "IPv6", "dual": "Dual-Stack IPv4+IPv6"}.get(vpn_proto, vpn_proto)
+            print(color_info(f"\n[+] Generating PQC Native .ovpn profile for {client_name} ({proto_label})..."))
             
             try:
                 # Gọi trực tiếp script tự động bên trong container openvpn (PQC)
-                run(c + ["exec", "openvpn", "/usr/local/bin/gen-client.sh", client_name])
+                run(c + ["exec"] + env_override + ["openvpn", "/usr/local/bin/gen-client.sh", client_name])
                 run(["docker", "cp", f"openvpn_server:/tmp/{client_name}.ovpn", f"./{client_name}_pqc.ovpn"])
                 print(color_info(f"\n[OK] Successfully created ./{client_name}_pqc.ovpn (cho Laptop/PC)!"))
 
-                print(color_info(f"\n[+] Generating Standard ECC .ovpn profile for {client_name}..."))
+                print(color_info(f"\n[+] Generating Standard ECC .ovpn profile for {client_name} ({proto_label})..."))
                 # Gọi trực tiếp script tự động bên trong container openvpn_standard
-                run(c + ["exec", "openvpn_standard", "/usr/local/bin/gen-client.sh", client_name])
+                run(c + ["exec"] + env_override + ["openvpn_standard", "/usr/local/bin/gen-client.sh", client_name])
                 run(["docker", "cp", f"openvpn_standard_server:/tmp/{client_name}.ovpn", f"./{client_name}_classic.ovpn"])
                 print(color_info(f"\n[OK] Successfully created ./{client_name}_classic.ovpn (cho iPhone/Android)!"))
             except subprocess.CalledProcessError:
-                print(color_warning("\n[!] Failed to generate VPN client profile. Is the 'openvpn' container running? Try 'python start.py --profile vpn up -d' first."))
+                print(color_warning("\n[!] Failed to generate VPN client profile. Is the 'openvpn' container running? Try 'python start.py --vpn up' first."))
         elif cmd == "gencerts":
             if len(sys.argv) < 3:
                 print(color_warning("Usage: python start.py gencerts <output_dir>"))

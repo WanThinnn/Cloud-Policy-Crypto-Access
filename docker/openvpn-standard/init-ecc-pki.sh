@@ -54,7 +54,15 @@ else
 fi
 
 if [ ! -f "$CONFIG_DIR/server.conf" ]; then
-    cp $CONFIG_DIR/server.conf.template $CONFIG_DIR/server.conf
+    # Determine proto based on VPN_PROTO (ipv6/dual → tcp6-server, all others → udp)
+    VPN_PROTO=${VPN_PROTO:-"ipv4"}
+    if [ "$VPN_PROTO" = "ipv6" ] || [ "$VPN_PROTO" = "dual" ]; then
+        PROTO_VALUE="tcp6-server"
+    else
+        PROTO_VALUE="udp"
+    fi
+    sed "s/VPN_PROTO_VALUE/${PROTO_VALUE}/g" $CONFIG_DIR/server.conf.template > $CONFIG_DIR/server.conf
+    echo "Server config created with proto=${PROTO_VALUE} (VPN_PROTO=${VPN_PROTO})"
 fi
 
 # Configure and start dnsmasq for local domain resolution using Docker's internal DNS (127.0.0.11)
