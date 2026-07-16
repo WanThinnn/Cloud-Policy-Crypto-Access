@@ -346,6 +346,11 @@ class PqcManager {
         try {
             prfKey = await this._getPrfKey(true);
         } catch (e) {
+            // Dừng ngay lập tức (không hiện cảnh báo) nếu người dùng chủ động Hủy
+            if (e.name === 'NotAllowedError' || e.message.includes('not allowed') || e.message.includes('cancelled') || e.message.includes('timed out')) {
+                throw e; 
+            }
+            
             console.warn("Skipping PRF Passkey creation:", e);
             alert(`⚠️ Warning: Your device does not support WebAuthn PRF or the Passkey was saved incorrectly.\n\nError details: ${e.message}\n\nYou will not be able to use biometric Passkeys for PQC signatures. You MUST safely save the Recovery Phrase on the next screen, as it will be your ONLY way to sign documents on this device.`);
         }
