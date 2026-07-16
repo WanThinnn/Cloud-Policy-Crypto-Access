@@ -32,6 +32,8 @@ class UserPublicKey(BaseModel):
     
     # Encrypted Secret Keys (~4.8KB when decrypted, slightly larger when encrypted + base64)
     encrypted_pqc_sk_primary = models.TextField(
+        blank=True,
+        null=True,
         help_text="Base64 encoded string: [IV (12 bytes)] + [Ciphertext of Secret Key encrypted with WebAuthn PRF]"
     )
     
@@ -45,6 +47,13 @@ class UserPublicKey(BaseModel):
         max_length=20,
         choices=STATUS_CHOICES,
         default='active'
+    )
+    
+    credential_id = models.CharField(
+        max_length=512,
+        blank=True,
+        null=True,
+        help_text="WebAuthn Credential ID (Base64) for cross-browser PRF discovery on the same device"
     )
     
     device_name = models.CharField(

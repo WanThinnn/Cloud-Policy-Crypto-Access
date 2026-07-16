@@ -214,6 +214,23 @@
                 </div>
                 <div class="p-4 md:p-5 space-y-4">
                     <p class="text-sm text-gray-500 dark:text-gray-400">Your account needs a Post-Quantum Cryptography key to enable PQC Signatures for files. This uses secure biometrics (Fingerprint/FaceID/Screen Lock) to generate your signature keys.</p>
+                    
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mt-3 mb-3 dark:bg-yellow-900/30 dark:border-yellow-600 rounded-r-md">
+                        <p class="text-xs text-yellow-700 dark:text-yellow-200 mb-2">
+                            <strong>Cross-Browser:</strong> If you created a key on another browser, you must use that browser, OR import your Recovery Phrase in the Keys Management page.
+                        </p>
+                        <p class="text-xs text-yellow-700 dark:text-yellow-200 mb-2">
+                            <strong>⚠️ Where to save:</strong> When prompted, you MUST select your device's built-in security:
+                        </p>
+                        <ul class="text-xs text-yellow-700 dark:text-yellow-200 ml-4 list-disc space-y-1 mb-2">
+                            <li><strong>Windows:</strong> Select <b>"Windows Hello"</b> (fingerprint/PIN/face)</li>
+                            <li><strong>macOS:</strong> Select <b>"This Device"</b> or <b>Touch ID</b></li>
+                        </ul>
+                        <p class="text-xs text-red-600 dark:text-red-400 font-semibold">
+                            ❌ Do <b>NOT</b> select Google Password Manager, iCloud Keychain, or any Password Manager — they do not reliably support PRF encryption.
+                        </p>
+                    </div>
+                    
                     <button id="btn-pqc-setup" class="w-full text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
                         Create PQC Signature Key
                     </button>
@@ -686,7 +703,7 @@
     <script src="{% static 'js/lib/argon2-bundled.min.js' %}"></script>
     <script src="{% static 'js/lib/liboqs.js' %}"></script>
     <script src="{% static 'js/root_ca_pub.js' %}"></script>
-    <script src="{% static 'js/pqc-manager.js' %}"></script>
+    <script src="{% static 'js/pqc-manager.js' %}?v=1.1"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

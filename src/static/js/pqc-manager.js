@@ -44,6 +44,40 @@ class PqcManager {
         document.addEventListener('scroll', resetTimer);
     }
 
+    /**
+     * Check if the current browser/platform supports WebAuthn PRF extension.
+     * Uses getClientCapabilities() API when available, falls back to feature detection.
+     */
+    async _checkPrfSupport() {
+        if (!window.PublicKeyCredential) return false;
+        
+        // Method 1: getClientCapabilities (WebAuthn Level 3 — newest API)
+        if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
+            try {
+                const caps = await PublicKeyCredential.getClientCapabilities();
+                // If explicitly false, PRF is not supported
+                if (caps['extension:prf'] === false) return false;
+                if (caps['extension:prf'] === true) return true;
+            } catch (e) {
+                console.warn('getClientCapabilities() failed, falling back:', e);
+            }
+        }
+        
+        // Method 2: Check if platform authenticator is available
+        if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
+            try {
+                const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+                if (!available) {
+                    console.warn('No platform authenticator available (no TPM/Secure Enclave)');
+                    return false;
+                }
+            } catch (e) { /* fallback */ }
+        }
+        
+        // Assume supported — will fail gracefully at create/get time
+        return true;
+    }
+
     _resetLockTimeout() {
         if (this.lockTimeout) {
             clearTimeout(this.lockTimeout);
@@ -80,7 +114,7 @@ class PqcManager {
      * Get or create a Passkey with PRF extension to derive a 256-bit symmetric key.
      * We use a hardcoded salt because the PRF extension returns HMAC(salt, PRF_Secret).
      */
-    async _getPrfKey(isRegistration = false) {
+    async _getPrfKey(isCreate = false, serverCredId = null) {
         const username = localStorage.getItem('username') || 'unknown_user';
         if (!username) {
             throw new Error("User not logged in — cannot derive PRF key without username.");
@@ -96,7 +130,7 @@ class PqcManager {
         let prfOutput;
 
         try {
-            if (isRegistration) {
+            if (isCreate) {
                 const userId = crypto.getRandomValues(new Uint8Array(16));
                 credential = await navigator.credentials.create({
                     publicKey: {
@@ -108,35 +142,49 @@ class PqcManager {
                             displayName: `${localStorage.getItem('username') || 'User'} (Signature)`
                         },
                         pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
-                        authenticatorSelection: { userVerification: "required" },
-                        extensions: { prf: { eval: { first: paddedSalt } } }
+                        authenticatorSelection: { 
+                            authenticatorAttachment: "platform",
+                            userVerification: "required",
+                            residentKey: "required",
+                            requireResidentKey: true
+                        },
+                        // Hint browser to prefer device-bound authenticator (TPM/Secure Enclave)
+                        // over synced passkeys (Google PM, iCloud Keychain) which may not support PRF reliably
+                        hints: ["client-device"],
+                        extensions: { 
+                            prf: {
+                                eval: {
+                                    first: paddedSalt
+                                }
+                            }
+                        }
                     }
                 });
                 
-                const prfResults = credential.getClientExtensionResults().prf;
-                if (!prfResults || !prfResults.enabled) {
-                    throw new Error("WebAuthn PRF is not supported by your selected Passkey provider (e.g., Google Password Manager). Please cancel and choose 'Windows Hello', 'Mac Touch ID', or a hardware Security Key instead.");
-                }
+                // 1. Immediately save the credential ID so get() can use it via allowCredentials
+                const rawIdB64 = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+                localStorage.setItem('pqc_credential_id', rawIdB64);
                 
-                // Store credential ID so we can get it later
-                localStorage.setItem('pqc_credential_id', btoa(String.fromCharCode(...new Uint8Array(credential.rawId))));
-
-                if (prfResults.results && prfResults.results.first) {
+                const prfResults = credential.getClientExtensionResults().prf;
+                if (prfResults && prfResults.results && prfResults.results.first) {
                     prfOutput = new Uint8Array(prfResults.results.first);
                 } else {
-                    // Chrome on Windows Hello supports PRF but may not support eval during creation.
-                    // We must immediately invoke get() to evaluate the PRF (which prompts the user again).
+                    // Windows Hello often does not return PRF results during creation.
+                    // We must immediately invoke get() to evaluate the PRF (which may prompt the user again).
+                    console.log("Evaluating PRF via get() because create() did not return results.");
                     return await this._getPrfKey(false);
                 }
 
             } else {
-                const credIdB64 = localStorage.getItem('pqc_credential_id');
+                const credIdB64 = serverCredId || localStorage.getItem('pqc_credential_id');
                 
                 const getOptions = {
                     publicKey: {
                         challenge,
                         rpId: window.location.hostname,
                         userVerification: 'required',
+                        // Hint browser to prefer device-bound authenticator (TPM/Secure Enclave)
+                        hints: ["client-device"],
                         extensions: {
                             prf: {
                                 eval: {
@@ -163,8 +211,15 @@ class PqcManager {
                 
                 const prfResults = credential.getClientExtensionResults().prf;
                 if (!prfResults || !prfResults.results || !prfResults.results.first) {
-                    console.warn("WebAuthn PRF not supported on this device/browser.");
-                    throw new Error("Your Passkey device does not support the PRF extension required for PQC Signatures.");
+                    console.warn("WebAuthn PRF not supported — likely saved to Password Manager instead of TPM.");
+                    throw new Error(
+                        "PRF encryption failed. This usually means the Passkey was saved to a " +
+                        "Password Manager instead of your device's built-in security (TPM/Secure Enclave).\n\n" +
+                        "To fix this:\n" +
+                        "• Windows: Select 'Windows Hello' (fingerprint/PIN/face) when prompted\n" +
+                        "• macOS: Select 'This Device' or Touch ID when prompted\n\n" +
+                        "Do NOT select Google Password Manager, iCloud Keychain, or any third-party password manager."
+                    );
                 }
                 
                 prfOutput = new Uint8Array(prfResults.results.first);
@@ -280,8 +335,20 @@ class PqcManager {
     async setup() {
         await this.initPromise;
         
+        // 0. Pre-check PRF support
+        const prfSupported = await this._checkPrfSupport();
+        if (!prfSupported) {
+            console.warn("PRF pre-check: platform authenticator or PRF not available.");
+        }
+        
         // 1. Ask WebAuthn to create Passkey & get PRF
-        const prfKey = await this._getPrfKey(true);
+        let prfKey = null;
+        try {
+            prfKey = await this._getPrfKey(true);
+        } catch (e) {
+            console.warn("Skipping PRF Passkey creation:", e);
+            alert(`⚠️ Warning: Your device does not support WebAuthn PRF or the Passkey was saved incorrectly.\n\nError details: ${e.message}\n\nYou will not be able to use biometric Passkeys for PQC signatures. You MUST safely save the Recovery Phrase on the next screen, as it will be your ONLY way to sign documents on this device.`);
+        }
         
         // 2. Generate Mnemonic and Argon2 key
         const mnemonic = this._generateMnemonic();
@@ -298,7 +365,7 @@ class PqcManager {
         const rawSk = new Uint8Array(this.module.HEAPU8.buffer, skPtr, this.SK_LEN);
         
         // 4. Encrypt SK twice
-        const primaryEnc = await this._encryptKey(prfKey, rawSk);
+        const primaryEnc = prfKey ? await this._encryptKey(prfKey, rawSk) : "";
         const recoveryEnc = await this._encryptKey(argonKey, rawSk);
         
         const pkB64 = btoa(String.fromCharCode(...rawPk));
@@ -323,6 +390,7 @@ class PqcManager {
                 pqc_public_key: pkB64,
                 encrypted_pqc_sk_primary: primaryEnc,
                 encrypted_pqc_sk_recovery: recoveryEnc,
+                credential_id: localStorage.getItem('pqc_credential_id') || "",
                 device_name: navigator.userAgent
             })
         });
@@ -352,8 +420,13 @@ class PqcManager {
         const keyData = await response.json();
         this.pk = Uint8Array.from(atob(keyData.pqc_public_key), c => c.charCodeAt(0));
         
+        if (!keyData.encrypted_pqc_sk_primary) {
+            throw new Error("This signature key was created without biometric (PRF) support. Please click 'Use Recovery Phrase' to unlock it.");
+        }
+        
         // 2. Ask WebAuthn to get PRF Symmetric Key
-        const prfKey = await this._getPrfKey(false);
+        // Pass the credential_id from the server if available, so cross-browser works.
+        const prfKey = await this._getPrfKey(false, keyData.credential_id);
         
         // 3. Decrypt SK
         const username = localStorage.getItem('username');

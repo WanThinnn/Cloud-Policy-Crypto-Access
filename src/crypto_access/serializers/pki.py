@@ -13,7 +13,7 @@ class UserPublicKeySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'username', 'pqc_public_key',
             'encrypted_pqc_sk_primary', 'encrypted_pqc_sk_recovery',
-            'status', 'device_name', 'ca_signature', 'created_at', 'updated_at'
+            'credential_id', 'status', 'device_name', 'ca_signature', 'created_at', 'updated_at'
         ]
         read_only_fields = ['user', 'status', 'ca_signature', 'created_at', 'updated_at']
 
