@@ -373,11 +373,15 @@
             passkeyButtonText.textContent = 'Waiting for Passkey...';
             passkeySpinner.classList.remove('hidden');
             
+            // Extract username if user has typed it in
+            const usernameInput = document.getElementById('username');
+            const username = usernameInput ? usernameInput.value.trim() : "";
+            
             // Step 1: Get authentication options from server
             const optionsRes = await fetch('/api/auth/passkey/login/options/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify(username ? { username } : {})
             });
             
             if (!optionsRes.ok) {
