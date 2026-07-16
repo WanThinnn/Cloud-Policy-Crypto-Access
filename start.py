@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-
+import os
 
 REPO_ROOT = Path(__file__).resolve().parent
 NO_SSL_OVERRIDE = REPO_ROOT / "docker" / "docker-compose.nossl.yml"
@@ -25,7 +25,7 @@ DEFAULT_SSL_CERT = "_.cyberfortress.local.crt"
 DEFAULT_SSL_KEY = "_.cyberfortress.local.key"
 
 
-def compose_cmd(files: list[Path], use_ssl: bool, use_tunnel: bool) -> list[str]:
+def compose_cmd(files: list[Path], use_ssl: bool, use_tunnel: bool, use_vpn: bool = False) -> list[str]:
     cmd: list[str] = ["docker", "compose", "--project-directory", str(REPO_ROOT)]
     for f in files:
         cmd += ["-f", str(f)]
@@ -33,6 +33,8 @@ def compose_cmd(files: list[Path], use_ssl: bool, use_tunnel: bool) -> list[str]
         cmd += ["--profile", "ssl"]
     if use_tunnel:
         cmd += ["--profile", "tunnel"]
+    if use_vpn:
+        cmd += ["--profile", "vpn"]
     return cmd
 
 
@@ -78,11 +80,12 @@ def color_env_label(environment: str) -> str:
     return f"\033[1m{color}{base}\033[0m"
 
 
-def env_status_lines(environment: str, use_ssl: bool, use_tunnel: bool) -> str:
+def env_status_lines(environment: str, use_ssl: bool, use_tunnel: bool, use_vpn: bool) -> str:
     label = color_env_label(environment)
     ssl_note = "on" if use_ssl else "off"
     tunnel_note = "on" if use_tunnel else "off"
-    return f"{label} SSL/TLS={ssl_note} CloudflareTunnel={tunnel_note}"
+    vpn_note = "on" if use_vpn else "off"
+    return f"{label} SSL/TLS={ssl_note} CloudflareTunnel={tunnel_note} VPN={vpn_note}"
 
 
 def env_access_urls(use_ssl: bool) -> str:
@@ -151,6 +154,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--prod", action="store_true", help="Use production compose file")
     parser.add_argument("--dev", action="store_true", help="Use development compose file (default)")
     parser.add_argument("--tunnel", action="store_true", help="Enable Cloudflare tunnel profile")
+    parser.add_argument("--vpn", action="store_true", help="Enable VPN server profile")
     parser.add_argument("command", nargs="?", help="Command to run")
     parser.add_argument("rest", nargs=argparse.REMAINDER, help="Extra args for manage.py commands")
     args = parser.parse_args(argv)
@@ -182,9 +186,13 @@ def main(argv: list[str]) -> int:
     if tunnel_note:
         print(color_warning(tunnel_note))
 
-    c = compose_cmd(compose_files, use_ssl, use_tunnel)
+    # Force VPN profile if running vpn-related commands
+    if args.command in ["vpn_client"]:
+        args.vpn = True
+
+    c = compose_cmd(compose_files, use_ssl, use_tunnel, args.vpn)
     environment = "prod" if args.prod else "dev"
-    status_line = env_status_lines(environment, use_ssl, use_tunnel)
+    status_line = env_status_lines(environment, use_ssl, use_tunnel, args.vpn)
 
     print(status_line)
     print("─" * 50)
@@ -337,9 +345,9 @@ def main(argv: list[str]) -> int:
             print("[OK] Cleaned up containers, volumes, and system.")
         elif cmd == "rebuild":
             # print(f"{status_line}\n")
-            run(compose_cmd(compose_files, use_ssl, use_tunnel) + ["down", "-v"])
-            run(compose_cmd(compose_files, use_ssl, use_tunnel) + ["build", "--no-cache"])
-            run(compose_cmd(compose_files, use_ssl, use_tunnel) + ["up", "-d"])
+            run(compose_cmd(compose_files, use_ssl, use_tunnel, args.vpn) + ["down", "-v"])
+            run(compose_cmd(compose_files, use_ssl, use_tunnel, args.vpn) + ["build", "--no-cache"])
+            run(compose_cmd(compose_files, use_ssl, use_tunnel, args.vpn) + ["up", "-d"])
             print(color_info(f"\n[+] Waiting for Vault to start and running Auto-Unseal..."))
             try:
                 run(c + vault_cmd)
@@ -370,13 +378,54 @@ def main(argv: list[str]) -> int:
             print("  shell           Open Django shell")
             print("  collectstatic   Collect static files")
             print("  clean           Remove containers and volumes, prune system")
-            print("  rebuild         Clean rebuild and start\n")
+            print("  rebuild         Clean rebuild and start")
+            print("  vpn_client      Generate OpenVPN client profile (.ovpn)\n")
             print(color_info("Examples:"))
             print("  python start.py setup")
             print("  python start.py build")
             print("  python start.py up")
             print("  python start.py --prod up")
             print("  python start.py migrate -- app_label")
+            print("  python start.py vpn_client my_laptop")
+        elif cmd == "vpn_client":
+            if not extra:
+                print(color_warning("Usage: python start.py [--dev/--prod] vpn_client <client_name>"))
+                return 1
+            client_name = extra[0]
+            print(color_info(f"\n[+] Generating PQC Native .ovpn profile for {client_name}..."))
+            
+            try:
+                env_vars = load_env_file(ENV_FILE)
+                COUNTRY = env_vars.get("COUNTRY", "VN")
+                STATE = env_vars.get("STATE", "Ho Chi Minh")
+                LOCALITY = env_vars.get("LOCALITY", "Thu Duc")
+                COMPANY_NAME = env_vars.get("COMPANY_NAME", "CyberFortress")
+                ORG_UNIT = env_vars.get("ORG_UNIT", "UIT")
+
+                # Step 1: Create client certificate using OpenSSL and generate TLS-Crypt-V2 client key
+                ssl_cmd = f"cd /etc/openvpn/pki && "
+                ssl_cmd += f"openssl req -new -newkey mldsa87 -keyout private/{client_name}.key -out {client_name}.csr -nodes -subj '/C={COUNTRY}/ST={STATE}/L={LOCALITY}/O={COMPANY_NAME}/OU={ORG_UNIT}/CN={client_name}' && "
+                ssl_cmd += f"echo 'extendedKeyUsage=clientAuth' > {client_name}_ext.cnf && "
+                ssl_cmd += f"openssl x509 -req -in {client_name}.csr -CA ca.crt -CAkey private/ca.key -CAcreateserial -out issued/{client_name}.crt -days 3650 -extfile {client_name}_ext.cnf && "
+                ssl_cmd += f"openvpn --tls-crypt-v2 /etc/openvpn/tls-crypt-v2-server.key --genkey tls-crypt-v2-client private/{client_name}.tls"
+                run(c + ["exec", "openvpn", "bash", "-c", ssl_cmd])
+                
+                # Step 2: Generate proper client .ovpn file
+                DOMAIN_NAME = env_vars.get("DOMAIN_NAME", "cyberfortress.local")
+                client_config = f"client\\ndev tun\\nproto udp\\nremote {DOMAIN_NAME} 1194\\nresolv-retry infinite\\nnobind\\npersist-key\\npersist-tun\\ncipher AES-256-GCM\\ndata-ciphers AES-256-GCM\\ntls-version-min 1.3\\nauth-user-pass"
+                sed_cmd = f"echo -e '{client_config}' > /tmp/{client_name}.ovpn && "
+                sed_cmd += f"echo '<ca>' >> /tmp/{client_name}.ovpn && cat /etc/openvpn/pki/ca.crt >> /tmp/{client_name}.ovpn && "
+                sed_cmd += f"echo '</ca>' >> /tmp/{client_name}.ovpn && echo '<cert>' >> /tmp/{client_name}.ovpn && cat /etc/openvpn/pki/issued/{client_name}.crt >> /tmp/{client_name}.ovpn && "
+                sed_cmd += f"echo '</cert>' >> /tmp/{client_name}.ovpn && echo '<key>' >> /tmp/{client_name}.ovpn && cat /etc/openvpn/pki/private/{client_name}.key >> /tmp/{client_name}.ovpn && "
+                sed_cmd += f"echo '</key>' >> /tmp/{client_name}.ovpn && echo '<tls-crypt-v2>' >> /tmp/{client_name}.ovpn && cat /etc/openvpn/pki/private/{client_name}.tls >> /tmp/{client_name}.ovpn && "
+                sed_cmd += f"echo '</tls-crypt-v2>' >> /tmp/{client_name}.ovpn"
+                run(c + ["exec", "openvpn", "bash", "-c", sed_cmd])
+                
+                # Step 3: Copy it out
+                run(["docker", "cp", f"openvpn_server:/tmp/{client_name}.ovpn", f"./{client_name}.ovpn"])
+                print(color_info(f"\n[OK] Successfully created ./{client_name}.ovpn!"))
+            except subprocess.CalledProcessError:
+                print(color_warning("\n[!] Failed to generate VPN client profile. Is the 'openvpn' container running? Try 'python start.py --profile vpn up -d' first."))
         else:
             print(f"Unknown command: {cmd}")
             return 1

@@ -32,6 +32,7 @@ urlpatterns = [
     path('verify-otp/', auth.verify_otp, name='verify_otp'),
     path('register/', auth.register, name='register'),
     path('logout/', auth.logout, name='logout'),
+    path('vpn_verify/', auth.vpn_auth_verify, name='vpn_auth_verify'),
     
     # JWT Token refresh
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

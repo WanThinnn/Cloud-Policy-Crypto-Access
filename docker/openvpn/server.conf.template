@@ -1,0 +1,37 @@
+port 1194
+proto udp
+dev tun
+
+ca CyberFortress-VPN-RootCA.crt
+cert cyberfortress-vpn-server.crt
+key cyberfortress-vpn-server.key
+dh dh.pem
+tls-crypt-v2 tls-crypt-v2-server.key
+
+server 10.8.0.0 255.255.255.0
+ifconfig-pool-persist ipp.txt
+
+# Push route to internal network (App Network subnet)
+# Assuming 172.x.x.x is the docker bridge network, but we'll use DNS aliases instead
+push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 10.8.0.1"
+
+keepalive 10 120
+cipher AES-256-GCM
+data-ciphers AES-256-GCM
+
+# Require TLS 1.3 for PQC hybrid key exchange (X25519MLKEM768)
+tls-version-min 1.3
+
+user nobody
+group nogroup
+persist-key
+
+# Authentication via Django DB
+auth-user-pass-verify /etc/openvpn/auth-django.sh via-env
+script-security 3
+persist-tun
+
+status openvpn-status.log
+verb 3
+explicit-exit-notify 1

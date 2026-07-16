@@ -130,8 +130,8 @@ services:
     profiles:
       - ssl
     ports:
-      - "${NGINX_HTTP_PORT:-80}:80"
-      - "${NGINX_HTTPS_PORT:-443}:443"
+      - "127.0.0.1:${NGINX_HTTP_PORT:-80}:80"
+      - "127.0.0.1:${NGINX_HTTPS_PORT:-443}:443"
     volumes:
       - static_volume:/app/staticfiles:ro
       - ${CERTS_DIR:-./config/certs}:/etc/nginx/certs:ro
@@ -208,6 +208,25 @@ services:
           - pki_signer.${INTERNAL_DOMAIN:-cyberfortress.local}
     restart: unless-stopped
 
+  openvpn:
+    build:
+      context: ./docker/openvpn
+      dockerfile: Dockerfile
+    container_name: openvpn_server
+    cap_add:
+      - NET_ADMIN
+      - MKNOD
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - "1194:1194/udp"
+    volumes:
+      - openvpn_data:/etc/openvpn
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - vpn
 volumes:
   sqlite_volume:
     name: sqlite_volume
@@ -219,6 +238,8 @@ volumes:
     name: vault_data
   vault_plugins:
     name: vault_plugins
+  openvpn_data:
+    name: openvpn_data
 
 networks:
   app-network:
