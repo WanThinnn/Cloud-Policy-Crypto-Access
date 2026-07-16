@@ -11,12 +11,12 @@ RUN apt-get update && \
 WORKDIR /etc/openvpn
 
 # Copy initialization script, configuration template and auth script
-COPY init-pqc-pki.sh /usr/local/bin/init-pqc-pki.sh
+COPY init-ecc-pki.sh /usr/local/bin/init-ecc-pki.sh
 COPY server.conf.template /etc/openvpn/server.conf.template
 COPY auth-django.sh /etc/openvpn/auth-django.sh
 COPY gen-client.sh /usr/local/bin/gen-client.sh
 
-RUN chmod +x /usr/local/bin/init-pqc-pki.sh /etc/openvpn/auth-django.sh /usr/local/bin/gen-client.sh
+RUN chmod +x /usr/local/bin/init-ecc-pki.sh /etc/openvpn/auth-django.sh /usr/local/bin/gen-client.sh
 
 # The script will initialize PKI if missing, then start OpenVPN
-CMD ["/bin/bash", "-c", "/usr/local/bin/init-pqc-pki.sh && iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j MASQUERADE && openvpn --config /etc/openvpn/server.conf"]
+CMD ["/bin/bash", "-c", "/usr/local/bin/init-ecc-pki.sh && iptables -t nat -A POSTROUTING -s 10.9.0.0/24 -j MASQUERADE && openvpn --config /etc/openvpn/server.conf"]

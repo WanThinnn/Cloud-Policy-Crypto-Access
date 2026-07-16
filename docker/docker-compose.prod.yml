@@ -143,7 +143,10 @@ services:
     depends_on:
       - web
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - cloudsafe.${DOMAIN_NAME:-cyberfortress.local}
+          - ${DOMAIN_NAME:-cyberfortress.local}
     restart: unless-stopped
 
   cloudflared:
@@ -227,6 +230,26 @@ services:
     restart: unless-stopped
     profiles:
       - vpn
+
+  openvpn_standard:
+    build:
+      context: ./docker/openvpn-standard
+      dockerfile: Dockerfile
+    container_name: openvpn_standard_server
+    cap_add:
+      - NET_ADMIN
+      - MKNOD
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - "1195:1194/udp"
+    volumes:
+      - openvpn_standard_data:/etc/openvpn
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - vpn
 volumes:
   sqlite_volume:
     name: sqlite_volume
@@ -240,6 +263,8 @@ volumes:
     name: vault_plugins
   openvpn_data:
     name: openvpn_data
+  openvpn_standard_data:
+    name: openvpn_standard_data
 
 networks:
   app-network:

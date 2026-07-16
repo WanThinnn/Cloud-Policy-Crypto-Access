@@ -23,16 +23,16 @@ if [ ! -f "$PKI_DIR/ca.crt" ]; then
     ORG=${ORG:-"VNU"}
     ORG_UNIT=${ORG_UNIT:-"UIT"}
 
-    echo "Initializing new PQC PKI with mldsa87 using OpenSSL..."
+    echo "Initializing new ECC PKI with prime256v1 using OpenSSL..."
     mkdir -p $PKI_DIR/private
     mkdir -p $PKI_DIR/issued
     
     # 1. Generate Root CA
-    openssl req -x509 -new -newkey mldsa87 -keyout $PKI_DIR/private/ca.key -out $PKI_DIR/ca.crt -nodes -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${COMPANY_NAME}/OU=${ORG_UNIT}/CN=${COMPANY_NAME} VPN Root CA" -days 3650
+    openssl req -x509 -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -keyout $PKI_DIR/private/ca.key -out $PKI_DIR/ca.crt -nodes -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${COMPANY_NAME}/OU=${ORG_UNIT}/CN=${COMPANY_NAME} Standard VPN Root CA" -days 3650
     
     # 2. Generate Server Certificate
-    openssl req -new -newkey mldsa87 -keyout $PKI_DIR/private/server.key -out $PKI_DIR/server.csr -nodes -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${COMPANY_NAME}/OU=${ORG_UNIT}/CN=${COMPANY_NAME} VPN Server"
-    echo -e "extendedKeyUsage=serverAuth\nkeyUsage=digitalSignature" > $PKI_DIR/server_ext.cnf
+    openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -keyout $PKI_DIR/private/server.key -out $PKI_DIR/server.csr -nodes -subj "/C=${COUNTRY}/ST=${STATE}/L=${LOCALITY}/O=${COMPANY_NAME}/OU=${ORG_UNIT}/CN=${COMPANY_NAME} Standard VPN Server"
+    echo -e "extendedKeyUsage=serverAuth\nkeyUsage=digitalSignature,keyAgreement" > $PKI_DIR/server_ext.cnf
     openssl x509 -req -in $PKI_DIR/server.csr -CA $PKI_DIR/ca.crt -CAkey $PKI_DIR/private/ca.key -CAcreateserial -out $PKI_DIR/issued/server.crt -days 3650 -extfile $PKI_DIR/server_ext.cnf
     
     # 3. Generate DH params (for TLS fallback if necessary)
@@ -48,7 +48,7 @@ if [ ! -f "$PKI_DIR/ca.crt" ]; then
     cp $PKI_DIR/dh.pem $CONFIG_DIR/dh.pem
     cp $PKI_DIR/private/tls-crypt-v2-server.key $CONFIG_DIR/tls-crypt-v2-server.key
     
-    echo "PQC PKI Initialization Complete!"
+    echo "ECC PKI Initialization Complete!"
 else
     echo "PKI already exists. Skipping initialization."
 fi

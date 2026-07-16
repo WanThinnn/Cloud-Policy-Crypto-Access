@@ -379,7 +379,8 @@ def main(argv: list[str]) -> int:
             print("  collectstatic   Collect static files")
             print("  clean           Remove containers and volumes, prune system")
             print("  rebuild         Clean rebuild and start")
-            print("  vpn_client      Generate OpenVPN client profile (.ovpn)\n")
+            print("  vpn_client      Generate OpenVPN client profile (.ovpn)")
+            print("  gencerts <path> Generate PQC certificates in a specific directory\n")
             print(color_info("Examples:"))
             print("  python start.py setup")
             print("  python start.py build")
@@ -395,37 +396,43 @@ def main(argv: list[str]) -> int:
             print(color_info(f"\n[+] Generating PQC Native .ovpn profile for {client_name}..."))
             
             try:
-                env_vars = load_env_file(ENV_FILE)
-                COUNTRY = env_vars.get("COUNTRY", "VN")
-                STATE = env_vars.get("STATE", "Ho Chi Minh")
-                LOCALITY = env_vars.get("LOCALITY", "Thu Duc")
-                COMPANY_NAME = env_vars.get("COMPANY_NAME", "CyberFortress")
-                ORG_UNIT = env_vars.get("ORG_UNIT", "UIT")
+                # Gọi trực tiếp script tự động bên trong container openvpn (PQC)
+                run(c + ["exec", "openvpn", "/usr/local/bin/gen-client.sh", client_name])
+                run(["docker", "cp", f"openvpn_server:/tmp/{client_name}.ovpn", f"./{client_name}_pqc.ovpn"])
+                print(color_info(f"\n[OK] Successfully created ./{client_name}_pqc.ovpn (cho Laptop/PC)!"))
 
-                # Step 1: Create client certificate using OpenSSL and generate TLS-Crypt-V2 client key
-                ssl_cmd = f"cd /etc/openvpn/pki && "
-                ssl_cmd += f"openssl req -new -newkey mldsa87 -keyout private/{client_name}.key -out {client_name}.csr -nodes -subj '/C={COUNTRY}/ST={STATE}/L={LOCALITY}/O={COMPANY_NAME}/OU={ORG_UNIT}/CN={client_name}' && "
-                ssl_cmd += f"echo 'extendedKeyUsage=clientAuth' > {client_name}_ext.cnf && "
-                ssl_cmd += f"openssl x509 -req -in {client_name}.csr -CA ca.crt -CAkey private/ca.key -CAcreateserial -out issued/{client_name}.crt -days 3650 -extfile {client_name}_ext.cnf && "
-                ssl_cmd += f"openvpn --tls-crypt-v2 /etc/openvpn/tls-crypt-v2-server.key --genkey tls-crypt-v2-client private/{client_name}.tls"
-                run(c + ["exec", "openvpn", "bash", "-c", ssl_cmd])
-                
-                # Step 2: Generate proper client .ovpn file
-                DOMAIN_NAME = env_vars.get("DOMAIN_NAME", "cyberfortress.local")
-                client_config = f"client\\ndev tun\\nproto udp\\nremote {DOMAIN_NAME} 1194\\nresolv-retry infinite\\nnobind\\npersist-key\\npersist-tun\\ncipher AES-256-GCM\\ndata-ciphers AES-256-GCM\\ntls-version-min 1.3\\nauth-user-pass"
-                sed_cmd = f"echo -e '{client_config}' > /tmp/{client_name}.ovpn && "
-                sed_cmd += f"echo '<ca>' >> /tmp/{client_name}.ovpn && cat /etc/openvpn/pki/ca.crt >> /tmp/{client_name}.ovpn && "
-                sed_cmd += f"echo '</ca>' >> /tmp/{client_name}.ovpn && echo '<cert>' >> /tmp/{client_name}.ovpn && cat /etc/openvpn/pki/issued/{client_name}.crt >> /tmp/{client_name}.ovpn && "
-                sed_cmd += f"echo '</cert>' >> /tmp/{client_name}.ovpn && echo '<key>' >> /tmp/{client_name}.ovpn && cat /etc/openvpn/pki/private/{client_name}.key >> /tmp/{client_name}.ovpn && "
-                sed_cmd += f"echo '</key>' >> /tmp/{client_name}.ovpn && echo '<tls-crypt-v2>' >> /tmp/{client_name}.ovpn && cat /etc/openvpn/pki/private/{client_name}.tls >> /tmp/{client_name}.ovpn && "
-                sed_cmd += f"echo '</tls-crypt-v2>' >> /tmp/{client_name}.ovpn"
-                run(c + ["exec", "openvpn", "bash", "-c", sed_cmd])
-                
-                # Step 3: Copy it out
-                run(["docker", "cp", f"openvpn_server:/tmp/{client_name}.ovpn", f"./{client_name}.ovpn"])
-                print(color_info(f"\n[OK] Successfully created ./{client_name}.ovpn!"))
+                print(color_info(f"\n[+] Generating Standard ECC .ovpn profile for {client_name}..."))
+                # Gọi trực tiếp script tự động bên trong container openvpn_standard
+                run(c + ["exec", "openvpn_standard", "/usr/local/bin/gen-client.sh", client_name])
+                run(["docker", "cp", f"openvpn_standard_server:/tmp/{client_name}.ovpn", f"./{client_name}_classic.ovpn"])
+                print(color_info(f"\n[OK] Successfully created ./{client_name}_classic.ovpn (cho iPhone/Android)!"))
             except subprocess.CalledProcessError:
                 print(color_warning("\n[!] Failed to generate VPN client profile. Is the 'openvpn' container running? Try 'python start.py --profile vpn up -d' first."))
+        elif cmd == "gencerts":
+            if len(sys.argv) < 3:
+                print(color_warning("Usage: python start.py gencerts <output_dir>"))
+                print("Example: python start.py gencerts ./my_new_certs")
+                sys.exit(1)
+            
+            out_dir = Path(sys.argv[2]).resolve()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            print(color_info(f"\n[+] Spawning OQS-OpenSSL container to generate PQC certificates in {out_dir}..."))
+            
+            script_path = REPO_ROOT / "config" / "certs" / "generate_pq_certs_docker.sh"
+            
+            # Mount the script individually and set the output dir as the working volume
+            docker_cmd = [
+                "docker", "run", "-it", "--rm",
+                "--env-file", str(ENV_FILE),
+                "-v", f"{script_path}:/generate.sh:ro",
+                "-v", f"{out_dir}:/certs",
+                "-w", "/certs",
+                "--entrypoint", "/bin/sh",
+                "openquantumsafe/curl",
+                "/generate.sh"
+            ]
+            run(docker_cmd)
+            print(color_info(f"\n[OK] Certificates generated successfully in {out_dir}!"))
         else:
             print(f"Unknown command: {cmd}")
             return 1
