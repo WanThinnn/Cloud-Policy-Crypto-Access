@@ -759,36 +759,27 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resource (Multiple allowed)</label>
             <select id="new-policy-resource" required multiple size="5"
                 class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="document">📄 Document</option>
-                <option value="key">🔑 Key Revocation List</option>
-                <option value="user">👤 Manage users</option>
-                <option value="policy">📋 Manage policies</option>
-                <option value="attribute">🏷️ Attribute management</option>
-                <option value="audit">📊 System log</option>
-                <option value="*">⭐ All resources (*)</option>
+                {% for value, label in POLICY_RESOURCE_CHOICES %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
             </select>
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Actions</label>
             <select id="new-policy-action" required
                 class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="read">👁️ View</option>
-                <option value="write">✏️ Create</option>
-                <option value="update">📝 Update</option>
-                <option value="delete">🗑️ Delete</option>
-                <option value="upload">⬆️ Upload</option>
-                <option value="download">⬇️ Download</option>
-                <option value="encrypt">🔒 Encryption</option>
-                <option value="decrypt">🔓 Decrypt</option>
-                <option value="*">⭐ All actions (*)</option>
+                {% for value, label in POLICY_ACTION_CHOICES %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
             </select>
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Effect</label>
             <select id="new-policy-effect" required
                 class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="allow">✅ Allow (Allow)</option>
-                <option value="deny">❌ Deny (Deny)</option>
+                {% for value, label in POLICY_EFFECT_CHOICES %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
             </select>
         </div>
     </div>
@@ -833,7 +824,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/policy-builder.js' %}?v=3"></script>
+<script src="{% static 'js/policy-builder.js' %}?v=4"></script>
 <script src="{% static 'js/files-manager.js' %}?v=37"></script>
 <!-- Hidden form for version upload -->
 <input type="file" id="version-file-input" class="hidden" onchange="handleVersionUpload(event)">

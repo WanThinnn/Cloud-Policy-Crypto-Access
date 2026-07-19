@@ -185,38 +185,26 @@
             <div class="grid grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resource (Multiple allowed)</label>
-                    <select name="resource" id="resource-select" required multiple size="5"
-                        class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="document">📄 Document</option>
-                        <option value="key">🔑 Key Revocation List</option>
-                        <option value="user">👤 Manage users</option>
-                        <option value="policy">📋 Manage policies</option>
-                        <option value="attribute">🏷️ Attribute management</option>
-                        <option value="audit">📊 System log</option>
-                        <option value="*">⭐ All resources (*)</option>
+                    <select name="resource" id="resource-select" required multiple size="5" class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        {% for value, label in POLICY_RESOURCE_CHOICES %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Actions</label>
-                    <select name="action" required
-                        class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="read">👁️ View</option>
-                        <option value="write">✏️ Create</option>
-                        <option value="update">📝 Update</option>
-                        <option value="delete">🗑️ Delete</option>
-                        <option value="upload">⬆️ Upload</option>
-                        <option value="download">⬇️ Download</option>
-                        <option value="encrypt">🔒 Encryption</option>
-                        <option value="decrypt">🔓 Decrypt</option>
-                        <option value="*">⭐ All actions (*)</option>
+                    <select name="action" required class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        {% for value, label in POLICY_ACTION_CHOICES %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Effect</label>
-                    <select name="effect" required
-                        class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="allow">✅ Allow (Allow)</option>
-                        <option value="deny">❌ Deny (Deny)</option>
+                    <select name="effect" required class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        {% for value, label in POLICY_EFFECT_CHOICES %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>
@@ -408,7 +396,9 @@
 
     const OPERATORS = [
         { key: '==', label: 'equals' },
+        { key: '!=', label: 'not equals' },
         { key: 'in', label: 'in list' },
+        { key: 'not in', label: 'not in list' },
     ];
 
     let elementCounter = 0;

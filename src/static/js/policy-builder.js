@@ -7,7 +7,9 @@ let isAdvancedMode = false;
 
 const OPERATORS = [
     { key: '==', label: 'equals' },
+    { key: '!=', label: 'not equals' },
     { key: 'in', label: 'in list' },
+    { key: 'not in', label: 'not in list' },
 ];
 
 async function loadPolicyBuilderAttributes() {

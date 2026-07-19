@@ -14,30 +14,30 @@ class AccessPolicy(BaseModel):
     Defines who can access what resources under which conditions
     """
     EFFECT_CHOICES = [
-        ('allow', 'Allow'),
-        ('deny', 'Deny'),
+        ('allow', '✅ Allow'),
+        ('deny', '❌ Deny'),
     ]
     
     RESOURCE_CHOICES = [
-        ('document', 'Document'),
-        ('key', 'Key Revocation List'),
-        ('user', 'User Management'),
-        ('policy', 'Policy Management'),
-        ('attribute', 'Attribute Management'),
-        ('audit', 'Audit Logs'),
-        ('*', 'All Resources'),
+        ('document', '📄 Document'),
+        ('key', '🔑 Key Revocation List'),
+        ('user', '👤 Manage users'),
+        ('policy', '📋 Manage policies'),
+        ('attribute', '🏷️ Attribute management'),
+        ('audit', '📊 System log'),
+        ('*', '⭐ All resources (*)'),
     ]
     
     ACTION_CHOICES = [
-        ('read', 'Read'),
-        ('write', 'Write/Create'),
-        ('update', 'Update'),
-        ('delete', 'Delete'),
-        ('upload', 'Upload'),
-        ('download', 'Download'),
-        ('encrypt', 'Encrypt'),
-        ('decrypt', 'Decrypt'),
-        ('*', 'All Actions'),
+        ('read', '👁️ View'),
+        ('write', '✏️ Create'),
+        ('update', '📝 Update'),
+        ('delete', '🗑️ Delete'),
+        ('upload', '⬆️ Upload'),
+        ('download', '⬇️ Download'),
+        ('encrypt', '🔒 Encryption'),
+        ('decrypt', '🔓 Decrypt'),
+        ('*', '⭐ All actions (*)'),
     ]
     
     name = models.CharField(

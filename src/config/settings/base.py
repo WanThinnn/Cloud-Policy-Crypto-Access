@@ -80,6 +80,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'crypto_access.context_processors.pqc_settings',
+                'crypto_access.context_processors.policy_choices',
             ],
         },
     },

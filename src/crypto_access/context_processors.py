@@ -17,3 +17,12 @@ def pqc_settings(request):
         'ROOT_CA_PUBLIC_KEY': root_ca_pk_b64
     }
 
+def policy_choices(request):
+    """Expose AccessPolicy choices to all templates"""
+    from crypto_access.models import AccessPolicy
+    return {
+        'POLICY_RESOURCE_CHOICES': AccessPolicy.RESOURCE_CHOICES,
+        'POLICY_ACTION_CHOICES': AccessPolicy.ACTION_CHOICES,
+        'POLICY_EFFECT_CHOICES': AccessPolicy.EFFECT_CHOICES,
+    }
+
