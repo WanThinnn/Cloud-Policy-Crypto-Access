@@ -126,8 +126,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         
         if not is_encrypted:
             return file_data
-            
-        uploaded_file = UploadedFile.objects.filter(bucket__name=bucket_name, file_path=file_path, is_deleted=False).first()
+        
+        uploaded_file = get_db_file_by_path(bucket_name, file_path)
         from django.conf import settings
         abe_scheme = uploaded_file.abe_scheme if uploaded_file else getattr(settings, 'CPABE_SCHEME', 'ac17')
             
@@ -154,7 +154,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         # Calculate cache key based on attributes
         attrs_str = json.dumps(user_attrs, sort_keys=True)
         attrs_hash = hashlib.sha3_256(attrs_str.encode('utf-8')).hexdigest()
-        cache_key = f"cpabe_key_{user.id}_{attrs_hash}"
+        cache_key = f"cpabe_key_{abe_scheme}_{user.id}_{attrs_hash}"
         encrypted_cached_key = cache.get(cache_key)
         
         cached_key_data = None
