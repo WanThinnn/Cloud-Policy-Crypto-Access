@@ -933,6 +933,8 @@
     }
 
     function showAIResult(data) {
+        window.currentAIPolicyData = data;
+        
         const resultDiv = document.getElementById('ai-result');
         resultDiv.classList.remove('hidden');
         resultDiv.innerHTML = `
@@ -950,7 +952,7 @@
             <div class="mt-2 text-xs text-blue-600 dark:text-blue-400">
                 <i>✨ Auto-selected: Resource=${data.resources?.join(',') || 'none'}, Action=${data.action || 'none'}, Effect=${data.effect || 'none'}</i>
             </div>
-            <button onclick="acceptAIPolicy('${data.subject_condition.replace(/'/g, "\\'")}')" type="button"
+            <button onclick="acceptAIPolicy()" type="button"
                     class="mt-3 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium">
                 ✅ Accept & Apply
             </button>
@@ -975,12 +977,37 @@
         }
     }
 
-    function acceptAIPolicy(condition) {
+    function acceptAIPolicy() {
+        if (!window.currentAIPolicyData) return;
+        
+        const data = window.currentAIPolicyData;
+        const condition = data.subject_condition;
+        
         document.getElementById('subject_condition_input').value = condition;
         // If policy builder js is loaded, it exposes parseConditionToRules
         if (typeof parseConditionToRules === 'function') {
             parseConditionToRules(condition);
         }
+        
+        // Auto-fill metadata if empty
+        const nameInput = document.querySelector('input[name="name"]');
+        if (nameInput && !nameInput.value && data.name) {
+            nameInput.value = data.name;
+        }
+        
+        const descInput = document.querySelector('input[name="description"]');
+        if (descInput && !descInput.value && data.description) {
+            descInput.value = data.description;
+        }
+        
+        const priorityInput = document.querySelector('input[name="priority"]');
+        if (priorityInput && data.priority) {
+            // Fill if empty or if it has default value 100
+            if (!priorityInput.value || priorityInput.value === "100") {
+                priorityInput.value = data.priority;
+            }
+        }
+        
         document.getElementById('ai-result').classList.add('hidden');
         document.getElementById('ai-prompt-input').value = '';
     }

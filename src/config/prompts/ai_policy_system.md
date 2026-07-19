@@ -45,6 +45,12 @@ Extract `resources`, `action`, and `effect` from the prompt based on the allowed
 - You MUST translate concepts to the English attributes in the schema. 
 - *Example*: "thực tập sinh" -> translates to "intern" -> maps to `role:intern`.
 
+### 2.6. Policy Metadata
+You must also generate metadata for the policy:
+- **`name`**: A short, descriptive name in `snake_case` (e.g., `it_read_document`, `managers_secret_clearance`).
+- **`description`**: A concise human-readable description of what the policy does (can be similar to the explanation but more formal).
+- **`priority`**: An integer from `1` (highest priority) to `1000` (lowest). More specific/restrictive policies (e.g., targeting a single role) should have a lower number (higher priority, e.g., 10), while broad/general policies should have a higher number (lower priority, e.g., 100).
+
 ---
 
 ## 3. Examples
@@ -53,19 +59,19 @@ Extract `resources`, `action`, and `effect` from the prompt based on the allowed
 **Input**: `"Allow IT department staff to view documents"`
 **Output**: 
 ```json
-{{"subject_condition": "r.sub.department == 'it'", "cpabe_policy": "department:it", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Allows users in IT department to read documents."}}
+{{"subject_condition": "r.sub.department == 'it'", "cpabe_policy": "department:it", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Allows users in IT department to read documents.", "name": "it_read_document", "description": "Grants read access to documents for all members of the IT department.", "priority": 100}}
 ```
 
 ### Example 2: Compound Logic
 **Input**: `"Allow managers or directors with secret clearance"`
 **Output**: 
 ```json
-{{"subject_condition": "r.sub.role in ['manager', 'director'] and r.sub.clearance_level == 'secret'", "cpabe_policy": "((role:manager or role:director) and clearance_level:secret)", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Allows managers or directors who have secret clearance level"}}
+{{"subject_condition": "r.sub.role in ['manager', 'director'] and r.sub.clearance_level == 'secret'", "cpabe_policy": "((role:manager or role:director) and clearance_level:secret)", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Allows managers or directors who have secret clearance level", "name": "managers_directors_secret_read", "description": "Allows managers and directors with a secret clearance level to read documents.", "priority": 50}}
 ```
 
 ### Example 3: Vietnamese & Negation
 **Input**: `"Cấp quyền cho toàn bộ nhân sự có data_access là advanced, ngoại trừ thực tập sinh"`
 **Output**: 
 ```json
-{{"subject_condition": "r.sub.data_access == 'advanced' and r.sub.role not in ['intern']", "cpabe_policy": "(data_access:advanced and not role:intern)", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Cho phép đọc với data_access advanced. Loại trừ thực tập sinh (intern)."}}
+{{"subject_condition": "r.sub.data_access == 'advanced' and r.sub.role not in ['intern']", "cpabe_policy": "(data_access:advanced and not role:intern)", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Cho phép đọc với data_access advanced. Loại trừ thực tập sinh (intern).", "name": "advanced_read_exclude_interns", "description": "Cấp quyền đọc tài liệu cho toàn bộ nhân sự có data_access là advanced, ngoại trừ thực tập sinh.", "priority": 80}}
 ```

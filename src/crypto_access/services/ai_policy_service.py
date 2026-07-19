@@ -10,6 +10,10 @@ from django.core.cache import cache
 from crypto_access.models import AttributeDefinition, UserType
 import os
 logger = logging.getLogger('crypto_access.system')
+from pathlib import Path
+
+
+prompt_path = settings.BASE_DIR / 'config' / 'prompts' / 'ai_policy_system.md'
 
 # JSON Schema for structured output enforcement
 POLICY_OUTPUT_SCHEMA = {
@@ -32,9 +36,12 @@ POLICY_OUTPUT_SCHEMA = {
             "type": "string",
             "enum": ["allow", "deny"]
         },
-        "explanation": {"type": "string"}
+        "explanation": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "priority": {"type": "integer"}
     },
-    "required": ["subject_condition", "cpabe_policy", "resources", "action", "effect", "explanation"]
+    "required": ["subject_condition", "cpabe_policy", "resources", "action", "effect", "explanation", "name", "description", "priority"]
 }
 
 class AIPolicyService:
@@ -59,10 +66,7 @@ class AIPolicyService:
     
     def _build_system_prompt(self, attributes_schema):
         """Build system prompt with dynamic attribute schema from DB."""
-        import os
-        from django.conf import settings
         
-        prompt_path = os.path.join(settings.BASE_DIR, '..', 'config', 'prompts', 'ai_policy_system.md')
         try:
             with open(prompt_path, 'r', encoding='utf-8') as f:
                 prompt_template = f.read()
