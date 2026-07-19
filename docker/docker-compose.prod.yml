@@ -24,6 +24,9 @@ services:
       - CLAMAV_PORT=3310
       - CLAMAV_USE_TLS=True
       - CLAMAV_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-https://ollama-tls.cyberfortress.local:11434}
+      - OLLAMA_CACERT=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt}
+      - AI_FEATURES_ENABLED=${AI_FEATURES_ENABLED:-False}
     depends_on:
       - crypto-redis
       - vault
@@ -69,6 +72,57 @@ services:
       app-network:
         aliases:
           - crypto-redis.${INTERNAL_DOMAIN:-cyberfortress.local}
+    restart: unless-stopped
+
+  # AI Local LLM Service (Optional)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_server
+    profiles:
+      - ai
+    volumes:
+      - ollama_data:/root/.ollama
+    expose:
+      - "11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      app-network:
+        aliases:
+          - ollama.${INTERNAL_DOMAIN:-cyberfortress.local}
+    restart: unless-stopped
+
+  ollama_tls_proxy:
+    image: alpine/socat
+    container_name: ollama_tls_proxy
+    profiles:
+      - ai
+    command: >
+      OPENSSL-LISTEN:11434,cert=/certs/${TLS_CERT_FILENAME:-_.cyberfortress.local.crt},key=/certs/${TLS_KEY_FILENAME:-_.cyberfortress.local.key},cafile=/certs/${ROOT_CA_FILENAME:-CyberFortress-RootCA.crt},verify=0,reuseaddr,fork TCP:ollama:11434
+    volumes:
+      - ${CERTS_DIR:-./config/certs}:/certs:ro
+    expose:
+      - "11434"
+    networks:
+      app-network:
+        aliases:
+          - ollama-tls.${INTERNAL_DOMAIN:-cyberfortress.local}
+    depends_on:
+      - ollama
     restart: unless-stopped
 
   clamav:
@@ -265,6 +319,8 @@ volumes:
     name: openvpn_data
   openvpn_standard_data:
     name: openvpn_standard_data
+  ollama_data:
+    name: ollama_data
 
 networks:
   app-network:

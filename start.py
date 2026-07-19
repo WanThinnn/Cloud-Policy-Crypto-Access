@@ -2,7 +2,7 @@
 Cross-platform Docker helper using only Python built-ins.
 
 Usage:
-    python start.py [--prod|--dev] [--vpn] [--ipv6|--ipv46] <command> [args]
+    python start.py [--prod|--dev] [--tunnel] [--vpn] [--ai] [--ipv6|--ipv4|--ipv46] <command> [args]
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ DEFAULT_SSL_CERT = "_.cyberfortress.local.crt"
 DEFAULT_SSL_KEY = "_.cyberfortress.local.key"
 
 
-def compose_cmd(files: list[Path], use_ssl: bool, use_tunnel: bool, use_vpn: bool = False) -> list[str]:
+def compose_cmd(files: list[Path], use_ssl: bool, use_tunnel: bool, use_vpn: bool = False, use_ai: bool = False) -> list[str]:
     cmd: list[str] = ["docker", "compose", "--project-directory", str(REPO_ROOT)]
     for f in files:
         cmd += ["-f", str(f)]
@@ -37,6 +37,8 @@ def compose_cmd(files: list[Path], use_ssl: bool, use_tunnel: bool, use_vpn: boo
         cmd += ["--profile", "tunnel"]
     if use_vpn:
         cmd += ["--profile", "vpn"]
+    if use_ai:
+        cmd += ["--profile", "ai"]
     return cmd
 
 
@@ -82,12 +84,13 @@ def color_env_label(environment: str) -> str:
     return f"\033[1m{color}{base}\033[0m"
 
 
-def env_status_lines(environment: str, use_ssl: bool, use_tunnel: bool, use_vpn: bool) -> str:
+def env_status_lines(environment: str, use_ssl: bool, use_tunnel: bool, use_vpn: bool, use_ai: bool) -> str:
     label = color_env_label(environment)
     ssl_note = "on" if use_ssl else "off"
     tunnel_note = "on" if use_tunnel else "off"
     vpn_note = "on" if use_vpn else "off"
-    return f"{label} SSL/TLS={ssl_note} CloudflareTunnel={tunnel_note} VPN={vpn_note}"
+    ai_note = "on" if use_ai else "off"
+    return f"{label} SSL/TLS={ssl_note} CloudflareTunnel={tunnel_note} VPN={vpn_note} AI={ai_note}"
 
 
 def env_access_urls(use_ssl: bool) -> str:
@@ -269,6 +272,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--dev", action="store_true", help="Use development compose file (default)")
     parser.add_argument("--tunnel", action="store_true", help="Enable Cloudflare tunnel profile")
     parser.add_argument("--vpn", action="store_true", help="Enable VPN server profile")
+    parser.add_argument("--ai", action="store_true", help="Enable AI features (Ollama)")
     parser.add_argument("--ipv6", action="store_true", help="Use IPv6 for VPN client profiles (VPN_PROTO=ipv6)")
     parser.add_argument("--ipv46", action="store_true", help="Use both IPv4 and IPv6 for VPN client profiles (VPN_PROTO=dual)")
     parser.add_argument("command", nargs="?", help="Command to run")
@@ -322,9 +326,15 @@ def main(argv: list[str]) -> int:
             set_env_var(ENV_FILE, "VPN_PROTO", vpn_proto)
             print(color_info(f"[*] VPN_PROTO set to '{vpn_proto}' in .env"))
 
-    c = compose_cmd(compose_files, use_ssl, use_tunnel, args.vpn)
+    if args.ai:
+        current_ai = env_vars.get("AI_FEATURES_ENABLED", "")
+        if current_ai.lower() != "true":
+            set_env_var(ENV_FILE, "AI_FEATURES_ENABLED", "True")
+            print(color_info("[*] AI_FEATURES_ENABLED set to 'True' in .env"))
+
+    c = compose_cmd(compose_files, use_ssl, use_tunnel, args.vpn, args.ai)
     environment = "prod" if args.prod else "dev"
-    status_line = env_status_lines(environment, use_ssl, use_tunnel, args.vpn)
+    status_line = env_status_lines(environment, use_ssl, use_tunnel, args.vpn, args.ai)
 
     print(status_line)
     print("─" * 50)
@@ -519,7 +529,8 @@ def main(argv: list[str]) -> int:
             print("  clean           Remove containers and volumes, prune system")
             print("  rebuild         Clean rebuild and start")
             print("  vpn_client      Generate OpenVPN client profile (.ovpn)")
-            print("  gencerts <path> Generate PQC certificates in a specific directory\n")
+            print("  gencerts <path> Generate PQC certificates in a specific directory")
+            print("  ai_setup        Pull the default AI model (Qwen2.5-Coder:3b)\n")
             print(color_info("VPN Protocol Flags (for vpn_client):"))
             print("  (none)          Default: IPv4 only (uses VPN_PUBLIC_IP)")
             print("  --ipv6          IPv6 only (uses VPN_PUBLIC_IP_V6, proto udp6)")
@@ -580,6 +591,10 @@ def main(argv: list[str]) -> int:
             ]
             run(docker_cmd)
             print(color_info(f"\n[OK] Certificates generated successfully in {out_dir}!"))
+        elif cmd == "ai_setup":
+            print(color_info("\n[+] Pulling AI model Qwen2.5-Coder:3b (this may take a while)..."))
+            run(c + ["exec", "ollama", "ollama", "pull", "qwen2.5-coder:3b"])
+            print(color_info("\n[OK] AI model downloaded successfully!"))
         else:
             print(f"Unknown command: {cmd}")
             return 1

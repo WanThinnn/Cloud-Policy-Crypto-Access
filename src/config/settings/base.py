@@ -200,6 +200,12 @@ MASTER_FIELD_ENCRYPTION_KEY = os.environ.get('MASTER_FIELD_ENCRYPTION_KEY')
 # Global toggle for Post-Quantum Cryptography (ML-DSA) features
 ENABLE_PQC_FEATURES = os.environ.get('ENABLE_PQC_FEATURES', 'True').lower() in ('true', '1', 't')
 
+# AI Policy Assistant Configuration
+AI_FEATURES_ENABLED = os.environ.get('AI_FEATURES_ENABLED', 'False').lower() in ('true', '1', 't')
+OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'https://ollama-tls.cyberfortress.local:11434')
+OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'qwen2.5-coder:3b')
+OLLAMA_CACERT = os.environ.get('OLLAMA_CACERT', '/certs/CyberFortress-RootCA.crt')
+
 # Vault ABE Plugin Integration Toggle
 USE_VAULT_ABE_PLUGIN = os.environ.get('USE_VAULT_ABE_PLUGIN', 'False').lower() in ('true', '1', 't')
 CPABE_SCHEME = os.environ.get('CPABE_SCHEME', 'ac17')

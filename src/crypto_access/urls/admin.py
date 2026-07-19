@@ -4,7 +4,7 @@ Admin URLs for ABAC attribute and policy management
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from ..views import attributes, policy, users, base
+from ..views import attributes, policy, users, base, ai_assistant
 
 # Create router for ViewSets
 router = DefaultRouter()
@@ -24,6 +24,10 @@ urlpatterns = [
     
     # Dashboard Stats
     path('dashboard-stats/', base.dashboard_stats, name='dashboard_stats'),
+    
+    # AI Assistant
+    path('ai/status/', ai_assistant.ai_status, name='ai_status'),
+    path('ai/generate-policy/', ai_assistant.generate_policy, name='ai_generate_policy'),
     
     # User attributes management
     path('users/<int:user_id>/attributes/', attributes.list_user_attributes, name='list_user_attributes'),
