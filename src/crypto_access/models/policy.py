@@ -155,6 +155,47 @@ class AccessPolicy(BaseModel):
                 elif isinstance(op_node, ast.Eq):
                     val = val_node.value if isinstance(val_node, ast.Constant) else str(val_node)
                     return f"{attr}:{val}"
+                elif isinstance(op_node, ast.NotEq) or isinstance(op_node, ast.NotIn):
+                    import os
+                    from crypto_access.models import AttributeDefinition
+                    
+                    scheme = os.environ.get('CPABE_SCHEME', 'ac17').lower()
+                    if scheme == 'tkn20':
+                        # TKN20 supports native negation
+                        if isinstance(op_node, ast.NotEq):
+                            val = val_node.value if isinstance(val_node, ast.Constant) else str(val_node)
+                            return f"not {attr}:{val}"
+                        else:
+                            if hasattr(val_node, 'elts') and val_node.elts:
+                                excluded = [v.value if isinstance(v, ast.Constant) else str(v) for v in val_node.elts]
+                                res = f"not {attr}:{excluded[0]}"
+                                for v in excluded[1:]:
+                                    res = f"({res} and not {attr}:{v})"
+                                return res
+                            return ""
+                    
+                    try:
+                        attr_def = AttributeDefinition.objects.get(name=attr)
+                        allowed = attr_def.allowed_values
+                        
+                        if isinstance(op_node, ast.NotEq):
+                            excluded = [val_node.value if isinstance(val_node, ast.Constant) else str(val_node)]
+                        else:
+                            if hasattr(val_node, 'elts') and val_node.elts:
+                                excluded = [v.value if isinstance(v, ast.Constant) else str(v) for v in val_node.elts]
+                            else:
+                                excluded = []
+                                
+                        positive_vals = [v for v in allowed if v not in excluded]
+                        if not positive_vals:
+                            return ""
+                            
+                        res = f"{attr}:{positive_vals[0]}"
+                        for v in positive_vals[1:]:
+                            res = f"({res} or {attr}:{v})"
+                        return res
+                    except Exception:
+                        return ""
                 else:
                     val = val_node.value if isinstance(val_node, ast.Constant) else str(val_node)
                     return f"{attr}:{val}"

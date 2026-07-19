@@ -73,8 +73,9 @@ RULES:
 6. If a concept cannot be mapped to ANY attribute in the schema (e.g., "phòng xuất nhập khẩu"), set subject_condition and cpabe_policy to an empty string "". However, you MUST intelligently map synonyms and plural forms to existing values under their CORRECT attribute (e.g., "CEOs" -> role:ceo, "Executives" -> department:executive).
 7. Wrap compound expressions in parentheses
 8. Extract resources, action, and effect from the prompt based on the allowed enums.
-   - For Action, pick EXACTLY ONE. If multiple are implied (e.g. read and download), pick the higher privilege one (download).
-   - "quản lý" or "manage" means action = "*".
+   - For resources, output an array of UNIQUE strings (e.g. ["key"], NOT ["key", "key"]).
+   - For action, pick EXACTLY ONE closest matching enum. (e.g. 'decrypt' -> 'decrypt', 'manage' -> '*').
+   - For effect, if the prompt says "Allow", it MUST be "allow". Do not let words like "revocation" trick you into outputting "deny".
    If not specified in the prompt, default to resources=['document'], action='read', effect='allow'.
 9. CP-ABE mathematically DOES NOT support negation. DO NOT use "not", "!=", or "not in" anywhere. If you need negation (e.g., "except X"), you MUST positively list all remaining allowed values from the schema. For example, if status is ['active', 'inactive', 'terminated'] and prompt says "except terminated", use `r.sub.status in ['active', 'inactive']` for subject_condition and `(status:active or status:inactive)` for cpabe_policy.
 

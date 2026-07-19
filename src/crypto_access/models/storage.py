@@ -62,6 +62,7 @@ class UploadedFile(models.Model):
     description = models.TextField(blank=True)
     tags = models.JSONField(default=list, blank=True)
     metadata = EncryptedJSONField(default=dict, blank=True, help_text="Additional metadata (Encrypted)")
+    abe_scheme = models.CharField(max_length=10, default='ac17', help_text="ABE scheme used to encrypt this file (ac17, tkn20)")
     
     # Soft Delete
     is_deleted = models.BooleanField(default=False)

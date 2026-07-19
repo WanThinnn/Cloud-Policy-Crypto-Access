@@ -127,6 +127,10 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         if not is_encrypted:
             return file_data
             
+        uploaded_file = UploadedFile.objects.filter(bucket__name=bucket_name, file_path=file_path, is_deleted=False).first()
+        from django.conf import settings
+        abe_scheme = uploaded_file.abe_scheme if uploaded_file else getattr(settings, 'CPABE_SCHEME', 'ac17')
+            
         user_attrs = casbin_service.get_user_attributes(user)
         
         # CP-ABE Bypass for SuperAdmin and File Owner
@@ -174,7 +178,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     key_name = f_key.name
                 
                 try:
-                    cpabe_service.generate_user_key(user_attrs, key_name)
+                    cpabe_service.generate_user_key(user_attrs, key_name, scheme=abe_scheme)
                     # Read the generated key immediately and delete the file
                     with open(key_name, 'rb') as f:
                         cached_key_data = f.read()
@@ -191,9 +195,9 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                 # Decrypt passing the raw bytes directly (No TempFile)
                 from django.conf import settings
                 if getattr(settings, 'ENABLE_PQC_FEATURES', False):
-                    decrypted_data = cpabe_service.decrypt_buffer_and_verify(cached_key_data, file_data)
+                    decrypted_data = cpabe_service.decrypt_buffer_and_verify(cached_key_data, file_data, scheme=abe_scheme)
                 else:
-                    decrypted_data = cpabe_service.decrypt_buffer(cached_key_data, file_data)
+                    decrypted_data = cpabe_service.decrypt_buffer(cached_key_data, file_data, scheme=abe_scheme)
                 extra = {"user.name": user.username, "user.id": user.id} if user else {}
                 logger.info(f"CP-ABE Decryption successful for file: {file_path}", extra=extra)
                 # We DO NOT cache decrypted_data for security reasons.
@@ -489,14 +493,15 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
             file_metadata['clamav_scan'] = 'clean'
             
             # Encrypt if policy has cpabe_policy
+            from django.conf import settings
+            current_scheme = getattr(settings, 'CPABE_SCHEME', 'ac17')
             if cpabe_policy_str:
                 # Attempt to encrypt with CP-ABE before uploading
-                logger.info(f"Encrypting file with CP-ABE policy: {cpabe_policy_str}", extra={"user.name": request.user.username, "user.id": request.user.id})
-                from django.conf import settings
+                logger.info(f"Encrypting file with CP-ABE policy: {cpabe_policy_str} (Scheme: {current_scheme})", extra={"user.name": request.user.username, "user.id": request.user.id})
                 if getattr(settings, 'ENABLE_PQC_FEATURES', False):
-                    file_data = cpabe_service.encrypt_buffer_and_sign(plaintext_data, cpabe_policy_str)
+                    file_data = cpabe_service.encrypt_buffer_and_sign(plaintext_data, cpabe_policy_str, scheme=current_scheme)
                 else:
-                    file_data = cpabe_service.encrypt_buffer(plaintext_data, cpabe_policy_str)
+                    file_data = cpabe_service.encrypt_buffer(plaintext_data, cpabe_policy_str, scheme=current_scheme)
             else:
                 file_data = plaintext_data
 
@@ -531,7 +536,11 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     uploaded_file.metadata = {}
                 uploaded_file.metadata.update(file_metadata)
                 
-                uploaded_file.save(update_fields=['file_size', 'updated_at', 'is_deleted', 'deleted_at', 'metadata'])
+                # If file is encrypted, update its scheme to the current one
+                if cpabe_policy_str:
+                    uploaded_file.abe_scheme = current_scheme
+                
+                uploaded_file.save(update_fields=['file_size', 'updated_at', 'is_deleted', 'deleted_at', 'metadata', 'abe_scheme'])
             else:
                 uploaded_file = UploadedFile.objects.create(
                     bucket=bucket,
@@ -546,7 +555,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                     uploaded_by=request.user if request.user.is_authenticated else None,
                     description=description,
                     tags=tags,
-                    metadata=file_metadata
+                    metadata=file_metadata,
+                    abe_scheme=current_scheme if cpabe_policy_str else 'ac17'
                 )
                 
             # Create FileVersion
@@ -1860,10 +1870,11 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                         logger.info(f"Encrypting file {physical_path} with policy: {policy_to_encrypt}")
                         try:
                             from django.conf import settings
+                            current_scheme = getattr(settings, 'CPABE_SCHEME', 'ac17')
                             if getattr(settings, 'ENABLE_PQC_FEATURES', False):
-                                enc_data = cpabe_service.encrypt_buffer_and_sign(file_data, policy_to_encrypt)
+                                enc_data = cpabe_service.encrypt_buffer_and_sign(file_data, policy_to_encrypt, scheme=current_scheme)
                             else:
-                                enc_data = cpabe_service.encrypt_buffer(file_data, policy_to_encrypt)
+                                enc_data = cpabe_service.encrypt_buffer(file_data, policy_to_encrypt, scheme=current_scheme)
                             
                             storage.upload_file(
                                 bucket_name=bucket_name,
@@ -1874,6 +1885,8 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
                                 user=request.user
                             )
                             # Update FileVersion cpabe_policy and physical_path
+                            file_record.abe_scheme = current_scheme
+                            file_record.save(update_fields=['abe_scheme'])
                             if latest_version:
                                 latest_version.cpabe_policy = policy_to_encrypt
                                 if physical_path != old_physical_path:

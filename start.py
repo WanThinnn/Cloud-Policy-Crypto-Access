@@ -486,10 +486,46 @@ def main(argv: list[str]) -> int:
             # print(f"{status_line}\n")
             run(c + ["exec", "web", "python", "manage.py", "collectstatic", "--noinput"])
         elif cmd == "clean":
-            # print(f"{status_line}\n")
-            run(c + ["down", "-v"])
-            run(["docker", "system", "prune", "-f"])
-            print("[OK] Cleaned up containers, volumes, and system.")
+            print(color_warning("WARNING: Clean operation initiated."))
+            ans_c = input("Stop and remove all containers? [y/N]: ")
+            
+            print(color_info("\nWhich volumes do you want to remove?"))
+            ans_v_db = input("  1. Remove Database volume? [y/N]: ")
+            ans_v_ai = input(color_warning("  2. Remove AI Models volume (ollama_data)? [y/N]: "))
+            ans_v_keys = input("  3. Remove Keys and Vault volumes? [y/N]: ")
+            ans_v_vpn = input("  4. Remove VPN volumes? [y/N]: ")
+            
+            ans_p = input("\nPrune unused system resources (dangling images/networks)? [y/N]: ")
+            
+            if ans_c.lower() == 'y':
+                run(c + ["down"])
+                print("[OK] Containers stopped and removed.")
+                
+            project_name = "cloud-policy-crypto-access"
+            vols_to_remove = []
+            if ans_v_db.lower() == 'y':
+                vols_to_remove.extend([f"{project_name}_sqlite_volume"])
+            if ans_v_ai.lower() == 'y':
+                vols_to_remove.extend([f"{project_name}_ollama_data"])
+            if ans_v_keys.lower() == 'y':
+                vols_to_remove.extend([f"{project_name}_keys_volume", f"{project_name}_vault_data", f"{project_name}_vault_plugins"])
+            if ans_v_vpn.lower() == 'y':
+                vols_to_remove.extend([f"{project_name}_openvpn_data", f"{project_name}_openvpn_standard_data"])
+                
+            if vols_to_remove:
+                for vol in vols_to_remove:
+                    try:
+                        subprocess.run(["docker", "volume", "rm", vol], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    except subprocess.CalledProcessError:
+                        pass
+                print("[OK] Selected volumes removed.")
+                
+            if ans_p.lower() == 'y':
+                run(["docker", "system", "prune", "-f"])
+                print("[OK] System pruned.")
+                
+            if not any(a.lower() == 'y' for a in [ans_c, ans_v_db, ans_v_ai, ans_v_keys, ans_v_vpn, ans_p]):
+                print("Clean operation cancelled.")
         elif cmd == "rebuild":
             # print(f"{status_line}\n")
             run(compose_cmd(compose_files, use_ssl, use_tunnel, args.vpn) + ["down", "-v"])

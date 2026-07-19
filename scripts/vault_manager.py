@@ -134,18 +134,31 @@ def register_abe_plugin(client):
             
     try:
         mounts = client.sys.list_mounted_secrets_engines()
-        if 'abe/' in mounts:
-            print("ABE engine already enabled.")
-            return
+        
+        # Mount AC17
+        if 'abe_ac17/' not in mounts:
+            client.sys.enable_secrets_engine(
+                backend_type='vault-plugin-abe',
+                path='abe_ac17',
+                description='Hybrid PQC CP-ABE Engine (AC17)'
+            )
+            print("ABE Secrets engine successfully enabled at 'abe_ac17/'.")
+        else:
+            print("ABE engine already enabled at 'abe_ac17/'.")
             
-        client.sys.enable_secrets_engine(
-            backend_type='vault-plugin-abe',
-            path='abe',
-            description='Hybrid PQC CP-ABE Engine'
-        )
-        print("ABE Secrets engine successfully enabled at 'abe/'.")
+        # Mount TKN20
+        if 'abe_tkn20/' not in mounts:
+            client.sys.enable_secrets_engine(
+                backend_type='vault-plugin-abe',
+                path='abe_tkn20',
+                description='Hybrid PQC CP-ABE Engine (TKN20)'
+            )
+            print("ABE Secrets engine successfully enabled at 'abe_tkn20/'.")
+        else:
+            print("ABE engine already enabled at 'abe_tkn20/'.")
+            
     except Exception as e:
-        print(f"Failed to enable ABE secrets engine: {e}")
+        print(f"Failed to enable ABE secrets engines: {e}")
 
 def init_and_unseal():
     parser = argparse.ArgumentParser()
