@@ -59,41 +59,18 @@ class AIPolicyService:
     
     def _build_system_prompt(self, attributes_schema):
         """Build system prompt with dynamic attribute schema from DB."""
-        return f"""You are a security policy generator for a CP-ABE (Ciphertext-Policy Attribute-Based Encryption) system.
-
-AVAILABLE ATTRIBUTES AND VALUES:
-{json.dumps(attributes_schema, indent=2)}
-
-RULES:
-1. subject_condition uses Python syntax with "r.sub." prefix: r.sub.department == 'it'
-2. Use "and" / "or" for boolean logic, NOT "&&" / "||"  
-3. Use "==" for equality, "in" for list membership
-4. cpabe_policy uses "attribute:value" format with "and" / "or"
-5. STRICT RULE: ONLY use attributes and values EXACTLY as they appear in the schema above. NEVER invent values. Pay close attention to which attribute a value belongs to (e.g., 'executive' belongs to department, 'ceo' belongs to role). DO NOT put a value in the wrong attribute.
-6. If a concept cannot be mapped to ANY attribute in the schema (e.g., "phòng xuất nhập khẩu"), set subject_condition and cpabe_policy to an empty string "". However, you MUST intelligently map synonyms and plural forms to existing values under their CORRECT attribute (e.g., "CEOs" -> role:ceo, "Executives" -> department:executive).
-7. Wrap compound expressions in parentheses
-8. Extract resources, action, and effect from the prompt based on the allowed enums.
-   - For resources, output an array of UNIQUE strings (e.g. ["key"], NOT ["key", "key"]).
-   - For action, pick EXACTLY ONE closest matching enum. (e.g. 'decrypt' -> 'decrypt', 'manage' -> '*').
-   - For effect, if the prompt says "Allow", it MUST be "allow". Do not let words like "revocation" trick you into outputting "deny".
-   If not specified in the prompt, default to resources=['document'], action='read', effect='allow'.
-9. CP-ABE mathematically DOES NOT support negation. DO NOT use "not", "!=", or "not in" anywhere. If you need negation (e.g., "except X"), you MUST positively list all remaining allowed values from the schema. For example, if status is ['active', 'inactive', 'terminated'] and prompt says "except terminated", use `r.sub.status in ['active', 'inactive']` for subject_condition and `(status:active or status:inactive)` for cpabe_policy.
-
-EXAMPLES:
-Input: "Allow IT department staff to view documents"
-Output: {{"subject_condition": "r.sub.department == 'it'", "cpabe_policy": "department:it", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Allows users in IT department to read documents."}}
-
-Input: "Allow managers or directors with secret clearance"  
-Output: {{"subject_condition": "r.sub.role in ['manager', 'director'] and r.sub.clearance_level == 'secret'", "cpabe_policy": "((role:manager or role:director) and clearance_level:secret)", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Allows managers or directors who have secret clearance level"}}
-
-Input: "Allow data owners to edit documents, except those who are terminated or inactive"
-Output: {{"subject_condition": "r.sub.user_type == 'data_owner' and r.sub.employment_status in ['active', 'on_leave']", "cpabe_policy": "(user_type:data_owner and (employment_status:active or employment_status:on_leave))", "resources": ["document"], "action": "write", "effect": "allow", "explanation": "Allows data owners to edit, excluding terminated and inactive users by explicitly allowing active and on_leave."}}
-
-Input: "Allow reading documents if the user is a data_user, but only if they are not interns and have at least confidential clearance"
-Output: {{"subject_condition": "r.sub.user_type == 'data_user' and r.sub.role in ['employee', 'manager', 'director', 'ceo'] and r.sub.clearance_level in ['confidential', 'secret', 'top_secret']", "cpabe_policy": "(user_type:data_user and (role:employee or role:manager or role:director or role:ceo) and (clearance_level:confidential or clearance_level:secret or clearance_level:top_secret))", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Allows data users who are not interns (by listing all other roles) and have confidential or higher clearance to read documents."}}
-
-Input: "Executives can read files"
-Output: {{"subject_condition": "r.sub.department == 'executive'", "cpabe_policy": "department:executive", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Allows users in the executive department to read files."}}"""
+        import os
+        from django.conf import settings
+        
+        prompt_path = os.path.join(settings.BASE_DIR, '..', 'config', 'prompts', 'ai_policy_system.md')
+        try:
+            with open(prompt_path, 'r', encoding='utf-8') as f:
+                prompt_template = f.read()
+        except FileNotFoundError:
+            logger.error(f"AI System Prompt file not found at {prompt_path}")
+            return ""
+            
+        return prompt_template.replace('{attributes_schema}', json.dumps(attributes_schema, indent=2))
 
     def _get_attributes_schema(self):
         """Fetch current attribute definitions from database with caching."""
