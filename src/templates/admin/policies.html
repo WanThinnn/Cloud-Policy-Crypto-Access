@@ -940,20 +940,32 @@
         resultDiv.innerHTML = `
             <p class="font-medium mb-1 text-purple-800 dark:text-purple-300">📋 Generated Policy:</p>
             <code class="block bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-2 rounded mb-2 break-all">${data.subject_condition}</code>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">💡 ${data.explanation}</p>
-            <div class="flex gap-2">
-                <span class="text-xs ${data.validation?.abac_valid ? 'text-green-600' : 'text-red-600'}">
-                    ABAC Syntax: ${data.validation?.abac_valid ? '✅' : '❌'}
-                </span>
-                <span class="text-xs ${data.validation?.cpabe_valid ? 'text-green-600' : 'text-red-600'}">
-                    CP-ABE Compile: ${data.validation?.cpabe_valid ? '✅' : '❌'}
-                </span>
+            
+            <div class="mb-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded border border-indigo-100 dark:border-indigo-800 flex flex-col gap-2">
+                ${data.name ? `
+                <div>
+                    <p class="text-xs text-indigo-900 dark:text-indigo-200">🏷️ <b>Name:</b> ${data.name}</p>
+                    <p class="text-xs text-indigo-900 dark:text-indigo-200">⭐ <b>Priority:</b> ${data.priority || 100}</p>
+                    ${data.description ? `<p class="text-xs text-indigo-900 dark:text-indigo-200 mt-1">📝 <b>Desc:</b> ${data.description}</p>` : ''}
+                </div>
+                <hr class="border-indigo-200 dark:border-indigo-800/50">
+                ` : ''}
+                
+                <div class="flex flex-wrap gap-4 items-center">
+                    <span class="text-xs ${data.validation?.abac_valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
+                        ABAC Syntax: ${data.validation?.abac_valid ? '✅' : '❌'}
+                    </span>
+                    <span class="text-xs ${data.validation?.cpabe_valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
+                        CP-ABE Compile: ${data.validation?.cpabe_valid ? '✅' : '❌'}
+                    </span>
+                    <span class="text-xs text-indigo-700 dark:text-indigo-300">
+                        <i>✨ Auto-selected: Resource=${data.resources?.join(',') || 'none'}, Action=${data.action || 'none'}, Effect=${data.effect || 'none'}</i>
+                    </span>
+                </div>
             </div>
-            <div class="mt-2 text-xs text-blue-600 dark:text-blue-400">
-                <i>✨ Auto-selected: Resource=${data.resources?.join(',') || 'none'}, Action=${data.action || 'none'}, Effect=${data.effect || 'none'}</i>
-            </div>
+            
             <button onclick="acceptAIPolicy()" type="button"
-                    class="mt-3 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium">
+                    class="mt-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors">
                 ✅ Accept & Apply
             </button>
         `;
