@@ -15,20 +15,17 @@ logger = logging.getLogger('crypto_access.system')
 POLICY_OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
-        "subject_condition": {
-            "type": "string",
-            "description": "ABAC condition using r.sub.* prefix"
+        "subject_condition": {"type": "string"},
+        "cpabe_policy": {"type": "string"},
+        "resources": {
+            "type": "array",
+            "items": {"type": "string"}
         },
-        "cpabe_policy": {
-            "type": "string", 
-            "description": "CP-ABE policy string"
-        },
-        "explanation": {
-            "type": "string",
-            "description": "Brief explanation"
-        }
+        "action": {"type": "string"},
+        "effect": {"type": "string"},
+        "explanation": {"type": "string"}
     },
-    "required": ["subject_condition", "cpabe_policy", "explanation"]
+    "required": ["subject_condition", "cpabe_policy", "resources", "action", "effect", "explanation"]
 }
 
 class AIPolicyService:
@@ -66,13 +63,18 @@ RULES:
 5. STRICT RULE: ONLY use attributes and values EXACTLY as they appear in the schema above.
 6. If the user requests an attribute or value that is NOT in the schema (e.g., "phòng xuất nhập khẩu" but it's missing), you MUST set subject_condition and cpabe_policy to an empty string "", and explain what is missing in the explanation field.
 7. Wrap compound expressions in parentheses
+8. Extract resources, action, and effect from the prompt based on these choices:
+   - Resources (array): ['document', 'key', 'user', 'policy', 'attribute', 'audit', '*']
+   - Action (string): ['read', 'write', 'update', 'delete', 'upload', 'download', 'encrypt', 'decrypt', '*']
+   - Effect (string): ['allow', 'deny']
+   If not specified in the prompt, default to resources=['document'], action='read', effect='allow'.
 
 EXAMPLES:
-Input: "Allow IT department staff"
-Output: {{"subject_condition": "r.sub.department == 'it'", "cpabe_policy": "department:it", "explanation": "Allows users whose department is IT"}}
+Input: "Allow IT department staff to view documents"
+Output: {{"subject_condition": "r.sub.department == 'it'", "cpabe_policy": "department:it", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Allows users in IT department to read documents."}}
 
 Input: "Allow managers or directors with secret clearance"  
-Output: {{"subject_condition": "r.sub.role in ['manager', 'director'] and r.sub.clearance_level == 'secret'", "cpabe_policy": "((role:manager or role:director) and clearance_level:secret)", "explanation": "Allows managers or directors who have secret clearance level"}}"""
+Output: {{"subject_condition": "r.sub.role in ['manager', 'director'] and r.sub.clearance_level == 'secret'", "cpabe_policy": "((role:manager or role:director) and clearance_level:secret)", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Allows managers or directors who have secret clearance level"}}"""
 
     def _get_attributes_schema(self):
         """Fetch current attribute definitions from database with caching."""

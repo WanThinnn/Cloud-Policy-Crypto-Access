@@ -185,7 +185,7 @@
 
 <!-- Upload Modal -->
 <div id="upload-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-8xl mx-4 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
             <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
@@ -205,9 +205,9 @@
             </div>
         </div>
         <form id="upload-form" class="flex flex-col gap-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <!-- Left Column -->
-                <div class="space-y-4 flex flex-col h-full">
+                <div class="space-y-4 flex flex-col h-full lg:col-span-4">
                     <!-- Drag & Drop File Zone -->
                     <div class="flex-1 flex flex-col">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select file</label>
@@ -244,7 +244,7 @@
                 </div>
                 
                 <!-- Right Column -->
-                <div class="space-y-4 bg-gray-50/50 dark:bg-gray-900/20 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                <div class="space-y-4 bg-gray-50/50 dark:bg-gray-900/20 p-4 rounded-xl border border-gray-100 dark:border-gray-700 lg:col-span-8">
                     <!-- Version Policy Handling (Hidden by default) -->
                     <div id="version-policy-section" class="hidden bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border border-yellow-200 dark:border-yellow-800">
                 <h4 class="text-sm font-medium text-yellow-900 mb-2 flex items-center gap-2">
@@ -649,6 +649,26 @@
 
 <!-- Shared Policy Builder Container (Moved between modals dynamically) -->
 <div id="shared-policy-builder-container" class="hidden space-y-4">
+    <!-- AI Policy Assistant -->
+    <div id="ai-assistant-section" class="mb-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+            <span class="text-sm font-semibold text-purple-800 dark:text-purple-300">🤖 AI Policy Assistant</span>
+            <span id="ai-status-badge" class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Online</span>
+        </div>
+        <div class="flex gap-2">
+            <input type="text" id="ai-prompt-input" 
+                placeholder="Describe the policy in natural language... For example: 'Allow IT staff to have clearance secrets'"
+                   class="flex-1 bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:ring-purple-500 focus:border-purple-500">
+            <button type="button" id="ai-generate-btn" onclick="generatePolicyWithAI()"
+                    class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm flex items-center gap-1">
+                Generate
+            </button>
+        </div>
+        <div id="ai-result" class="hidden mt-3 p-3 bg-white dark:bg-gray-800 rounded border border-purple-100 text-sm">
+            <!-- AI result shown here -->
+        </div>
+    </div>
+
     <div class="grid grid-cols-2 gap-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Policy Name *</label>
@@ -741,7 +761,11 @@
                 class="mt-1 block w-full bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="document">📄 Document</option>
                 <option value="key">🔑 Key Revocation List</option>
-                <option value="*">⭐ All</option>
+                <option value="user">👤 Manage users</option>
+                <option value="policy">📋 Manage policies</option>
+                <option value="attribute">🏷️ Attribute management</option>
+                <option value="audit">📊 System log</option>
+                <option value="*">⭐ All resources (*)</option>
             </select>
         </div>
         <div>
@@ -752,8 +776,11 @@
                 <option value="write">✏️ Create</option>
                 <option value="update">📝 Update</option>
                 <option value="delete">🗑️ Delete</option>
+                <option value="upload">⬆️ Upload</option>
                 <option value="download">⬇️ Download</option>
-                <option value="*">⭐ All</option>
+                <option value="encrypt">🔒 Encryption</option>
+                <option value="decrypt">🔓 Decrypt</option>
+                <option value="*">⭐ All actions (*)</option>
             </select>
         </div>
         <div>
@@ -810,5 +837,124 @@
 <script src="{% static 'js/files-manager.js' %}?v=37"></script>
 <!-- Hidden form for version upload -->
 <input type="file" id="version-file-input" class="hidden" onchange="handleVersionUpload(event)">
+
+<script>
+    async function checkAIStatus() {
+        try {
+            const resp = await fetch('/api/admin/ai/status/');
+            const data = await resp.json();
+            const badge = document.getElementById('ai-status-badge');
+            if (data.available) {
+                badge.className = 'text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700';
+                badge.textContent = 'Online';
+                document.getElementById('ai-generate-btn').disabled = false;
+            } else {
+                badge.className = 'text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700';
+                badge.textContent = 'Offline';
+                document.getElementById('ai-generate-btn').disabled = true;
+            }
+        } catch (e) {
+            console.error('Failed to check AI status:', e);
+            const badge = document.getElementById('ai-status-badge');
+            badge.className = 'text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700';
+            badge.textContent = 'Offline';
+            document.getElementById('ai-generate-btn').disabled = true;
+        }
+    }
+
+    async function generatePolicyWithAI() {
+        const prompt = document.getElementById('ai-prompt-input').value.trim();
+        if (!prompt) return;
+        
+        const btn = document.getElementById('ai-generate-btn');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Generating...';
+        
+        try {
+            const resp = await fetch('/api/admin/ai/generate-policy/', {
+                method: 'POST',
+                headers: { 
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({ prompt })
+            });
+            const data = await resp.json();
+            
+            if (data.subject_condition) {
+                showAIResult(data);
+            } else if (data.explanation) {
+                showAlert(data.explanation, 'error');
+            } else if (data.error) {
+                showAlert(data.error, 'error');
+            } else {
+                showAlert('Could not generate policy from prompt.', 'error');
+            }
+        } catch (e) {
+            showAlert('AI generation failed', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Generate';
+        }
+    }
+
+    function showAIResult(data) {
+        const resultDiv = document.getElementById('ai-result');
+        resultDiv.classList.remove('hidden');
+        resultDiv.innerHTML = `
+            <p class="font-medium mb-1 text-purple-800 dark:text-purple-300">📋 Generated Policy:</p>
+            <code class="block bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-2 rounded mb-2 break-all">${data.subject_condition}</code>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">💡 ${data.explanation}</p>
+            <div class="flex gap-2">
+                <span class="text-xs ${data.validation?.abac_valid ? 'text-green-600' : 'text-red-600'}">
+                    ABAC Syntax: ${data.validation?.abac_valid ? '✅' : '❌'}
+                </span>
+                <span class="text-xs ${data.validation?.cpabe_valid ? 'text-green-600' : 'text-red-600'}">
+                    CP-ABE Compile: ${data.validation?.cpabe_valid ? '✅' : '❌'}
+                </span>
+            </div>
+            <div class="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                <i>✨ Auto-selected: Resource=${data.resources?.join(',') || 'none'}, Action=${data.action || 'none'}, Effect=${data.effect || 'none'}</i>
+            </div>
+            <button onclick="acceptAIPolicy('${data.subject_condition.replace(/'/g, "\\'")}')" type="button"
+                    class="mt-3 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium">
+                ✅ Accept & Apply
+            </button>
+        `;
+        
+        // Auto-select in form
+        if (data.resources && Array.isArray(data.resources)) {
+            const resourceSelect = document.getElementById('new-policy-resource');
+            if (resourceSelect) {
+                Array.from(resourceSelect.options).forEach(opt => {
+                    opt.selected = data.resources.includes(opt.value);
+                });
+            }
+        }
+        if (data.action) {
+            const actionSelect = document.getElementById('new-policy-action');
+            if (actionSelect) actionSelect.value = data.action;
+        }
+        if (data.effect) {
+            const effectSelect = document.getElementById('new-policy-effect');
+            if (effectSelect) effectSelect.value = data.effect;
+        }
+    }
+
+    function acceptAIPolicy(condition) {
+        document.getElementById('subject_condition_input').value = condition;
+        document.getElementById('subject_condition_input').dispatchEvent(new Event('input'));
+        
+        if (typeof parseConditionToRules === 'function') {
+            parseConditionToRules(condition);
+        }
+        document.getElementById('ai-result').classList.add('hidden');
+        document.getElementById('ai-prompt-input').value = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        checkAIStatus();
+    });
+</script>
 
 {% endblock %}
