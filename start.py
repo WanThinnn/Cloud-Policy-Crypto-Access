@@ -530,7 +530,7 @@ def main(argv: list[str]) -> int:
             print("  rebuild         Clean rebuild and start")
             print("  vpn_client      Generate OpenVPN client profile (.ovpn)")
             print("  gencerts <path> Generate PQC certificates in a specific directory")
-            print("  ai_setup        Pull the default AI model (Qwen2.5-Coder:3b)\n")
+            print("  ai_setup        Pull the AI model specified in .env (OLLAMA_MODEL)\n")
             print(color_info("VPN Protocol Flags (for vpn_client):"))
             print("  (none)          Default: IPv4 only (uses VPN_PUBLIC_IP)")
             print("  --ipv6          IPv6 only (uses VPN_PUBLIC_IP_V6, proto udp6)")
@@ -592,8 +592,14 @@ def main(argv: list[str]) -> int:
             run(docker_cmd)
             print(color_info(f"\n[OK] Certificates generated successfully in {out_dir}!"))
         elif cmd == "ai_setup":
-            print(color_info("\n[+] Pulling AI model Qwen2.5-Coder:3b (this may take a while)..."))
-            run(c + ["exec", "ollama", "ollama", "pull", "qwen2.5-coder:3b"])
+            import re
+            model = "qwen2.5-coder:3b"
+            if ENV_FILE.exists():
+                m = re.search(r'^OLLAMA_MODEL=(.*)$', ENV_FILE.read_text(encoding="utf-8"), re.MULTILINE)
+                if m:
+                    model = m.group(1).strip()
+            print(color_info(f"\n[+] Pulling AI model {model} (this may take a while)..."))
+            run(c + ["exec", "ollama", "ollama", "pull", model])
             print(color_info("\n[OK] AI model downloaded successfully!"))
         else:
             print(f"Unknown command: {cmd}")

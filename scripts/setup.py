@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CERT_DIR = REPO_ROOT / "certs"
+CERT_DIR = REPO_ROOT / "config" / "certs"
 ENV_FILE = REPO_ROOT / ".env"
 ENV_EXAMPLE = REPO_ROOT / ".env.example"
 ROOT_CA = CERT_DIR / "CyberFortress-RootCA.crt"
@@ -97,7 +97,7 @@ def color_info(text: str) -> str:
     return f"\033[1m\033[94m{text}\033[0m"  # Bright blue
 
 def main() -> int:
-    print("=== Library Management System - Setup ===")
+    print("=== CyberFortress - Setup ===")
     check_command("docker")
     try:
         subprocess.run(["docker", "compose", "version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
