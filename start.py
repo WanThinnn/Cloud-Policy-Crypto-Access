@@ -13,6 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 import os
+import json
+import socket
 
 REPO_ROOT = Path(__file__).resolve().parent
 NO_SSL_OVERRIDE = REPO_ROOT / "docker" / "docker-compose.nossl.yml"
@@ -96,6 +98,93 @@ def env_access_urls(use_ssl: bool) -> str:
     )
     return f"Access: {access_urls}"
 
+UDP6_RELAY_PIDFILE = REPO_ROOT / ".udp6_relay.pid"
+
+def start_udp6_relay(relay_port_map: dict[int, int] | None = None) -> None:
+    """Start the UDP6 relay on Windows (Docker Desktop lacks IPv6 UDP port forwarding).
+    
+    Args:
+        relay_port_map: Dict mapping listen_port -> forward_port.
+                        e.g. {53: 1194, 443: 1195}
+    """
+    if sys.platform != "win32":
+        return  # Not needed on Linux/Mac
+    stop_udp6_relay()  # Kill any existing relay
+    relay_script = REPO_ROOT / "scripts" / "udp6_relay.py"
+    if not relay_script.exists():
+        print(color_warning("[!] UDP6 relay script not found. IPv6 VPN may not work."))
+        return
+    if relay_port_map is None:
+        relay_port_map = {53: 1194, 443: 1195}
+    # Use pythonw.exe for a truly detached background process on Windows
+    pythonw = Path(sys.executable).parent / "pythonw.exe"
+    if not pythonw.exists():
+        pythonw = shutil.which("pythonw")
+    if not pythonw:
+        # Fallback to regular python
+        pythonw = sys.executable
+    
+    cmd = [str(pythonw), str(relay_script)]
+    cmd += ["--ports"] + [str(p) for p in relay_port_map.keys()]
+    cmd += ["--forward-ports"] + [str(p) for p in relay_port_map.values()]
+    log_file = REPO_ROOT / ".udp6_relay.log"
+    cmd += ["--log", str(log_file)]
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=REPO_ROOT,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+            close_fds=True,
+        )
+        # Wait briefly to check if process starts successfully
+        import time
+        time.sleep(2)
+        
+        # Verify relay is actually listening by checking the port
+        try:
+            test_sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+            test_sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+            first_port = list(relay_port_map.keys())[0]
+            test_sock.bind(("::", first_port))
+            # If we can bind, relay is NOT listening → it failed
+            test_sock.close()
+            error_output = log_file.read_text().strip() if log_file.exists() else "Unknown error"
+            print(color_warning(f"[!] UDP6 relay failed to start. Log:"))
+            for line in error_output.split("\n")[-5:]:
+                print(color_warning(f"    {line.strip()}"))
+            print(color_warning("    Try: python scripts/udp6_relay.py (run manually)"))
+            return
+        except OSError:
+            # Port is already in use → relay is running! 
+            pass
+        
+        UDP6_RELAY_PIDFILE.write_text(json.dumps({"pid": proc.pid, "ports": list(relay_port_map.keys())}))
+        mapping_str = ", ".join(f"{k}->{v}" for k, v in relay_port_map.items())
+        print(color_info(f"[+] UDP6 Relay started (PID {proc.pid}): {mapping_str}"))
+        print(color_info(f"    Log: {log_file}"))
+    except Exception as e:
+        print(color_warning(f"[!] Failed to start UDP6 relay: {e}"))
+        print(color_warning("    Try: python scripts/udp6_relay.py (run manually)"))
+
+def stop_udp6_relay() -> None:
+    """Stop the UDP6 relay if running."""
+    if not UDP6_RELAY_PIDFILE.exists():
+        return
+    try:
+        info = json.loads(UDP6_RELAY_PIDFILE.read_text())
+        pid = info.get("pid")
+        if pid:
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+            else:
+                os.kill(pid, signal.SIGTERM)
+    except Exception:
+        pass
+    finally:
+        try:
+            UDP6_RELAY_PIDFILE.unlink()
+        except Exception:
+            pass
 
 def color_warning(text: str) -> str:
     if not sys.stdout.isatty():
@@ -313,8 +402,11 @@ def main(argv: list[str]) -> int:
             
             print(color_info(f"\n[OK] Services started.\n"))
             print(color_info(f"{env_access_urls(use_ssl)}"))
+            if args.vpn and vpn_proto in ("ipv6", "dual"):
+                start_udp6_relay({53: 1194, 443: 1195})
         elif cmd in {"down"}:
             # print(f"{status_line}\n")
+            stop_udp6_relay()
             run(c + ["down"])
             print("[OK] Services stopped.")
         elif cmd == "restart":
@@ -336,6 +428,8 @@ def main(argv: list[str]) -> int:
             extract_pqc_raw_key(c)
             
             print("[OK] Services restarted.")
+            if args.vpn and vpn_proto in ("ipv6", "dual"):
+                start_udp6_relay({53: 1194, 443: 1195})
         elif cmd == "logs":
             # print(f"{status_line}\n")
             run(c + ["logs", "-f"])
@@ -401,6 +495,8 @@ def main(argv: list[str]) -> int:
             
             print(f"[OK] Rebuilt and started services.\n")
             print(f"{env_access_urls(use_ssl)}")
+            if args.vpn and vpn_proto in ("ipv6", "dual"):
+                start_udp6_relay({53: 1194, 443: 1195})
         elif cmd == "help":
             print(color_info("Crypto Access Management System"))
             print("─" * 50)

@@ -223,7 +223,6 @@ services:
       - /dev/net/tun:/dev/net/tun
     ports:
       - "1194:1194/udp"
-      - "1194:1194/tcp"
     volumes:
       - openvpn_data:/etc/openvpn
     networks:
@@ -244,7 +243,6 @@ services:
       - /dev/net/tun:/dev/net/tun
     ports:
       - "1195:1194/udp"
-      - "1195:1194/tcp"
     volumes:
       - openvpn_standard_data:/etc/openvpn
     networks:
@@ -271,3 +269,8 @@ volumes:
 networks:
   app-network:
     driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+        - subnet: fd00:dead:beef::/48

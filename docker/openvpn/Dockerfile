@@ -19,4 +19,4 @@ COPY gen-client.sh /usr/local/bin/gen-client.sh
 RUN chmod +x /usr/local/bin/init-pqc-pki.sh /etc/openvpn/auth-django.sh /usr/local/bin/gen-client.sh
 
 # The script will initialize PKI if missing, then start OpenVPN
-CMD ["/bin/bash", "-c", "/usr/local/bin/init-pqc-pki.sh && iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j MASQUERADE && openvpn --config /etc/openvpn/server.conf"]
+CMD ["/bin/bash", "-c", "/usr/local/bin/init-pqc-pki.sh && iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j MASQUERADE && ip6tables -t nat -A POSTROUTING -j MASQUERADE && openvpn --config /etc/openvpn/server.conf"]

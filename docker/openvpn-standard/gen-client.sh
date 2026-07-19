@@ -37,13 +37,27 @@ openvpn --tls-crypt-v2 /etc/openvpn/tls-crypt-v2-server.key \
 # 3. Determine proto and remote lines based on VPN_PROTO
 VPN_PROTO=${VPN_PROTO:-"ipv4"}
 
+# Helper: wrap IPv6 address in brackets if needed
+wrap_ipv6() {
+    local addr="$1"
+    if echo "$addr" | grep -q ':'; then
+        # It's an IPv6 address, wrap in brackets
+        echo "[$addr]"
+    else
+        echo "$addr"
+    fi
+}
+
 if [ "$VPN_PROTO" = "ipv6" ]; then
-    PROTO_LINE="proto tcp"
-    REMOTE_LINES="remote ${VPN_PUBLIC_IP_V6:-${DOMAIN_NAME:-cyberfortress.local}} 1195"
+    PROTO_LINE="proto udp6"
+    REMOTE_HOST=$(wrap_ipv6 "${VPN_PUBLIC_IP_V6:-${DOMAIN_NAME:-cyberfortress.local}}")
+    REMOTE_LINES="remote ${REMOTE_HOST} 443"
 elif [ "$VPN_PROTO" = "dual" ]; then
-    PROTO_LINE="proto tcp"
-    REMOTE_LINES="remote ${VPN_PUBLIC_IP:-${DOMAIN_NAME:-cyberfortress.local}} 1195
-remote ${VPN_PUBLIC_IP_V6:-${DOMAIN_NAME:-cyberfortress.local}} 1195"
+    PROTO_LINE="proto udp"
+    REMOTE_HOST_V4="${VPN_PUBLIC_IP:-${DOMAIN_NAME:-cyberfortress.local}}"
+    REMOTE_HOST_V6=$(wrap_ipv6 "${VPN_PUBLIC_IP_V6:-${DOMAIN_NAME:-cyberfortress.local}}")
+    REMOTE_LINES="remote ${REMOTE_HOST_V4} 1195
+remote ${REMOTE_HOST_V6} 443"
 else
     # default: ipv4
     PROTO_LINE="proto udp"

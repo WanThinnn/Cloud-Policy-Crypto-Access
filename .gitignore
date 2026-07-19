@@ -492,6 +492,11 @@ env/
 
 tmp/
 
+# --- UDP6 Relay ---
+.udp6_relay.log
+.udp6_relay.pid
+
+
 
 # --- KEYS ---
 src/config/keys
