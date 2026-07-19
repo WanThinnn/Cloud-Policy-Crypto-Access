@@ -8,7 +8,7 @@ import requests
 from django.conf import settings
 from django.core.cache import cache
 from crypto_access.models import AttributeDefinition, UserType
-
+import os
 logger = logging.getLogger('crypto_access.system')
 
 # JSON Schema for structured output enforcement
@@ -126,10 +126,18 @@ Output: {{"subject_condition": "r.sub.department == 'executive'", "cpabe_policy"
         schema = self._get_attributes_schema()
         system_prompt = self._build_system_prompt(schema)
         
+        
+        keep_alive = os.environ.get('OLLAMA_KEEP_ALIVE', '-1')
+        try:
+            keep_alive = int(keep_alive)
+        except ValueError:
+            pass
+
         response = requests.post(
             f"{self.base_url}/api/chat",
             json={
                 "model": self.model,
+                "keep_alive": keep_alive,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}

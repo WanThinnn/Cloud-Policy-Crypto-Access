@@ -48,6 +48,34 @@ def run(cmd: list[str]) -> None:
 
 def call_setup(script_path: Path) -> None:
     run([sys.executable, str(script_path)])
+def warmup_ai(c: list[str]) -> None:
+    import re
+    import json
+    model = "qwen2.5-coder:3b"
+    keep_alive = "-1"
+    if ENV_FILE.exists():
+        content = ENV_FILE.read_text(encoding="utf-8")
+        m = re.search(r'^OLLAMA_MODEL=(.*)$', content, re.MULTILINE)
+        if m:
+            model = m.group(1).strip()
+        m2 = re.search(r'^OLLAMA_KEEP_ALIVE=(.*)$', content, re.MULTILINE)
+        if m2:
+            keep_alive = m2.group(1).strip()
+            
+    print(color_info(f"\n[*] Warming up AI Model '{model}' in background (preventing first-request freeze)..."))
+    
+    try:
+        keep_alive = int(keep_alive)
+    except ValueError:
+        pass
+        
+    payload = json.dumps({"model": model, "keep_alive": keep_alive})
+    cmd = c + ["exec", "-d", "ollama_server", "curl", "-s", "-X", "POST", "-d", payload, "http://localhost:11434/api/generate"]
+    try:
+        subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
 
 
 def extract_pqc_raw_key(c: list[str]) -> None:
@@ -389,6 +417,8 @@ def main(argv: list[str]) -> int:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
             
             extract_pqc_raw_key(c)
+            if args.ai:
+                warmup_ai(c)
             
             print(color_info(f"\n[OK] Update completed successfully!\n"))
             print(color_info(f"{env_access_urls(use_ssl)}"))
@@ -409,6 +439,8 @@ def main(argv: list[str]) -> int:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
             
             extract_pqc_raw_key(c)
+            if args.ai:
+                warmup_ai(c)
             
             print(color_info(f"\n[OK] Services started.\n"))
             print(color_info(f"{env_access_urls(use_ssl)}"))
@@ -436,6 +468,8 @@ def main(argv: list[str]) -> int:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
             
             extract_pqc_raw_key(c)
+            if args.ai:
+                warmup_ai(c)
             
             print("[OK] Services restarted.")
             if args.vpn and vpn_proto in ("ipv6", "dual"):
@@ -463,6 +497,8 @@ def main(argv: list[str]) -> int:
             run(add_manage_args(c + ["exec", "web", "python", "manage.py", "seed_test_data"], []))
             
             extract_pqc_raw_key(c)
+            if args.ai:
+                warmup_ai(c)
             
             print(color_info("\n[OK] Initialization complete!"))
             super_admin_user = env_vars.get("DJANGO_SUPERUSER_USERNAME", "super_admin")
@@ -538,6 +574,8 @@ def main(argv: list[str]) -> int:
                 print(color_warning("Could not run vault_manager.py. The web container might still be starting."))
             
             extract_pqc_raw_key(c)
+            if args.ai:
+                warmup_ai(c)
             
             print(f"[OK] Rebuilt and started services.\n")
             print(f"{env_access_urls(use_ssl)}")
