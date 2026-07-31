@@ -18,6 +18,10 @@ This major release brings two groundbreaking features: an intelligent AI Policy 
 - **Seamless Backwards Compatibility:** New files are automatically encrypted using the modern `tkn20` scheme. When users attempt to preview or download older files, the system dynamically checks the database (`abe_scheme` field) and routes the decryption request to the correct legacy `ac17` engine without any user intervention.
 - **Blind Index Lookups for File Verification:** Fixed critical bugs related to retrieving `abe_scheme` metadata when database Field Encryption is enabled. The system now utilizes secure blind indexing (`get_db_file_by_path`) to correctly match file paths and route them to the proper decryption scheme.
 
+#### 3. Automated Dependency Management
+- **Dynamic C++ Library Updates:** `start.py update` now queries the GitHub API to dynamically fetch the latest pre-compiled C++ binaries (`libhybrid-pq-cp-abe`) for both Linux and Windows. It automatically extracts and links the `.so`/`.dll` and C++ headers directly into the Django and Vault plugin directories.
+- **Smart Vault Plugin Synchronization:** The update script also automatically clones the latest Vault Go plugin source code, injects the correct local CGO compilation paths on the fly, and rebuilds the Docker container cleanly without any manual developer intervention.
+
 ---
 
 ### How PQC Signature & Passkey Works
@@ -88,7 +92,6 @@ This major release brings two groundbreaking features: an intelligent AI Policy 
 ```bash
 git clone https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
 cd Cloud-Policy-Crypto-Access
-git switch feature/cloud-policy-quantum-access
 python start.py --prod build
 python start.py --prod up
 python start.py --prod initdata
@@ -99,11 +102,13 @@ If you are running the application locally from the source code without pulling 
 ```bash
 git clone https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
 cd Cloud-Policy-Crypto-Access
-git switch feature/cloud-policy-quantum-access
 python start.py build
 python start.py up
 python start.py initdata
 ```
 
-### Non-PQC Version
-If you **do not wish to use the Post-Quantum Cryptography (PQC) features**, please download and use version 1.0.2 instead: https://github.com/WanThinnn/Cloud-Policy-Crypto-Access/releases/tag/v1.0.2
+### Legacy CP-ABE Version (Non-PQC)
+If you **do not wish to use the Post-Quantum Cryptography (PQC) features** and want the pure CP-ABE AC17 version, it is now maintained on the `legacy` branch.
+```bash
+git clone -b legacy https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
+```
