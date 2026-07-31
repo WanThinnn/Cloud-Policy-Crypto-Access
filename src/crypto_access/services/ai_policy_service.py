@@ -126,8 +126,8 @@ class AIPolicyService:
                 "format": POLICY_OUTPUT_SCHEMA,  # Structured output enforcement
                 "stream": False,
                 "options": {
-                    "temperature": 0.1,  # Low temp for determinism
-                    "num_predict": 300   # Limit max tokens to prevent infinite generation
+                    "temperature": 0.1,  # For determinism
+                    "num_predict": 500   # Limit max tokens to prevent infinite generation
                 }
             },
             timeout=120,

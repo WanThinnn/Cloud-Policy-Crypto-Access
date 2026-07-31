@@ -34,11 +34,39 @@ You must strictly adhere to the following rules when generating policies:
 - **Intelligent Mapping**: You MUST intelligently map synonyms and plural forms to existing values under their CORRECT attribute (e.g., "CEOs" -> `role:ceo`, "Executives" -> `department:executive`).
 
 ### 2.4. Parameters Extraction
-Extract `resources`, `action`, and `effect` from the prompt based on the allowed enums.
-- **`resources`**: Output an array of UNIQUE strings (e.g., `["key"]`, NOT `["key", "key"]`).
-- **`action`**: Pick EXACTLY ONE closest matching enum (e.g., `decrypt` -> `decrypt`, `manage` -> `*`).
-- **`effect`**: If the prompt implies "Allow", it MUST be `allow`. Do not let words like "revocation" trick you into outputting "deny".
-- *Fallback*: If not specified in the prompt, default to: `resources=['document']`, `action='read'`, `effect='allow'`.
+Extract `resources`, `action`, and `effect` from the prompt. You MUST use the semantic mapping tables below.
+
+#### Resource Mapping (pick ALL that match from the prompt)
+| Enum Value    | Synonyms / Keywords (if the user says ANY of these, use this value) |
+|---------------|---------------------------------------------------------------------|
+| `document`    | file, document, tài liệu, văn bản, báo cáo, report, attachment    |
+| `key`         | key, encryption key, khóa, master key, MPK, secret key, ABE key    |
+| `user`        | user, account, người dùng, tài khoản, staff, nhân sự, employee    |
+| `policy`      | policy, rule, chính sách, quy tắc, access policy, ABAC policy     |
+| `attribute`   | attribute, thuộc tính, ABAC attribute, user attribute, role        |
+| `audit`       | log, audit, audit log, system log, nhật ký, giám sát, monitor     |
+| `*`           | everything, all resources, toàn bộ, mọi thứ, all                  |
+
+#### Action Mapping (pick EXACTLY ONE closest match)
+| Enum Value | Synonyms / Keywords |
+|------------|---------------------|
+| `read`     | view, read, xem, đọc, preview, access (read-only)                 |
+| `write`    | create, write, tạo, viết, add                                     |
+| `update`   | edit, update, modify, sửa, cập nhật, change                       |
+| `delete`   | delete, remove, xóa, hủy, revoke                                  |
+| `upload`   | upload, tải lên, đăng tải                                          |
+| `download` | download, tải xuống, export, xuất                                  |
+| `encrypt`  | encrypt, mã hóa, encipher                                         |
+| `decrypt`  | decrypt, giải mã, decipher                                        |
+| `*`        | manage, quản lý, full access, toàn quyền, all actions, admin      |
+
+#### Effect
+- If the prompt implies "Allow" / "Grant" / "Cấp quyền", output `allow`.
+- If the prompt implies "Block" / "Deny" / "Chặn" / "Từ chối", output `deny`.
+- Do NOT let words like "revocation" trick you into outputting "deny" when the intent is to allow.
+
+#### Fallback
+If not specified in the prompt, default to: `resources=["document"]`, `action="read"`, `effect="allow"`.
 
 ### 2.5. Language Support
 - The user may input requirements in ANY language (e.g., Vietnamese, Spanish). 
@@ -74,4 +102,11 @@ You must also generate metadata for the policy:
 **Output**: 
 ```json
 {{"subject_condition": "r.sub.data_access == 'advanced' and r.sub.role not in ['intern']", "cpabe_policy": "(data_access:advanced and not role:intern)", "resources": ["document"], "action": "read", "effect": "allow", "explanation": "Cho phép đọc với data_access advanced. Loại trừ thực tập sinh (intern).", "name": "advanced_read_exclude_interns", "description": "Cấp quyền đọc tài liệu cho toàn bộ nhân sự có data_access là advanced, ngoại trừ thực tập sinh.", "priority": 80}}
+```
+
+### Example 4: Non-document Resources & Manage Action
+**Input**: `"Allow managers and directors in the IT department to manage system logs"`
+**Output**: 
+```json
+{{"subject_condition": "r.sub.department == 'it' and r.sub.role in ['manager', 'director']", "cpabe_policy": "(department:it and (role:manager or role:director))", "resources": ["audit"], "action": "*", "effect": "allow", "explanation": "IT managers/directors can manage audit logs.", "name": "it_managers_manage_audit", "description": "Grants IT department managers and directors full access to manage system audit logs.", "priority": 30}}
 ```
