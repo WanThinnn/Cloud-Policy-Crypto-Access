@@ -293,6 +293,39 @@ def should_enable_tunnel(env_vars: dict[str, str]) -> tuple[bool, str]:
 
     return True, ""
 
+def rmtree_robust(path: Path) -> None:
+    if not path.exists():
+        return
+    if sys.platform == "win32":
+        subprocess.run(["cmd", "/c", "rmdir", "/s", "/q", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        subprocess.run(["rm", "-rf", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def update_vault_plugin() -> None:
+    tmp_dir = REPO_ROOT / "tmp_plugin_repo"
+    rmtree_robust(tmp_dir)
+    try:
+        run(["git", "clone", "--depth", "1", "https://github.com/WanThinnn/Hybrid-PQ-CP-ABE-Library.git", str(tmp_dir)])
+        src_go = tmp_dir / "src" / "go" / "vault-plugin-abe"
+        target_dir = REPO_ROOT / "src" / "vault-plugin"
+        if src_go.exists() and target_dir.exists():
+            for item in src_go.iterdir():
+                dest = target_dir / item.name
+                if item.is_dir():
+                    rmtree_robust(dest)
+                    shutil.copytree(item, dest)
+                else:
+                    if dest.exists():
+                        dest.unlink()
+                    shutil.copy2(item, dest)
+            print(color_info("    [OK] Vault Plugin updated successfully."))
+        else:
+            print(color_warning("    [!] Source or target directory not found."))
+    except Exception as e:
+        print(color_warning(f"    [!] Failed to update Vault Plugin: {e}"))
+    finally:
+        rmtree_robust(tmp_dir)
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-h', '--help', action='store_true', help='Show this help message and exit')
@@ -389,19 +422,22 @@ def main(argv: list[str]) -> int:
             print(color_info("Next: "))
             print("  python start.py up")
         elif cmd == "update":
-            print(color_info("\n[1/3] Pulling latest code from git..."))
+            print(color_info("\n[1/4] Pulling latest code from git..."))
             try:
                 run(["git", "pull"])
             except subprocess.CalledProcessError:
                 print(color_warning("Failed to git pull. Please check your git status."))
                 return 1
             
-            print(color_info("\n[2/3] Pulling and building latest Docker images..."))
+            print(color_info("\n[2/4] Pulling latest Vault Plugin code..."))
+            update_vault_plugin()
+            
+            print(color_info("\n[3/4] Pulling and building latest Docker images..."))
             if args.prod:
                 run(c + ["pull"])
             run(c + ["build"])
             
-            print(color_info("\n[3/3] Restarting containers..."))
+            print(color_info("\n[4/4] Restarting containers..."))
             run(c + ["up", "-d"])
             print(color_info(f"\n[+] Waiting for Vault to start and running Auto-Unseal..."))
             import time
