@@ -1,13 +1,13 @@
 # Hybrid CP-ABE Library
 Hybrid Ciphertext Policy Attribute Based Encryption Library for C/C++ in Windows/Linux
 
-Note: please go to [Hybrid-CP-ABE-Library](https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git) to see more details.
+Note: please go to [Hybrid-CP-ABE-Library](https://github.com/WanThinnn/Hybrid-PQ-CP-ABE-Library.git) to see more details.
 
 ## Prerequisites
 
 - [CryptoPP Library](https://github.com/weidai11/cryptopp)
 - [CP-ABE AC17 Scheme](https://eprint.iacr.org/2017/807)
-- [Rabe-ffi](https://github.com/Aya0wind/Rabe-ffi)
+- [Rabe-ffi](https://github.com/WanThinnn/librabe-ffi.git)
 
 
 ## License

@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
-	abe "vault-plugin-abe/plugin"
+	abe "github.com/WanThinnn/vault-plugin-abe/plugin"
 )
 
 func main() {

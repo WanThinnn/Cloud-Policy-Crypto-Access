@@ -1,4 +1,4 @@
-module vault-plugin-abe
+module github.com/WanThinnn/vault-plugin-abe
 
 go 1.25.7
 

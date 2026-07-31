@@ -318,6 +318,16 @@ def update_vault_plugin() -> None:
                     if dest.exists():
                         dest.unlink()
                     shutil.copy2(item, dest)
+            
+            # Patch CGO include paths
+            plugin_dir = target_dir / "plugin"
+            if plugin_dir.exists():
+                for go_file in plugin_dir.glob("*.go"):
+                    content = go_file.read_text(encoding="utf-8")
+                    if "-I../../../cpp/include" in content:
+                        content = content.replace("-I../../../cpp/include", "-I../include")
+                        go_file.write_text(content, encoding="utf-8")
+
             print(color_info("    [OK] Vault Plugin updated successfully."))
         else:
             print(color_warning("    [!] Source or target directory not found."))
@@ -325,6 +335,88 @@ def update_vault_plugin() -> None:
         print(color_warning(f"    [!] Failed to update Vault Plugin: {e}"))
     finally:
         rmtree_robust(tmp_dir)
+
+def update_cpp_libs() -> None:
+    import urllib.request
+    import zipfile
+    import tempfile
+    
+    print(color_info("    [*] Downloading C++ Hybrid-PQ-CP-ABE libs..."))
+    
+    import json
+    
+    print(color_info("    [*] Fetching latest release info for Hybrid-PQ-CP-ABE-Library..."))
+    api_url = "https://api.github.com/repos/WanThinnn/Hybrid-PQ-CP-ABE-Library/releases/latest"
+    
+    files = {}
+    try:
+        req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            version = data.get("tag_name", "v5.2.0")
+            print(color_info(f"    [*] Found latest version: {version}"))
+            
+            for asset in data.get("assets", []):
+                name = asset.get("name", "").lower()
+                if name.endswith(".zip"):
+                    if "linux" in name:
+                        files["linux"] = (asset.get("name"), asset.get("browser_download_url"))
+                    elif "win" in name:
+                        files["win"] = (asset.get("name"), asset.get("browser_download_url"))
+    except Exception as e:
+        print(color_warning(f"    [!] Failed to get latest release info: {e}. Falling back to v5.2.0"))
+        version = "v5.2.0"
+        
+    if not files:
+        base_url = f"https://github.com/WanThinnn/Hybrid-PQ-CP-ABE-Library/releases/download/{version}/"
+        files = {
+            "linux": (f"libhybrid-pq-cp-abe_linux_x86_64_{version}.zip", base_url + f"libhybrid-pq-cp-abe_linux_x86_64_{version}.zip"),
+            "win": (f"libhybrid-pq-cp-abe_win_x86_64_{version}.zip", base_url + f"libhybrid-pq-cp-abe_win_x86_64_{version}.zip")
+        }
+    
+    src_lib_dir = REPO_ROOT / "src" / "lib"
+    vault_plugin_dir = REPO_ROOT / "src" / "vault-plugin"
+    
+    rmtree_robust(vault_plugin_dir / "include")
+    rmtree_robust(vault_plugin_dir / "lib")
+    
+    for os_type, (filename, url) in files.items():
+        print(color_info(f"        -> Fetching {filename}..."))
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req) as response:
+                with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                    shutil.copyfileobj(response, tmp_file)
+                    tmp_file_path = tmp_file.name
+            
+            with zipfile.ZipFile(tmp_file_path) as z:
+                # Find root folder (first item in zip might be the folder itself)
+                root_folder = z.namelist()[0].split('/')[0]
+                for member in z.namelist():
+                    if member.startswith(f"{root_folder}/lib/") and not member.endswith('/'):
+                        dest_path = src_lib_dir / Path(member).name
+                        with z.open(member) as source, open(dest_path, "wb") as f:
+                            shutil.copyfileobj(source, f)
+                            
+                    if os_type == "linux":
+                        if member.startswith(f"{root_folder}/include/") and not member.endswith('/'):
+                            rel_path = member[len(f"{root_folder}/"):]
+                            dest_path = vault_plugin_dir / rel_path
+                            dest_path.parent.mkdir(parents=True, exist_ok=True)
+                            with z.open(member) as source, open(dest_path, "wb") as f:
+                                shutil.copyfileobj(source, f)
+                        if member.startswith(f"{root_folder}/lib/") and not member.endswith('/'):
+                            rel_path = member[len(f"{root_folder}/"):]
+                            dest_path = vault_plugin_dir / rel_path
+                            dest_path.parent.mkdir(parents=True, exist_ok=True)
+                            with z.open(member) as source, open(dest_path, "wb") as f:
+                                shutil.copyfileobj(source, f)
+            try:
+                Path(tmp_file_path).unlink()
+            except OSError:
+                pass
+        except Exception as e:
+            print(color_warning(f"    [!] Failed to process {filename}: {e}"))
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(add_help=False)
@@ -422,22 +514,25 @@ def main(argv: list[str]) -> int:
             print(color_info("Next: "))
             print("  python start.py up")
         elif cmd == "update":
-            print(color_info("\n[1/4] Pulling latest code from git..."))
+            print(color_info("\n[1/5] Pulling latest code from git..."))
             try:
                 run(["git", "pull"])
             except subprocess.CalledProcessError:
                 print(color_warning("Failed to git pull. Please check your git status."))
                 return 1
             
-            print(color_info("\n[2/4] Pulling latest Vault Plugin code..."))
+            print(color_info("\n[2/5] Pulling latest Vault Plugin code..."))
             update_vault_plugin()
             
-            print(color_info("\n[3/4] Pulling and building latest Docker images..."))
+            print(color_info("\n[3/5] Pulling latest C++ libraries..."))
+            update_cpp_libs()
+            
+            print(color_info("\n[4/5] Pulling and building latest Docker images..."))
             if args.prod:
                 run(c + ["pull"])
             run(c + ["build"])
             
-            print(color_info("\n[4/4] Restarting containers..."))
+            print(color_info("\n[5/5] Restarting containers..."))
             run(c + ["up", "-d"])
             print(color_info(f"\n[+] Waiting for Vault to start and running Auto-Unseal..."))
             import time
