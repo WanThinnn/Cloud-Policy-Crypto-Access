@@ -2,6 +2,9 @@
 
 A comprehensive enterprise-grade file storage system implementing **Hybrid Ciphertext-Policy Attribute-Based Encryption (CP-ABE)** integrated with **Supabase**, providing highly secure file management, multi-layer Attribute-Based Access Control (ABAC), and high-performance caching.
 
+> [!NOTE]
+> **PQC Only Repository:** This `main` branch exclusively supports Post-Quantum Cryptography (PQC) features. The legacy CP-ABE only version is maintained in the `legacy` branch.
+
 > [!WARNING]
 > **Post-Quantum TLS Requirement:** This system strictly enforces **Hybrid ML-KEM-768 (Kyber)** key exchange and **ML-DSA-87** certificates. You **MUST use Chrome or Edge version 150+** to successfully complete the TLS handshake. Older browsers or browsers without ML-DSA support will fail to connect.
 > 
@@ -124,7 +127,6 @@ Follow these instructions to deploy the system from scratch on a brand new machi
 # Clone this main repository
 git clone https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
 cd Cloud-Policy-Crypto-Access
-git switch feature/cloud-policy-quantum-access
 
 ```
 *Note: The required C++ cryptography library (`libhybrid-cp-abe` v4.0.0) is already included in the `src/lib/` directory of this repository by default. You only need to visit the [Hybrid-CP-ABE-Library repository](https://github.com/WanThinnn/Hybrid-CP-ABE-Library.git) if you wish to compile or update to a newer version.*
