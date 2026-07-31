@@ -33,7 +33,7 @@ from ..serializers.storage import (
     AssignPolicyToFileSerializer,
     PolicyListForAssignmentSerializer
 )
-from ..services.storage_service import get_storage_service
+from ..services.storage.factory import get_storage_service
 from ..services.cpabe_service import cpabe_service
 from ..services.casbin_service import casbin_service
 from ..throttles import CPABEDecryptThrottle, CPABEEncryptThrottle

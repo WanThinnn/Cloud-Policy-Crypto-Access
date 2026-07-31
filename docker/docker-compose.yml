@@ -13,7 +13,7 @@ services:
              gunicorn config.wsgi:application -c gunicorn.conf.py"
     volumes:
       - ./src:/app
-      - /app/lib # Thêm dòng này để Docker sử dụng file .so bên trong image thay vì đọc từ Windows sang
+      - /app/lib
       - ./docs:/docs
       - ./logs:/app/logs
       - ./config:/config:ro
@@ -26,6 +26,7 @@ services:
       - ./scripts/vault_manager.py:/app/vault_manager.py:ro
       - ./src/crypto_access/migrations:/app/crypto_access/migrations
       - vault_plugins:/vault/plugins:ro
+      - local_media_volume:/app/media
     tmpfs:
       - /tmp
 
@@ -66,18 +67,18 @@ services:
     restart: unless-stopped
 
   # Optional PostgreSQL Database
-  # db:
-  #   image: postgres:15-alpine
-  #   container_name: postgres_db
-  #   environment:
-  #     - POSTGRES_USER=crypto_user
-  #     - POSTGRES_PASSWORD=crypto_pass
-  #     - POSTGRES_DB=crypto_db
-  #   volumes:
-  #     - postgres_volume:/var/lib/postgresql/data
-  #   networks:
-  #     - app-network
-  #   restart: unless-stopped
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      - POSTGRES_USER=crypto_user
+      - POSTGRES_PASSWORD=crypto_pass
+      - POSTGRES_DB=crypto_db
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
 
   vault:
     build:
@@ -137,9 +138,9 @@ services:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
+              capabilities: [ gpu ]
     healthcheck:
-      test: ["CMD", "ollama", "list"]
+      test: [ "CMD", "ollama", "list" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -333,12 +334,14 @@ services:
 volumes:
   static_volume:
   sqlite_volume:
+  postgres_volume:
   keys_volume:
   vault_data:
   vault_plugins:
   openvpn_data:
   openvpn_standard_data:
   ollama_data:
+  local_media_volume:
 
 networks:
   app-network:

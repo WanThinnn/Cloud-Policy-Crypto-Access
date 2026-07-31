@@ -2,7 +2,7 @@
 FROM ubuntu:24.04 AS builder
 
 RUN apt-get update && apt-get install -y \
-    build-essential cmake libssl-dev wget golang-go unzip
+    build-essential cmake libssl-dev wget golang-go unzip libcrypto++-dev
 
 WORKDIR /app/src/vault-plugin
 
@@ -20,7 +20,7 @@ RUN go build -o build/vault-plugin-abe cmd/vault-plugin-abe/main.go
 FROM ubuntu:24.04
 
 # Install necessary libraries and utilities
-RUN apt-get update && apt-get install -y wget unzip libcap2-bin ca-certificates \
+RUN apt-get update && apt-get install -y wget unzip libcap2-bin ca-certificates libcrypto++8t64 \
     && rm -rf /var/lib/apt/lists/*
 
 # Download Vault binary directly to avoid Debian package interference (like background services or default configs)

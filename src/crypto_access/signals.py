@@ -316,7 +316,7 @@ def handle_uploaded_file_deletion(sender, instance, **kwargs):
     the UploadedFile database record is deleted (avoid Storage Leak).
     """
     from .models import UploadedFile
-    from .services.storage_service import get_storage_service
+    from .services.storage.factory import get_storage_service
     
     if sender != UploadedFile:
         return

@@ -504,6 +504,8 @@ src/config/keys
 
 !src/lib/libhybrid-cp-abe.so
 !src/lib/libhybrid-pq-cp-abe.so
+!src/vault-plugin/lib/libhybrid-pq-cp-abe.so
+!src/vault-plugin/lib/libhybrid-pq-cp-abe.a
 
 LMS_Templates
 

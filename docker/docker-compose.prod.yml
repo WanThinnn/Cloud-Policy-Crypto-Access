@@ -40,6 +40,7 @@ services:
       - ./config:/config:ro
       - ${CERTS_DIR:-./config/certs}:/certs:ro
       - static_volume:/app/staticfiles
+      - local_media_volume:/app/media
       - ./scripts/gunicorn.conf.py:/app/gunicorn.conf.py:ro
       - ./scripts/init_data.py:/app/init_data.py:ro
       - ./scripts/vault_manager.py:/app/vault_manager.py:ro
@@ -58,6 +59,20 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Optional PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      - POSTGRES_USER=crypto_user
+      - POSTGRES_PASSWORD=crypto_pass
+      - POSTGRES_DB=crypto_db
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
 
   crypto-redis:
     image: redis:7-alpine
@@ -309,6 +324,8 @@ volumes:
     name: sqlite_volume
   static_volume:
     name: static_volume
+  postgres_volume:
+    name: postgres_volume
   keys_volume:
     name: keys_volume
   vault_data:
@@ -321,6 +338,8 @@ volumes:
     name: openvpn_standard_data
   ollama_data:
     name: ollama_data
+  local_media_volume:
+    name: local_media_volume
 
 networks:
   app-network:

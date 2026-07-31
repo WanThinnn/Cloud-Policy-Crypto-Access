@@ -328,6 +328,12 @@ def update_vault_plugin() -> None:
                         content = content.replace("-I../../../cpp/include", "-I../include")
                         go_file.write_text(content, encoding="utf-8")
 
+            # Also copy the C++ headers that the plugin relies on
+            src_cpp_include = tmp_dir / "src" / "cpp" / "include"
+            dest_include = target_dir / "include"
+            if src_cpp_include.exists():
+                shutil.copytree(src_cpp_include, dest_include, dirs_exist_ok=True)
+
             print(color_info("    [OK] Vault Plugin updated successfully."))
         else:
             print(color_warning("    [!] Source or target directory not found."))
@@ -521,11 +527,11 @@ def main(argv: list[str]) -> int:
                 print(color_warning("Failed to git pull. Please check your git status."))
                 return 1
             
-            print(color_info("\n[2/5] Pulling latest Vault Plugin code..."))
-            update_vault_plugin()
-            
-            print(color_info("\n[3/5] Pulling latest C++ libraries..."))
+            print(color_info("\n[2/5] Pulling latest C++ libraries..."))
             update_cpp_libs()
+            
+            print(color_info("\n[3/5] Pulling latest Vault Plugin code..."))
+            update_vault_plugin()
             
             print(color_info("\n[4/5] Pulling and building latest Docker images..."))
             if args.prod:
@@ -662,6 +668,10 @@ def main(argv: list[str]) -> int:
             ans_v_keys = input("  3. Remove Keys and Vault volumes? [y/N]: ")
             ans_v_vpn = input("  4. Remove VPN volumes? [y/N]: ")
             
+            ans_v_media = 'n'
+            if env_vars.get("STORAGE_VENDOR", "supabase") == "local_disk":
+                ans_v_media = input("  5. Remove Local Media (File Storage) volume? [y/N]: ")
+            
             ans_p = input("\nPrune unused system resources (dangling images/networks)? [y/N]: ")
             
             if ans_c.lower() == 'y':
@@ -671,13 +681,15 @@ def main(argv: list[str]) -> int:
             project_name = "cloud-policy-crypto-access"
             vols_to_remove = []
             if ans_v_db.lower() == 'y':
-                vols_to_remove.extend([f"{project_name}_sqlite_volume"])
+                vols_to_remove.extend([f"{project_name}_sqlite_volume", f"{project_name}_postgres_volume"])
             if ans_v_ai.lower() == 'y':
                 vols_to_remove.extend([f"{project_name}_ollama_data"])
             if ans_v_keys.lower() == 'y':
                 vols_to_remove.extend([f"{project_name}_keys_volume", f"{project_name}_vault_data", f"{project_name}_vault_plugins"])
             if ans_v_vpn.lower() == 'y':
                 vols_to_remove.extend([f"{project_name}_openvpn_data", f"{project_name}_openvpn_standard_data"])
+            if ans_v_media.lower() == 'y':
+                vols_to_remove.extend([f"{project_name}_local_media_volume"])
                 
             if vols_to_remove:
                 for vol in vols_to_remove:
