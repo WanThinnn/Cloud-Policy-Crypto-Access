@@ -327,25 +327,25 @@ services:
       - vpn
 volumes:
   sqlite_volume:
-    name: sqlite_volume
+    name: cloud-policy-quantum-access_sqlite_volume
   static_volume:
-    name: static_volume
+    name: cloud-policy-quantum-access_static_volume
   postgres_volume:
-    name: postgres_volume
+    name: cloud-policy-quantum-access_postgres_volume
   keys_volume:
-    name: keys_volume
+    name: cloud-policy-quantum-access_keys_volume
   vault_data:
-    name: vault_data
+    name: cloud-policy-quantum-access_vault_data
   vault_plugins:
-    name: vault_plugins
+    name: cloud-policy-quantum-access_vault_plugins
   openvpn_data:
-    name: openvpn_data
+    name: cloud-policy-quantum-access_openvpn_data
   openvpn_standard_data:
-    name: openvpn_standard_data
+    name: cloud-policy-quantum-access_openvpn_standard_data
   ollama_data:
-    name: ollama_data
+    name: cloud-policy-quantum-access_ollama_data
   local_media_volume:
-    name: local_media_volume
+    name: cloud-policy-quantum-access_local_media_volume
 
 networks:
   app-network:
