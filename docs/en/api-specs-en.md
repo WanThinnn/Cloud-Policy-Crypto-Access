@@ -1,6 +1,6 @@
 # API Specifications & Workflows
 
-This document describes how the **Cloud-Policy-Crypto-Access** system operates, the authentication flow, the security architecture (CP-ABE combined with ABAC), and the list of main REST API endpoints.
+This document describes how the **Cloud-Policy-Quantum-Access** system operates, the authentication flow, the security architecture (CP-ABE combined with ABAC), and the list of main REST API endpoints.
 
 ## 1. Core Workflows
 

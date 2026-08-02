@@ -94,8 +94,8 @@ This major release brings two groundbreaking features: an intelligent AI Policy 
 
 ### Quick Start
 ```bash
-git clone https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
-cd Cloud-Policy-Crypto-Access
+git clone https://github.com/WanThinnn/Cloud-Policy-Quantum-Access.git
+cd Cloud-Policy-Quantum-Access
 python start.py --prod build
 python start.py --prod up
 python start.py --prod initdata
@@ -104,8 +104,8 @@ python start.py --prod initdata
 If you are running the application locally from the source code without pulling the pre-built Docker images, you can omit the `--prod` flag:
 
 ```bash
-git clone https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
-cd Cloud-Policy-Crypto-Access
+git clone https://github.com/WanThinnn/Cloud-Policy-Quantum-Access.git
+cd Cloud-Policy-Quantum-Access
 python start.py build
 python start.py up
 python start.py initdata
@@ -114,5 +114,5 @@ python start.py initdata
 ### Legacy CP-ABE Version (Non-PQC)
 If you **do not wish to use the Post-Quantum Cryptography (PQC) features** and want the pure CP-ABE AC17 version, it is now maintained on the `legacy` branch.
 ```bash
-git clone -b legacy https://github.com/WanThinnn/Cloud-Policy-Crypto-Access.git
+git clone -b legacy https://github.com/WanThinnn/Cloud-Policy-Quantum-Access.git
 ```

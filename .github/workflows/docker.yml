@@ -46,8 +46,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            wanthinnn/cloud-policy-crypto-access:${{ steps.get_version.outputs.version }}
-            wanthinnn/cloud-policy-crypto-access:${{ steps.get_version.outputs.alias }}
+            wanthinnn/cloud-policy-quantum-access:${{ steps.get_version.outputs.version }}
+            wanthinnn/cloud-policy-quantum-access:${{ steps.get_version.outputs.alias }}
           cache-from: type=gha,scope=django
           cache-to: type=gha,mode=max,scope=django
 

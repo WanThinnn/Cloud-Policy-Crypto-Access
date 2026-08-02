@@ -1,4 +1,4 @@
-name: cloud-policy-crypto-access
+name: cloud-policy-quantum-access
 services:
   web:
     platform: linux/amd64

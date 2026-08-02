@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Cloud-Policy-Crypto-Access Release Script
+# Cloud-Policy-Quantum-Access Release Script
 # Usage: ./scripts/release.sh <version>
 # Example: ./scripts/release.sh 1.1.0
 # =============================================================================
@@ -86,7 +86,7 @@ git push origin "${TAG}"
 echo ""
 echo -e "${GREEN}=== Release ${TAG} completed! ===${NC}"
 echo -e "GitHub Actions will now:"
-echo -e "  - Build Docker image wanthinnn/cloud-policy-crypto-access:${VERSION} (multi-platform: amd64, arm64)"
+echo -e "  - Build Docker image wanthinnn/cloud-policy-quantum-access:${VERSION} (multi-platform: amd64, arm64)"
 echo -e "  - Push 'latest' (for v1.x) or 'pqc-latest' (for v2.x) and version tags to Docker Hub"
 echo ""
-echo -e "Check progress at: ${BLUE}https://github.com/WanThinnn/Cloud-Policy-Crypto-Access/actions${NC}"
+echo -e "Check progress at: ${BLUE}https://github.com/WanThinnn/Cloud-Policy-Quantum-Access/actions${NC}"
