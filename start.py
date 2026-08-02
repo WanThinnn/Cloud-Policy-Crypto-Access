@@ -678,7 +678,11 @@ def main(argv: list[str]) -> int:
                 run(c + ["down"])
                 print("[OK] Containers stopped and removed.")
                 
-            project_name = "cloud-policy-crypto-access"
+            # Dynamically extract project name from docker-compose.yml to avoid hardcoding errors
+            import re
+            compose_content = (REPO_ROOT / "docker" / "docker-compose.yml").read_text(encoding='utf-8')
+            project_name_match = re.search(r'^name:\s*([^\s]+)', compose_content, re.MULTILINE)
+            project_name = project_name_match.group(1).strip() if project_name_match else "cloud-policy-crypto-access"
             vols_to_remove = []
             if ans_v_db.lower() == 'y':
                 vols_to_remove.extend([f"{project_name}_sqlite_volume", f"{project_name}_postgres_volume"])
