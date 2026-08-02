@@ -19,12 +19,7 @@ jobs:
         run: |
           VERSION_NUM=$(cat VERSION | tr -d '[:space:]')
           echo "version=$VERSION_NUM" >> $GITHUB_OUTPUT
-          
-          if [[ "${{ github.ref_name }}" == "feature/cloud-policy-quantum-access" ]] || [[ "$VERSION_NUM" == 2.* ]]; then
-            echo "alias=pqc-latest" >> $GITHUB_OUTPUT
-          else
-            echo "alias=latest" >> $GITHUB_OUTPUT
-          fi
+          echo "alias=latest" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2

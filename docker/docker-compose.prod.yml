@@ -2,7 +2,7 @@ name: cloud-policy-quantum-access
 services:
   web:
     platform: linux/amd64
-    image: wanthinnn/cloud-policy-quantum-access:pqc-latest
+    image: wanthinnn/cloud-policy-quantum-access:latest
     container_name: crypto_web
     env_file:
       - .env
