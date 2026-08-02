@@ -25,12 +25,26 @@ database_url = os.environ.get('DATABASE_URL')
 if not database_url:
     raise ValueError("DATABASE_URL environment variable is not set!")
 
+# Smart SSL configuration:
+# 1. Default to True for Postgres (secure by default for cloud)
+# 2. Can be bypassed via DB_REQUIRE_SSL=False in .env (for users not familiar with TLS)
+# 3. Can be overridden via URL parameters (?sslmode=disable or ?sslmode=require)
+db_require_ssl_env = os.environ.get('DB_REQUIRE_SSL', 'True').lower() == 'true'
+ssl_require = False
+
+if database_url.startswith('postgres'):
+    ssl_require = db_require_ssl_env
+    if 'sslmode=disable' in database_url:
+        ssl_require = False
+    elif 'sslmode=require' in database_url:
+        ssl_require = True
+
 DATABASES = {
     'default': dj_database_url.parse(
         database_url,
         conn_max_age=600,
         conn_health_checks=True,
-        ssl_require=database_url.startswith('postgres'),  # Only require SSL for Postgres (Supabase)
+        ssl_require=ssl_require,
     )
 }
 

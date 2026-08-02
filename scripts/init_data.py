@@ -87,9 +87,18 @@ def init():
         }
     )
     if created:
-        print("Created default StorageBucket: 'documents'")
+        print("Created default StorageBucket record: 'documents'")
     else:
-        print("StorageBucket 'documents' already exists.")
+        print("StorageBucket record 'documents' already exists.")
+        
+    # Also attempt to physically create the bucket on the storage provider
+    try:
+        from crypto_access.services.storage import get_storage_service
+        storage = get_storage_service()
+        storage.create_bucket('documents', public=False)
+        print("Physically created bucket 'documents' on the storage provider (if it didn't exist).")
+    except Exception as e:
+        print(f"Note: Could not physically create bucket (it may already exist or lack permissions): {e}")
 
     print("Data Initialization Complete.")
 

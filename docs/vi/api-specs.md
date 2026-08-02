@@ -28,7 +28,7 @@ Mỗi tài nguyên file (Upload) trong hệ thống đều trải qua 2 tầng b
 Ngoài việc bảo vệ nội dung file, hệ thống còn chống rò rỉ dữ liệu từ cấu trúc bảng SQL:
 - **AES-256-GCM Field Encryption**: Các cột nhạy cảm trong CSDL (Tên file gốc, Metadata, Signed URL, Đường dẫn vật lý) đều bị mã hóa trước khi ghi.
 - **HMAC-SHA3-256 Blind Indexing**: Hỗ trợ tìm kiếm an toàn trên các cột đã mã hóa (ví dụ: tìm kiếm theo tên file hoặc hash) mà không làm rò rỉ văn bản gốc.
-- **Che giấu đường dẫn (Obfuscation)**: Tên file vật lý lưu trên Cloud Storage (Supabase) là chuỗi UUID ngẫu nhiên, hoàn toàn không mang ý nghĩa nghiệp vụ.
+- **Che giấu đường dẫn (Obfuscation)**: Tên file vật lý lưu trên Cloud Storage (Supabase, S3, GCS hoặc Local) là chuỗi UUID ngẫu nhiên, hoàn toàn không mang ý nghĩa nghiệp vụ.
 - **Auto-Extract Metadata**: Khi upload, hệ thống tự động gom IP, User-Agent, thông tin uploader, file size, MIME type và mã hóa toàn bộ cục JSON metadata này.
 - **Post-Quantum TLS 1.3 (ML-KEM)**: Mọi kết nối từ Client tới API đều được truyền qua Reverse Proxy Nginx với cơ chế trao đổi khóa Hậu Lượng Tử (Hybrid X25519MLKEM768), chống lại hoàn toàn rủi ro thu thập gói tin để giải mã bằng máy tính lượng tử.
 
@@ -78,7 +78,7 @@ Prefix: `/api/storage/`
 | Phương thức | Endpoint | Mô tả | Yêu cầu Auth |
 | ----------- | -------- | ----- | ------------ |
 | GET/POST | `/buckets/` | Quản lý Storage Buckets (Kho lưu trữ logic để nhóm file). | Có |
-| GET/POST | `/files/` | API chính xử lý Upload File. Dữ liệu POST bao gồm `file` và `policy` (Chính sách CP-ABE mong muốn). Dữ liệu Plaintext (chưa mã hóa) sẽ được đưa vào cơ chế quét mã độc **Từ chối sớm đồng bộ (Synchronous Early-Rejection)** của ClamAV. Nếu phát hiện mã độc, tiến trình upload bị hủy ngay lập tức (HTTP 400). Nếu an toàn, file sẽ được băm (hashing chunk) và mã hóa AES, khóa AES mã hóa CP-ABE trước khi lưu. Đồng thời, các thông tin metadata, tên file và đường dẫn cũng được tự động trích xuất và mã hóa bằng AES-256-GCM trước khi lưu xuống SQL. | Có |
+| GET/POST | `/files/` | API chính xử lý Upload File. Dữ liệu POST bao gồm `file` và `policy` (Chính sách CP-ABE mong muốn). Dữ liệu Plaintext (chưa mã hóa) sẽ được đưa vào cơ chế quét mã độc **Từ chối sớm đồng bộ (Synchronous Early-Rejection)** của ClamAV. Nếu phát hiện mã độc, tiến trình upload bị hủy ngay lập tức (HTTP 400). Nếu an toàn, file sẽ được băm (hashing chunk) và mã hóa AES, khóa AES mã hóa CP-ABE trước khi lưu vào Cloud Storage đã cấu hình (Supabase/S3/GCS/Local). Đồng thời, các thông tin metadata, tên file và đường dẫn cũng được tự động trích xuất và mã hóa bằng AES-256-GCM trước khi lưu xuống SQL. | Có |
 | GET | `/files/{id}/` | Lấy metadata của file. | Có |
 | GET | `/files/{id}/download/` | Yêu cầu tải nội dung file. Hệ thống thực hiện check ABAC -> sinh khóa CP-ABE (nếu chưa cache) -> giải mã -> trả về stream data. | Có |
 | DELETE | `/files/{id}/` | Xóa mềm file (đưa vào Thùng rác). Xóa cứng (Permanent delete) chỉ dành cho Admin/Owner. | File Owner/Admin |

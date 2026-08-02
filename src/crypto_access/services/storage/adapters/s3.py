@@ -23,8 +23,14 @@ class S3StorageAdapter(IStorageService):
             
         self.aws_access_key = getattr(settings, 'AWS_ACCESS_KEY_ID', None) or os.environ.get('AWS_ACCESS_KEY_ID')
         self.aws_secret_key = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None) or os.environ.get('AWS_SECRET_ACCESS_KEY')
-        self.endpoint_url = getattr(settings, 'AWS_S3_ENDPOINT_URL', None) or os.environ.get('AWS_S3_ENDPOINT_URL')
         self.region = getattr(settings, 'AWS_S3_REGION_NAME', None) or os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+        
+        # endpoint_url: set for MinIO/compatible, leave blank/None for real AWS
+        endpoint_url = getattr(settings, 'AWS_S3_ENDPOINT_URL', None) or os.environ.get('AWS_S3_ENDPOINT_URL')
+        self.endpoint_url = endpoint_url.strip() if endpoint_url else None
+        # Treat empty string as None (real AWS)
+        if not self.endpoint_url:
+            self.endpoint_url = None
         
         if not self.aws_access_key or not self.aws_secret_key:
             raise ValueError("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set for S3StorageAdapter")
@@ -61,6 +67,11 @@ class S3StorageAdapter(IStorageService):
             logger.info(f"Bucket '{bucket_name}' created successfully in S3")
             return {"name": bucket_name}
         except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code')
+            if error_code in ('BucketAlreadyOwnedByYou', 'BucketAlreadyExists'):
+                logger.info(f"Bucket '{bucket_name}' already exists in S3")
+                return {"name": bucket_name}
+            
             logger.error(f"Failed to create bucket '{bucket_name}' in S3: {e}")
             raise
 
@@ -86,12 +97,24 @@ class S3StorageAdapter(IStorageService):
             if content_type:
                 extra_args['ContentType'] = content_type
                 
-            self.s3_client.put_object(
-                Bucket=bucket_name,
-                Key=file_path,
-                Body=file_data,
-                **extra_args
-            )
+            def do_upload():
+                self.s3_client.put_object(
+                    Bucket=bucket_name,
+                    Key=file_path,
+                    Body=file_data,
+                    **extra_args
+                )
+                
+            try:
+                do_upload()
+            except ClientError as e:
+                error_code = e.response.get('Error', {}).get('Code')
+                if error_code == 'NoSuchBucket':
+                    logger.info(f"Bucket '{bucket_name}' not found. Creating it automatically...")
+                    self.create_bucket(bucket_name)
+                    do_upload()
+                else:
+                    raise e
             
             logger.info(f"File uploaded to S3: {bucket_name}/{file_path}")
             return {"path": file_path, "size": len(file_data)}

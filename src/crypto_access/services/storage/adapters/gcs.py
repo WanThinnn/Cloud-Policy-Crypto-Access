@@ -6,7 +6,7 @@ from ..interface import IStorageService
 
 try:
     from google.cloud import storage
-    from google.api_core.exceptions import GoogleAPIError
+    from google.api_core.exceptions import GoogleAPIError, NotFound, Conflict
 except ImportError:
     storage = None
 
@@ -22,13 +22,27 @@ class GCSStorageAdapter(IStorageService):
             raise ImportError("google-cloud-storage is required for GCSStorageAdapter. Install with 'pip install google-cloud-storage'")
             
         # For emulator usage (e.g. fsouza/fake-gcs-server)
-        self.emulator_host = getattr(settings, 'STORAGE_EMULATOR_HOST', None) or os.environ.get('STORAGE_EMULATOR_HOST')
-        if self.emulator_host:
-            os.environ['STORAGE_EMULATOR_HOST'] = self.emulator_host
-            
+        emulator_host = getattr(settings, 'STORAGE_EMULATOR_HOST', None) or os.environ.get('STORAGE_EMULATOR_HOST')
+        self.emulator_host = emulator_host.strip() if emulator_host else None
+        if not self.emulator_host:
+            self.emulator_host = None
         project = getattr(settings, 'GCP_PROJECT_ID', None) or os.environ.get('GCP_PROJECT_ID', 'test-project')
         
-        self.client = storage.Client(project=project)
+        if self.emulator_host:
+            # Emulator mode: use anonymous credentials and point to the emulator URL
+            from google.auth.credentials import AnonymousCredentials
+            os.environ['STORAGE_EMULATOR_HOST'] = self.emulator_host
+            self.client = storage.Client(
+                project=project,
+                credentials=AnonymousCredentials(),
+            )
+            # Override the API endpoint to point to the emulator
+            self.client._connection.API_BASE_URL = self.emulator_host
+            logger.info(f"GCS adapter initialized in EMULATOR mode: {self.emulator_host}")
+        else:
+            # Production mode: use real credentials from GOOGLE_APPLICATION_CREDENTIALS
+            self.client = storage.Client(project=project)
+            logger.info(f"GCS adapter initialized in PRODUCTION mode for project: {project}")
 
     def create_bucket(
         self, 
@@ -44,6 +58,9 @@ class GCSStorageAdapter(IStorageService):
                 
             logger.info(f"Bucket '{bucket_name}' created successfully in GCS")
             return {"name": bucket.name}
+        except Conflict:
+            logger.info(f"Bucket '{bucket_name}' already exists in GCS")
+            return {"name": bucket_name}
         except Exception as e:
             logger.error(f"Failed to create bucket '{bucket_name}' in GCS: {e}")
             raise
@@ -67,12 +84,22 @@ class GCSStorageAdapter(IStorageService):
     ) -> Dict[str, Any]:
         try:
             bucket = self.client.bucket(bucket_name)
-            blob = bucket.blob(file_path)
             
-            if content_type:
-                blob.upload_from_string(file_data, content_type=content_type)
-            else:
-                blob.upload_from_string(file_data)
+            def do_upload(blob_obj):
+                if content_type:
+                    blob_obj.upload_from_string(file_data, content_type=content_type)
+                else:
+                    blob_obj.upload_from_string(file_data)
+            
+            blob = bucket.blob(file_path)
+            try:
+                do_upload(blob)
+            except NotFound:
+                logger.info(f"Bucket '{bucket_name}' not found. Creating it automatically...")
+                self.client.create_bucket(bucket_name)
+                # Re-create the blob object to avoid tainted state from the failed attempt
+                blob = bucket.blob(file_path)
+                do_upload(blob)
                 
             logger.info(f"File uploaded to GCS: {bucket_name}/{file_path}")
             return {"path": file_path, "size": len(file_data)}
@@ -103,6 +130,13 @@ class GCSStorageAdapter(IStorageService):
         expires_in: int = 3600
     ) -> str:
         try:
+            if self.emulator_host:
+                # Emulator cannot generate signed URLs with AnonymousCredentials.
+                # Just return a direct download URL that the emulator accepts.
+                from urllib.parse import quote
+                encoded_path = quote(file_path, safe='')
+                return f"{self.emulator_host}/storage/v1/b/{bucket_name}/o/{encoded_path}?alt=media"
+                
             bucket = self.client.bucket(bucket_name)
             blob = bucket.blob(file_path)
             url = blob.generate_signed_url(

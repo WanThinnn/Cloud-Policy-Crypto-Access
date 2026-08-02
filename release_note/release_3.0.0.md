@@ -18,7 +18,11 @@ This major release brings two groundbreaking features: an intelligent AI Policy 
 - **Seamless Backwards Compatibility:** New files are automatically encrypted using the modern `tkn20` scheme. When users attempt to preview or download older files, the system dynamically checks the database (`abe_scheme` field) and routes the decryption request to the correct legacy `ac17` engine without any user intervention.
 - **Blind Index Lookups for File Verification:** Fixed critical bugs related to retrieving `abe_scheme` metadata when database Field Encryption is enabled. The system now utilizes secure blind indexing (`get_db_file_by_path`) to correctly match file paths and route them to the proper decryption scheme.
 
-#### 3. Automated Dependency Management
+#### 3. Enterprise Multi-Storage & Robust Connectivity
+- **Multi-Cloud Storage Integration:** Breaking away from being Supabase-exclusive, the system now natively integrates with **AWS S3 / MinIO**, **Google Cloud Storage (GCS)**, and **Local File System**. Ciphertexts can be seamlessly uploaded across any supported backend with robust auto-bucket creation on-the-fly (`BucketAlreadyOwnedByYou` and `Conflict` transparently handled).
+- **Smart SSL Bypass:** Introduced `DB_REQUIRE_SSL` configuration allowing local development and on-premise PostgreSQL environments to dynamically disable mandatory SSL restrictions (`sslmode=disable`), while preserving strict SSL enforcements for Cloud databases.
+
+#### 4. Automated Dependency Management
 - **Dynamic C++ Library Updates:** `start.py update` now queries the GitHub API to dynamically fetch the latest pre-compiled C++ binaries (`libhybrid-pq-cp-abe`) for both Linux and Windows. It automatically extracts and links the `.so`/`.dll` and C++ headers directly into the Django and Vault plugin directories.
 - **Smart Vault Plugin Synchronization:** The update script also automatically clones the latest Vault Go plugin source code, injects the correct local CGO compilation paths on the fly, and rebuilds the Docker container cleanly without any manual developer intervention.
 

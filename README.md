@@ -1,7 +1,6 @@
 # Cloud Policy Quantum Access
 
-A comprehensive enterprise-grade file storage system implementing **Hybrid Ciphertext-Policy Attribute-Based Encryption (CP-ABE)** integrated with **Supabase**, providing highly secure file management, multi-layer Attribute-Based Access Control (ABAC), and high-performance caching.
-
+A comprehensive enterprise-grade file storage system implementing **Hybrid Ciphertext-Policy Attribute-Based Encryption (CP-ABE)** integrated with **Supabase, AWS S3, Google Cloud Storage, and Local Storage**, providing highly secure file management, multi-layer Attribute-Based Access Control (ABAC), and high-performance caching.
 > [!NOTE]
 > **PQC Only Repository:** This `main` branch exclusively supports Post-Quantum Cryptography (PQC) features. The legacy CP-ABE only version is maintained in the `legacy` branch.
 
@@ -23,7 +22,7 @@ See more demo images in `img/`.
 
 - **Hybrid PQ-CP-ABE Encryption (v4.0.0)**: Advanced attribute-based encryption utilizing high-speed in-memory buffers (RAM) for encryption/decryption, completely bypassing disk I/O bottlenecks. See more at: https://github.com/WanThinnn/Hybrid-CP-ABE-Library/tree/hybrid-pq-cp-abe 
 - **HashiCorp Vault Integration (Envelope Encryption)**: Enterprise-grade key management. Vault secures the CP-ABE Master Keys and dynamically wraps per-file Data Encryption Keys (DEK), ensuring keys are never leaked to the disk.
-- **Supabase Integration**: Leverages Supabase Storage for hosting encrypted files and Supabase PostgreSQL for high-performance metadata management.
+- **Multi-Storage Backend Integration**: Seamlessly supports **Supabase Storage**, **AWS S3 / MinIO**, **Google Cloud Storage (GCS)**, and **Local File System** for hosting encrypted files, alongside **Supabase PostgreSQL** or **Local PostgreSQL** (with Smart SSL Bypass) for high-performance metadata management. Smart auto-bucket creation ensures bullet-proof reliability across environments.
 - **Multi-Layer Security**: Combines **HashiCorp Vault**, **CP-ABE AC17**, and **AES-GCM-256** (Mathematical Cryptography) with **Casbin ABAC** (Application-level Access Control) for defense-in-depth.
 - **Field-Level SQL Encryption & Blind Indexing**: Protects sensitive metadata in the relational database. Fields such as physical paths, original filenames, signed URLs, and auto-extracted upload metadata are heavily encrypted using AES-256-GCM. Queries on these fields utilize HMAC-SHA3-256 Blind Indexes to maintain searchability while ensuring absolute privacy.
 - **Advanced Policy Engine**: Implements an Abstract Syntax Tree (AST) evaluator for ABAC and CP-ABE policies, supporting arbitrarily complex nested boolean logic (e.g., `(A and B) or C`) with visual UI builder integration.
@@ -48,7 +47,7 @@ See more demo images in `img/`.
 
 ### Backend & Infrastructure
 - **Framework**: Django 5.x & Django REST Framework
-- **Database & Storage**: Supabase PostgreSQL & Supabase Storage
+- **Database & Storage**: PostgreSQL (Supabase/Local) & Supabase Storage / AWS S3 / MinIO / Google Cloud Storage / Local Storage
 - **Security & Cryptography**: HashiCorp Vault, OpenQuantumSafe (OQS), Post-Quantum Hybrid TLS 1.3 (ML-KEM)
 - **Caching & Message Broker**: Redis 7
 - **Web Server**: OQS Nginx & Gunicorn
@@ -111,7 +110,7 @@ flowchart LR
 
 1. **Authentication & Authorization**: The client makes a request via HTTPS containing an `HttpOnly Cookie` (for JWT) and an `X-CSRFToken` header. The **Auth Middleware** verifies the identity, and the **Casbin ABAC Engine** evaluates the user's attributes against the stored policies (cached in Redis) to determine access rights.
 2. **Encryption/Decryption & PQC Signing (In-Memory)**: Upon an authorized file upload/download, the **Storage Controller** retrieves the CP-ABE Master Keys and ML-DSA keys from **HashiCorp Vault**. It generates an ephemeral CP-ABE private key based on the user's current attributes. This key is temporarily cached in **Redis**. The file itself is encrypted with a random AES-256-GCM DEK, and this DEK is then wrapped (encrypted) by CP-ABE. Finally, the payload is signed using **Post-Quantum ML-DSA**. The data buffer is passed to the **CP-ABE C++ Library** to be processed directly in RAM, ensuring plaintext data is never written to disk.
-3. **Data Persistence**: File metadata, access policies, and user attributes are securely managed in **Supabase PostgreSQL**. The fully encrypted ciphertexts are uploaded to **Supabase Storage**.
+3. **Data Persistence**: File metadata, access policies, and user attributes are securely managed in **PostgreSQL**. The fully encrypted ciphertexts are seamlessly uploaded to the configured storage backend (**Supabase Storage**, **AWS S3**, **GCS**, or **Local**).
 
 ## Quick Start (Step-by-Step for New Environments)
 

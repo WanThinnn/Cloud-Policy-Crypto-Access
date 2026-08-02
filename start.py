@@ -686,6 +686,17 @@ def main(argv: list[str]) -> int:
                 vols_to_remove.extend([f"{project_name}_ollama_data"])
             if ans_v_keys.lower() == 'y':
                 vols_to_remove.extend([f"{project_name}_keys_volume", f"{project_name}_vault_data", f"{project_name}_vault_plugins"])
+                # Also remove host-side Vault unseal keys and token files
+                # These MUST be deleted when Vault data is wiped, otherwise
+                # stale keys will fail to unseal the fresh Vault instance.
+                keys_dir = env_vars.get("KEYS_DIR", "")
+                if keys_dir:
+                    keys_path = os.path.join(REPO_ROOT, keys_dir) if not os.path.isabs(keys_dir) else keys_dir
+                    for fname in ["vault_unseal_keys.json", "vault_token.txt"]:
+                        fpath = os.path.join(keys_path, fname)
+                        if os.path.exists(fpath):
+                            os.remove(fpath)
+                            print(f"  Removed {fpath}")
             if ans_v_vpn.lower() == 'y':
                 vols_to_remove.extend([f"{project_name}_openvpn_data", f"{project_name}_openvpn_standard_data"])
             if ans_v_media.lower() == 'y':
